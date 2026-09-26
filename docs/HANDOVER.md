@@ -1,4 +1,35 @@
-# Current checkpoint — 2026-09-26, Codex: MOVING visibility flash captured
+# Current checkpoint — 2026-09-26, Codex: native context diagnostic ZIP READY
+
+Owner authorized continuing after the captured false-clear batches. No guessed
+mask/filter fix. New private package preserves the2.2.0 production visibility
+algorithm, query count, budgets and defaults (`CDT_RESEARCH=OFF`). Added an idle
+named event that records ALREADY COPIED native context for20s on explicit request.
+No hook-path change/additional pointer reads/rays. JSON serialization and file I/O
+run in Poll after normal result publication. Bounds:500rows/32MiB,3sessions/process.
+Query prefix0xA0, collector0x140 before/after, world/inner/caller/thread, camera,
+per-target result and measurementSequence allow correlation with the API recording.
+
+- ZIP: `artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.1-visibility-trace.1-ModManagers.zip`
+  SHA256 `663CBC1F9BDEEBDD170719A6F5257F5E25D11AA1823143A11A2E3CD349CC727A`.
+- Expanded: `artifacts/mod-manager/v2.2.1-visibility-trace.1-20260926-201245-487-a64efcd5/CrimsonDesertTelemetry/`.
+- Synthetic:168 native checks passed, including passive serialization, explicit
+  triggering, no extension on repeated triggers, duration/row/byte/session bounds.
+  Build and package self-test/expanded/ZIP validators pass. No live test of this
+  instrument yet. Recorder prebuilt with `--trace` support; no new dependency.
+- Existing archived stationary contexts DO differ outside geometry (including
+  query+0x14 and collector+0x18), but that does NOT identify a bad flag/context.
+  Only a moving failed-vs-normal batch comparison can establish the correlation.
+
+**One next step:** owner closes game and installs the whole private ZIP via DMM.
+No INI edits needed; F11 may be used to hide blocked markers. Do NOT replace the
+ASI while game runs. Then on owner `go`, immediate START feedback and execute:
+`& .\artifacts\tools\visibility-recorder\VisibilityRecorder.exe 20 --trace`
+No preflight/build at `go`. END feedback after20s. Retrieve the native JSONL from
+bin64 (preserve it) and join it with the new gzip API capture by measurementSequence.
+No running capture, game modification or background wait left open. Published2.2.0
+and its immutable ZIP remain unchanged. This test ZIP is NOT a fix or public release.
+
+# Previous checkpoint — 2026-09-26, Codex: MOVING visibility flash captured
 
 20s recording COMPLETE after owner's go: 1155 frames, 17:58:09.166–17:58:29.159 UTC,
 PID30924. Camera moved (axis spans X7.879/Y1.672/Z5.593gu and large direction change).

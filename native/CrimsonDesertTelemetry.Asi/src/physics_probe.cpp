@@ -85,6 +85,13 @@ struct Work
     bool continuous{};
 };
 Work work;
+// Explicit developer-triggered trace, idle by default. All serialization/file I/O
+// happens in Poll AFTER normal result publication, never in the physics hook.
+HANDLE contextTraceEvent{}, contextTraceFile{INVALID_HANDLE_VALUE};
+std::uint64_t contextTraceDeadline{}, contextTraceBytes{};
+unsigned contextTraceRows{}, contextTraceSessions{};
+constexpr unsigned ContextTraceMaxRows = 500, ContextTraceMaxSessions = 3;
+constexpr std::uint64_t ContextTraceDurationMs = 20000, ContextTraceMaxBytes = 32 * 1024 * 1024;
 bool RayMode(const std::string& mode)
 { return mode == "rayobserve" || mode == "rayreplay" || mode == "raysegment" || mode == "rayfan"; }
 bool Copy(std::uint64_t address, void* destination, std::size_t size)
@@ -514,6 +521,82 @@ template<std::size_t N> std::string Hex(const std::array<std::uint8_t, N>& bytes
     for (auto b : bytes) { text += digits[b >> 4]; text += digits[b & 15]; }
     return text;
 }
+void CloseContextTrace()
+{
+    if (contextTraceFile != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(contextTraceFile); contextTraceFile = INVALID_HANDLE_VALUE;
+        ch::Log("Physics context trace ended: %u rounds, %llu bytes.", contextTraceRows,
+            static_cast<unsigned long long>(contextTraceBytes));
+    }
+}
+void PollContextTrace(std::uint64_t now)
+{
+    if (contextTraceFile != INVALID_HANDLE_VALUE && now >= contextTraceDeadline) CloseContextTrace();
+    if (!contextTraceEvent || WaitForSingleObject(contextTraceEvent, 0) != WAIT_OBJECT_0 ||
+        contextTraceFile != INVALID_HANDLE_VALUE || contextTraceSessions >= ContextTraceMaxSessions) return;
+    ++contextTraceSessions;
+    const auto path = folder / ("physics-visibility-context-" + std::to_string(GetCurrentProcessId()) +
+        "-" + std::to_string(processStart) + "-" + std::to_string(now) + ".jsonl");
+    contextTraceFile = CreateFileW(path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr,
+        CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (contextTraceFile == INVALID_HANDLE_VALUE)
+    { ch::Log("Physics context trace could not open output: %lu", GetLastError()); return; }
+    contextTraceDeadline = now + ContextTraceDurationMs;
+    contextTraceRows = 0; contextTraceBytes = 0;
+    ch::Log("Physics context trace started for 20s: %s (no extra physics calls).", path.string().c_str());
+}
+Json ContextTraceRecord(const Work& done, const VisibilityBatch& result)
+{
+    // Existing bounded copies only. Do not chase opaque pointers or assign mask
+    // semantics here. The query window ends at 0xA0; its old tail overlaps c.
+    std::array<std::uint8_t, 0xA0> queryPrefix{};
+    std::memcpy(queryPrefix.data(), done.snapshot.query.data(), queryPrefix.size());
+    std::array<std::uint8_t, 0x140> before{}, after{};
+    std::memcpy(before.data(), done.snapshot.collector.data(), before.size());
+    std::memcpy(after.data(), done.collectorAfter.data(), after.size());
+    Json rows = Json::array();
+    unsigned complete{}, allClear{}, blocked{}, skipped{};
+    for (unsigned i = 0; i < result.count && i < MaximumVisibilityTargets; ++i)
+    {
+        const auto& p = result.entries[i];
+        if (p.code == 1 && p.samples == 9)
+        { ++complete; if (p.clear == 9) ++allClear; if (p.clear == 0) ++blocked; }
+        if (p.code == 4) ++skipped;
+        rows.push_back({{"target", p.target}, {"code", p.code}, {"samples", p.samples},
+            {"clear", p.clear}, {"completed", p.completed}});
+    }
+    return {{"schemaVersion", 1}, {"pid", GetCurrentProcessId()}, {"processStart", processStart},
+        {"measurementSequence", result.sequence}, {"capturedTick", done.captured},
+        {"issuedTick", done.issued}, {"publishedTick", GetTickCount64()},
+        {"camera", result.entries[0].camera}, {"player", done.player},
+        {"lightCaptureSequence", result.entries[0].lightSequence}, {"frame", result.entries[0].frame},
+        {"templateCaptured", done.copied}, {"world", done.world}, {"worldInner", done.worldInner},
+        {"callerRva", done.caller >= base ? done.caller - base : 0}, {"thread", done.thread},
+        {"queryAddress", done.addresses[0]}, {"collectorAddress", done.addresses[2]},
+        {"naturalReturn", done.returnValue}, {"queryPrefixHex", Hex(queryPrefix)},
+        {"collectorBeforeHex", Hex(before)}, {"collectorAfterHex", Hex(after)},
+        {"lastControlStatus", done.controlStatus ? done.controlStatus : "not-run"},
+        {"complete", complete}, {"allClear", allClear}, {"blocked", blocked}, {"skipped", skipped},
+        {"targets", std::move(rows)}};
+}
+void SaveContextTrace(const Work& done, const VisibilityBatch& result, std::uint64_t now)
+{
+    if (contextTraceFile == INVALID_HANDLE_VALUE) return;
+    if (now >= contextTraceDeadline || contextTraceRows >= ContextTraceMaxRows)
+    { CloseContextTrace(); return; }
+    try
+    {
+        const auto text = ContextTraceRecord(done, result).dump() + "\n";
+        if (text.size() > ContextTraceMaxBytes - contextTraceBytes) { CloseContextTrace(); return; }
+        DWORD written{};
+        if (!WriteFile(contextTraceFile, text.data(), static_cast<DWORD>(text.size()), &written, nullptr) || written != text.size())
+        { ch::Log("Physics context trace write failed: %lu", GetLastError()); CloseContextTrace(); return; }
+        contextTraceBytes += written; ++contextTraceRows;
+    }
+    catch (const std::exception& e)
+    { ch::Log("Physics context trace stopped: %s", e.what()); CloseContextTrace(); }
+}
 void Save(const Work& done)
 {
     const bool ray = RayMode(done.mode);
@@ -618,6 +701,15 @@ bool Start(std::uint64_t moduleBase, const wchar_t* directory, bool continuous)
     }
     continuousVisibility = continuous && rayEnabled.load() && visibilityBridge.Open(processStart);
     if (continuous && !continuousVisibility) { Stop(); return false; }
+    if (continuousVisibility)
+    {
+        const auto eventName = L"Local\\CrimsonDesertTelemetry.VisibilityContextTrace." + std::to_wstring(GetCurrentProcessId());
+        contextTraceEvent = CreateEventW(nullptr, FALSE, FALSE, eventName.c_str());
+        if (contextTraceEvent && GetLastError() == ERROR_ALREADY_EXISTS)
+        { CloseHandle(contextTraceEvent); contextTraceEvent = nullptr; }
+        ch::Log("Physics context trace trigger=%s (idle; explicit 20s request only, max 3 sessions).",
+            contextTraceEvent ? "ready" : "unavailable");
+    }
     ch::Log("Physics probe v10 ready. Continuous sampled visibility=%s (shared HUD/player radius, max 500gu; camera-origin rays; max 20 scene batches/sec, 256 queued targets, shared 2ms issue window; unknown on failure).",
         continuousVisibility ? "enabled" : "disabled");
 #if CDT_RESEARCH
@@ -631,6 +723,7 @@ void Poll()
     const auto now = GetTickCount64();
     if (!enabled.load() || now - lastPoll < (continuousVisibility ? 10u : 100u)) return;
     lastPoll = now;
+    if (continuousVisibility) PollContextTrace(now);
     Work done;
     AcquireSRWLockExclusive(&mutex);
     if ((work.phase == Phase::Waiting) && now - work.issued > (work.continuous ? 350u : 2500u))
@@ -656,6 +749,7 @@ void Poll()
             if (!p.completed) p.completed = now;
         }
         visibilityBridge.Publish(result);
+        SaveContextTrace(done, result, now);
         if (replayFaulted) ch::Log("Continuous physics visibility stopped until restart: %s", done.reason.c_str());
     }
     else if (complete) Save(done);
@@ -733,6 +827,8 @@ void Poll()
 void Stop()
 {
     armed = false;
+    CloseContextTrace();
+    if (contextTraceEvent) { CloseHandle(contextTraceEvent); contextTraceEvent = nullptr; }
     if (rayEnabled.exchange(false)) MH_DisableHook(rayTarget);
     if (enabled.exchange(false)) MH_DisableHook(shapeTarget);
     visibilityBridge.Close();

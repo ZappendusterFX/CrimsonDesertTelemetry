@@ -5,7 +5,8 @@ using System.Text.Json;
 
 // Read-only client. Compile BEFORE the owner's go; no HTTP preflight or second feed.
 // Every received snapshot is retained, but authored lights/ambient/RGB are omitted.
-// Usage: VisibilityRecorder.exe [seconds=20]
+// Usage: VisibilityRecorder.exe [seconds=20] [--trace]
+// --trace signals the matching plugin's bounded native context trace, no added rays.
 // Offline check: VisibilityRecorder.exe --replay existing-raw.jsonl
 internal static class Program
 {
@@ -16,7 +17,10 @@ internal static class Program
 
     public static async Task<int> Main(string[] args)
     {
+        var nativeTrace = args.Contains("--trace");
+        args = args.Where(a => a != "--trace").ToArray();
         var replay = args.Length == 2 && args[0] == "--replay";
+        if (nativeTrace && replay) throw new ArgumentException("Offline replay must not trigger the game");
         var seconds = args.Length == 0 || replay ? 20 : int.Parse(args[0]);
         if (!replay && (args.Length > 1 || seconds is < 1 or > 30))
             throw new ArgumentException("Expected duration 1..30 seconds, or --replay raw.jsonl");
@@ -28,6 +32,7 @@ internal static class Program
         string? error = null;
         string result = replay ? "offline-replay" : "duration-complete";
         DateTimeOffset? connectedAt = null, firstFrameAt = null, lastFrameAt = null;
+        int? nativeTracePid = null;
         try
         {
             using var file = new FileStream(Path.Combine(directory, "visibility.jsonl.gz"), FileMode.CreateNew);
@@ -84,6 +89,20 @@ internal static class Program
                 using var connectTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
                 await socket.ConnectAsync(new Uri("ws://127.0.0.1:27311/v1/stream"), connectTimeout.Token);
                 connectedAt = DateTimeOffset.UtcNow;
+                if (nativeTrace)
+                {
+                    if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException();
+                    var games = Process.GetProcessesByName("CrimsonDesert");
+                    try
+                    {
+                        if (games.Length != 1) throw new IOException("Exactly one game process is required for native trace");
+                        using var trigger = EventWaitHandle.OpenExisting(
+                            $"Local\\CrimsonDesertTelemetry.VisibilityContextTrace.{games[0].Id}");
+                        if (!trigger.Set()) throw new IOException("Could not signal native trace");
+                        nativeTracePid = games[0].Id;
+                    }
+                    finally { foreach (var game in games) game.Dispose(); }
+                }
                 Console.WriteLine($"RECORDING {seconds}s -> {directory}");
                 using var duration = new CancellationTokenSource(TimeSpan.FromSeconds(seconds));
                 var buffer = new byte[65536];
@@ -111,7 +130,7 @@ internal static class Program
         }
         catch (Exception exception) { result = "failed"; error = exception.Message; }
         var summary = JsonSerializer.Serialize(new { result, error, directory, seconds, frames, inputBytes,
-            connectedAt, firstFrameAt, lastFrameAt, elapsedMs = timer.Elapsed.TotalMilliseconds });
+            connectedAt, firstFrameAt, lastFrameAt, nativeTracePid, elapsedMs = timer.Elapsed.TotalMilliseconds });
         File.WriteAllText(Path.Combine(directory, "summary.json"), summary);
         Console.WriteLine(summary);
         return error is null && frames > 0 ? 0 : 1;

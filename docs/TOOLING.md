@@ -265,6 +265,16 @@ Omitted authored light arrays/RGB and gzip avoid the old recorder's128MiB failur
 after roughly10s. `summary.json` records completion/failure and timing; partial runs
 are not labeled successful. `--replay <old-raw.jsonl>` is OFFLINE verification only.
 
+Private `2.2.1-visibility-trace.1`: add `--trace` to that prebuilt recorder command
+to also signal `Local\CrimsonDesertTelemetry.VisibilityContextTrace.<game-pid>`.
+The plugin records its ALREADY CAPTURED query prefix, collector before/after,
+world/caller/thread and every target's result, correlated by measurementSequence.
+Output: `bin64/physics-visibility-context-<pid>-<epoch>-<tick>.jsonl`. No extra rays,
+pointer chasing, collision/filter edits or HUD policy changes. The trace is idle
+until triggered, ends after20s/500rounds/32MiB, max3sessions per process. File I/O
+is outside the physics hook, after normal result publication. No INI change needed.
+This is diagnostic instrumentation, not a pristine baseline or a visibility fix.
+
 Private physics.6 through .10 use `[Experimental] PhysicsVisibility=1` for automatic HUD/API
 sampling; do NOT send `Start-PhysicsProbe.ps1` commands while this mode is active.
 physics.7 has V2 batch mappings,32800bytes (32-byte header +256x128 entries), not

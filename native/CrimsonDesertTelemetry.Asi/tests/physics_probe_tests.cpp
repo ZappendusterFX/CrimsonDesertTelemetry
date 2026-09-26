@@ -408,5 +408,49 @@ int main()
     RunVisibilityBatch();
     Check(calls==4&&replayFaulted&&visibilityResult.entries[0].code==3&&visibilityResult.entries[1].code==3,
         "native fault prevents every remaining target and invalidates batch");
+    // Context tracing is passive: serialize already captured data, never replay.
+    SetupRayControl();
+    VisibilityBatch traceBatch{}; traceBatch.sequence = 12345; traceBatch.count = 3;
+    traceBatch.entries[0].code = 1; traceBatch.entries[0].samples = 9; traceBatch.entries[0].clear = 9;
+    traceBatch.entries[1].code = 1; traceBatch.entries[1].samples = 9;
+    traceBatch.entries[2].code = 4;
+    const auto savedQuery = work.snapshot.query;
+    const auto savedCollector = work.snapshot.collector;
+    const auto trace = ContextTraceRecord(work, traceBatch);
+    Check(trace["measurementSequence"] == 12345 && trace["complete"] == 2 && trace["allClear"] == 1 &&
+        trace["blocked"] == 1 && trace["skipped"] == 1, "trace correlates batch identity and verdict counts");
+    Check(trace["queryPrefixHex"].get<std::string>().size() == 0xA0 * 2 &&
+        trace["collectorBeforeHex"].get<std::string>().size() == 0x140 * 2 &&
+        trace["targets"].size() == 3, "trace retains bounded disjoint raw windows and per-target results");
+    Check(calls == 0 && work.snapshot.query == savedQuery && work.snapshot.collector == savedCollector,
+        "trace makes no physics call and does not modify borrowed snapshots");
+    const auto savedFolder = folder;
+    folder = std::filesystem::temp_directory_path() / ("cdt-context-trace-test-" +
+        std::to_string(GetCurrentProcessId()) + "-" + std::to_string(GetTickCount64()));
+    std::filesystem::create_directory(folder);
+    contextTraceEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+    Check(contextTraceEvent != nullptr, "synthetic trace trigger created");
+    contextTraceSessions = 0;
+    PollContextTrace(1000);
+    Check(contextTraceFile == INVALID_HANDLE_VALUE, "trace stays idle without a trigger");
+    SetEvent(contextTraceEvent); PollContextTrace(1000);
+    Check(contextTraceFile != INVALID_HANDLE_VALUE && contextTraceDeadline == 21000, "trigger arms exactly 20 seconds");
+    SaveContextTrace(work, traceBatch, 1001);
+    Check(contextTraceRows == 1 && contextTraceBytes > 0 && calls == 0, "worker trace writes without extra rays");
+    SetEvent(contextTraceEvent); PollContextTrace(2000);
+    Check(contextTraceSessions == 1 && contextTraceDeadline == 21000, "active trigger cannot extend recording");
+    PollContextTrace(21000);
+    Check(contextTraceFile == INVALID_HANDLE_VALUE, "trace stops at deadline");
+    SetEvent(contextTraceEvent); PollContextTrace(22000);
+    contextTraceRows = ContextTraceMaxRows; SaveContextTrace(work, traceBatch, 22001);
+    Check(contextTraceFile == INVALID_HANDLE_VALUE, "trace row bound stops recording");
+    SetEvent(contextTraceEvent); PollContextTrace(23000);
+    contextTraceBytes = ContextTraceMaxBytes; SaveContextTrace(work, traceBatch, 23001);
+    Check(contextTraceFile == INVALID_HANDLE_VALUE, "trace byte bound stops recording");
+    SetEvent(contextTraceEvent); PollContextTrace(24000);
+    Check(contextTraceFile == INVALID_HANDLE_VALUE && contextTraceSessions == 3, "trace limited to three explicit sessions per process");
+    CloseHandle(contextTraceEvent); contextTraceEvent = nullptr;
+    for (const auto& file : std::filesystem::directory_iterator(folder)) std::filesystem::remove(file.path());
+    std::filesystem::remove(folder); folder = savedFolder;
     std::cout << checks << " physics observer synthetic checks passed; no live-game claim.\n";
 }
