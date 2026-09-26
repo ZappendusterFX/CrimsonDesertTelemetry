@@ -737,3 +737,51 @@ them, all-blocked classification with temporal stability, failed/stale ->unknown
 retain raw streams. No further geometry research required before first practical
 implementation. Sustained query scheduling/performance still needs bounded tests;
 the one-shot diagnostic's success does not establish a safe per-frame all-light rate.
+
+## 2.2.0 intermittent mass flashes — 2026-09-26, PID456 context comparison
+
+Owner reports brief simultaneous appearances of many hidden lights while moving,
+EVERYWHERE, not just indoors. The preceding PID30924 API recording established
+real false `clear`/9-of-9 batches, not simply HUD fallback on `unknown`.
+
+Private `2.2.1-visibility-trace.1` preserved the production sampler and recorded
+already-copied query/collector data outside the hook, on an explicit bounded event.
+This is an instrumented run, not an untouched baseline. Evidence directory:
+`artifacts/light-research/visibility-motion-20260926-202000-92c19550ccaf4326996d20c0cb4f66c5/`
+contains `visibility.jsonl.gz`, `summary.json`, and copied `native-context.jsonl`.
+Original bin64 trace preserved:
+`physics-visibility-context-456-134349202019731006-26961000.jsonl`.
+API: 1170 frames, 18:20:00.636–18:20:20.621 UTC; native: 302 rounds over19.891s.
+
+| Native rounds | Query DWORD +0x14 | Observed result |
+|---|---|---|
+| 10 | `0x40004027` | Every completed target reports all9 paths clear |
+| 291 | `0x40000016` | Normal mixed/blocked results; at least20 blocked targets |
+| 1 | `0x40004024` | Normal blocked results; not adopted without validation |
+
+The 10 failed measurement sequences are1523,1598,1605,1606,1639,1660,1692,1734,
+1739,1765; all correlate to API outputs. API peak:196 clear/18 unknown/0 blocked.
+World5236376086560, inner5236470385152 and callerRVA0x32551AF are shared with normal
+rounds. Threads also overlap. Collector vtable is unchanged. Other opaque bytes
+differ too, so +0x14 is a discriminator, NOT proof that this DWORD alone explains
+the filter, or that every `0x40004xxx` query is unsuitable. The original-call replay
+control can match perfectly even when a borrowed query is unsuitable for visibility.
+The trailing `unknown-batch-time-budget` concerns skipped targets; it does not
+invalidate the earlier completed (but false-clear) fans in that batch.
+
+`2.2.1-visibility-fix.1` now selects the already validated `0x40000016` native
+family before claiming continuous work, with a second guard before replay.
+Retained ground/lantern/wall controls used that family. Original calls, opaque
+filter bits and collector bytes remain untouched; no context is synthesized.
+The next matching natural call may claim the still-pending work. Existing limits,
+timeouts, fan geometry and fail-unknown behavior are unchanged. Manual research
+is not restricted. Trace now includes profile and rejected-context/attempt counts.
+177 synthetic checks and focused observer/release-fire tests pass; package checks
+pass. Live effectiveness and sufficient matching-call availability remain UNTESTED.
+
+Separate open report: individual MOVING lights repeatedly flicker; owner strongly
+suspects NPC torches. `PhysicsVisibilityClient.Find` associates by <=0.12gu, not
+stable object identity. Position motion can therefore lose association before a
+fresh result; this is a plausible inspected path, not a proven cause in these
+captures. Do not conflate it with coherent false-clear rounds, silently retain
+arbitrary stale measurements, or treat sampleIndex as persistent torch identity.

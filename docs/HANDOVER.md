@@ -1,4 +1,41 @@
-# Current checkpoint — 2026-09-26, Codex: native context diagnostic ZIP READY
+# Current checkpoint — 2026-09-26, Codex: measured context mismatch; private FIX ZIP READY
+
+PID456 synchronized 20s capture completed: 1170 API frames, 302 native rounds.
+All 10 coherent false-clear rounds used query DWORD+0x14 `0x40004027`;
+291 normal rounds used `0x40000016`, one normal round `0x40004024`.
+World/inner/caller were identical. This is measured context-family correlation,
+not a complete decoding of collision-mask semantics. Details and evidence:
+`docs/PHYSICS_QUERY_RESEARCH.md`, section "2.2.0 intermittent mass flashes".
+
+Private fix accepts ONLY the previously validated `0x40000016` family for
+continuous visibility. Foreign calls still execute untouched and leave the pending
+measurement available for the next matching call. Defensive replay guard included.
+No filter-bit edits, new rays, timing/expiry changes, motion gates or HUD concealment.
+Manual research captures and bounded native trace remain available.
+
+- ZIP: `artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.1-visibility-fix.1-ModManagers.zip`
+  SHA256 `93FEF6D4565D8FA89C6C6464135FFDC945B9BB3A0E404B479A96442B31414E14`.
+- Expanded: `artifacts/mod-manager/v2.2.1-visibility-fix.1-20260926-202832-039-eef51a8d/CrimsonDesertTelemetry/`.
+  ASI SHA256 `46E83140FF63EC5995FFD1B74BFA4FD2EC6FFE759803AD29164A503D49DC1B92`.
+- 177 synthetic native checks pass; focused CTest physics observer + release-fire
+  pass; production build and package self-test/expanded/ZIP validators pass.
+  `-Research off`, normal production INI unchanged. NOT live-tested or published.
+  Published 2.2.0 ZIP hash rechecked unchanged. Installed game was not modified.
+- SEPARATE owner observation: individual moving lights repeatedly flicker; owner
+  is very sure they move and suspects NPC torches. Not established as the same
+  cause. Managed position-only association (0.12gu) can lose a moving source's
+  previous result, but that is a code-path hypothesis, NOT measured attribution.
+  Do not claim this package fixes that second pattern or assign persistent identity
+  from sample indices. Raw/smoothed light data and unknown handling remain intact.
+
+**One next step:** owner closes game, installs the WHOLE fix ZIP via DMM (no INI
+edits), returns to the moving test. On `go`, immediate START feedback then the
+already-built recorder: `& .\artifacts\tools\visibility-recorder\VisibilityRecorder.exe 20 --trace`.
+Check mass false-clear rounds AND unknown/expiry separately; narrower selection
+must not merely trade false-clear for unavailable results. Track moving-source
+flicker separately. END feedback after capture; no background waiting for owner.
+
+# Previous checkpoint — 2026-09-26, Codex: native context diagnostic ZIP READY
 
 Owner clarification: the intermittent flashes occur EVERYWHERE, not only in the
 hut. The hut was merely the recorded test location. Treat this as a general

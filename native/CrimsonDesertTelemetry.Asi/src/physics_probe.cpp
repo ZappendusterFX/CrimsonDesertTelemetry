@@ -277,6 +277,12 @@ bool CaptureRay(void* world, void* query, void* collector)
     const auto w = reinterpret_cast<std::uint64_t>(world);
     const auto q = reinterpret_cast<std::uint64_t>(query);
     const auto c = reinterpret_cast<std::uint64_t>(collector);
+    if (work.continuous)
+    {
+        std::uint32_t profile{};
+        if (!Get(q + 0x14, profile) || profile != VisibilityRayProfile)
+        { ++work.contextRejected; return false; }
+    }
     if (work.mode != "rayobserve")
     {
         std::uint64_t vt{}, hits{};
@@ -348,6 +354,8 @@ void RunRayControl()
     if (replayFaulted || (work.continuous && !continuousVisibility) ||
         (!work.continuous && (replayTransactions >= 12 || extraCalls + requiredCalls > MaximumExtraCalls)))
     { work.controlStatus = "unknown-replay-disabled-for-process"; return; }
+    if (work.continuous && Read<std::uint32_t>(work.snapshot.query, 0x14) != VisibilityRayProfile)
+    { work.controlStatus = "unknown-visibility-query-profile"; return; }
     if (!work.afterCopied || !work.rayQueryAfterCopied || work.caller != base + 0x32551AF ||
         work.thread != GetCurrentThreadId() || GetTickCount64() - work.captured > 100)
     { work.controlStatus = "unknown-call-context"; return; }
@@ -575,6 +583,8 @@ Json ContextTraceRecord(const Work& done, const VisibilityBatch& result)
         {"callerRva", done.caller >= base ? done.caller - base : 0}, {"thread", done.thread},
         {"queryAddress", done.addresses[0]}, {"collectorAddress", done.addresses[2]},
         {"naturalReturn", done.returnValue}, {"queryPrefixHex", Hex(queryPrefix)},
+        {"queryProfile", Read<std::uint32_t>(queryPrefix, 0x14)},
+        {"attempts", done.attempts}, {"contextsRejected", done.contextRejected},
         {"collectorBeforeHex", Hex(before)}, {"collectorAfterHex", Hex(after)},
         {"lastControlStatus", done.controlStatus ? done.controlStatus : "not-run"},
         {"complete", complete}, {"allClear", allClear}, {"blocked", blocked}, {"skipped", skipped},
@@ -712,6 +722,7 @@ bool Start(std::uint64_t moduleBase, const wchar_t* directory, bool continuous)
     }
     ch::Log("Physics probe v10 ready. Continuous sampled visibility=%s (shared HUD/player radius, max 500gu; camera-origin rays; max 20 scene batches/sec, 256 queued targets, shared 2ms issue window; unknown on failure).",
         continuousVisibility ? "enabled" : "disabled");
+    if (continuousVisibility) ch::Log("Continuous visibility accepts only the validated native query profile 0x%08X; foreign profiles pass through without capture.", VisibilityRayProfile);
 #if CDT_RESEARCH
     ch::Log("Physics manual probe ready. Ray observer=%s; explicit requests only; max 12 transactions / 24 extra calls per process.",
         rayEnabled.load() ? "ready" : "unavailable");

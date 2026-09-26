@@ -12,6 +12,11 @@ using Vec3 = std::array<float, 3>;
 inline constexpr float MaximumVisibilityRadius = 500.f;
 inline constexpr float MaximumVisibilityCameraOffset = 12.f;
 inline constexpr float MaximumVisibilityRayLength = 513.f;
+// Exact-build context selection, not a decoded/general-purpose collision mask.
+// PID456 moving trace: all 10 all-clear failures used 0x40004027; 291 normal
+// batches and the retained positive ground/wall controls used 0x40000016.
+// Accept the validated query family intact. Never rewrite a foreign query's bits.
+inline constexpr std::uint32_t VisibilityRayProfile = 0x40000016;
 inline bool Finite(const Vec3& v)
 {
     for (float x : v) if (!std::isfinite(x) || std::abs(x) > 1000000.f) return false;

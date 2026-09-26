@@ -125,6 +125,7 @@ std::uint64_t __fastcall MockRayReplay(void* w, void* q, void* c)
 void SetupRayControl()
 {
     Setup(); originalRay = OriginalRay; work.mode = "rayobserve";
+    Put(query.query, 0x14, VisibilityRayProfile);
     Put(query.query, 0x40, std::array<double, 3>{-529.755, 615.7, -420.3});
     // Simulate an overlapping observer window, which must NOT be cloned.
     std::fill(query.query.begin() + 0xA0, query.query.begin() + 0x100, std::uint8_t{0xCC});
@@ -297,6 +298,30 @@ int main()
     Put(query.query, 0x40, std::array<double,3>{-529.755, 615.7, -420.3});
     RayHook(worldBytes.data(), query.query.data(), query.collector.data());
     Check(calls == 1 && work.copied && work.nearPlayer == 1 && !work.controlCalled, "ray elevated player-near selection, wrong test caller no replay");
+    Setup(); work.mode = "rayfan"; work.continuous = true;
+    Put(query.query, 0x40, std::array<double,3>{-529.755, 615.7, -420.3});
+    for (auto profile : {0x40004027u, 0x40004024u, 0u})
+    {
+        Put(query.query, 0x14, profile);
+        const auto before = query;
+        Check(!CaptureRay(worldBytes.data(), query.query.data(), query.collector.data()) &&
+            !work.copied && work.phase == Phase::Waiting && armed,
+            "foreign continuous profile does not claim the pending measurement");
+        Check(query.query == before.query && query.collector == before.collector && calls == 0,
+            "profile selection never modifies original queries or adds physics calls");
+    }
+    Put(query.query, 0x14, VisibilityRayProfile);
+    Check(CaptureRay(worldBytes.data(), query.query.data(), query.collector.data()) && work.copied &&
+        work.contextRejected == 3, "next validated profile still captures in same pending round");
+    Setup(); work.mode = "rayreplay";
+    Put(query.query, 0x40, std::array<double,3>{-529.755, 615.7, -420.3});
+    Put(query.query, 0x14, 0x40004027u);
+    Check(CaptureRay(worldBytes.data(), query.query.data(), query.collector.data()),
+        "manual research capture retains foreign contexts for diagnosis");
+    SetupRayControl(); work.continuous = true; continuousVisibility = true; work.mode = "rayfan";
+    Put(work.snapshot.query, 0x14, 0x40004027u); RunRayControl();
+    Check(calls == 0 && !replayFaulted && std::strcmp(work.controlStatus, "unknown-visibility-query-profile") == 0,
+        "replay defensively refuses unvalidated continuous profile without fault latch");
     std::array<Vec3, 9> fanTargets{};
     Check(RayFanTargets({-10535,612,-4421}, {-10529,611,-4420}, fanTargets), "diagnostic fan generated");
     Check(fanTargets[0] == Vec3{-10529,611,-4420}, "fan center exact");
