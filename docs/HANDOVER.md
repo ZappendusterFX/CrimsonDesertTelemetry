@@ -1,4 +1,33 @@
-# Current checkpoint — 2026-09-26, Codex: intermittent visibility flash reported
+# Current checkpoint — 2026-09-26, Codex: MOVING visibility flash captured
+
+20s recording COMPLETE after owner's go: 1155 frames, 17:58:09.166–17:58:29.159 UTC,
+PID30924. Camera moved (axis spans X7.879/Y1.672/Z5.593gu and large direction change).
+Evidence: `artifacts/light-research/visibility-motion-20260926-195809-4258bc2e2b944244908fb0b5df137861/`
+(`visibility.jsonl.gz`, `summary.json`). Owner reports roughly30 flashes while walking
+longer than the capture; do not equate that count with the recorded20s.
+
+**The captured mass flashes are TRUE `clear` outputs, NOT mass `unknown`/expiry.**
+- Example sequence145975 ->145976 (3.615s): clear count2 ->149 of248 input lights.
+  All149 share measurementSequence37646 and clearSampleCount9/9. Of those,147 were
+  blocked in the preceding snapshot at the same sampleIndex and within0.02gu.
+  Examples return to blocked after152–469ms with reference-camera changes0.49–0.54gu.
+- Five large rounds (>80 simultaneous clear) =37592:144,37628:141,37646:149,
+  37671:96,37680:119. ALL accepted targets in each of these rounds report9/9 clear.
+  Larger-count episodes last about0.18–0.27s; smaller flashes may also exist.
+- No null visibility; raw capture age never above94ms. Separate minor unknowns
+  exist (budget/waiting/expiry), but do not explain these coherent false-clear rounds.
+- Native `RunVisibilityBatch` shares ONE borrowed natural query context for all
+  targets. `PrepareRayCopy` preserves nongeometry fields. Natural-ray replay control
+  matching does not establish that this context's filters/world are suitable for
+  scene visibility. Variable context/filter state is the LEADING HYPOTHESIS, not
+  yet a measured root cause; the recorder does not contain query/collector bytes.
+
+One next step: compare native query/collector/world context of an all-clear round
+with a neighboring normal round, using bounded diagnostic metadata if necessary.
+Do not "fix" this by HUD unknown handling, retaining old values, motion gates or
+slower expiry. No plugin/INI/package changes in this diagnostic turn;2.2.0 untouched.
+
+# Previous checkpoint — 2026-09-26, Codex: intermittent visibility flash reported
 
 Owner reports 2.2.0 works in a hut (one visible light), but movement often briefly
 reveals all hidden lights. Read-only diagnosis; no code, INI, package or game changes.
