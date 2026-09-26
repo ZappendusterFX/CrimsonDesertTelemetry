@@ -263,9 +263,35 @@ Artifacts under `artifacts/light-research/`:
 - `rawpages/identity-{effect-vmethods,effect-handle-route,effect-handle-helpers,
   firepot-parent}-29928-20260926.{bin,meta.json}`: live call-path evidence.
 
+### Owner AUS phase — same bowl, 22:29 local
+
+Owner confirmed AUS after receiving exact bowl coordinates. PID29928 unchanged;
+player(-9789.774,635.7512,24.24815). Registry snapshot
+`scene-identity-20260926-222933-164.json`:7479 UUID matches, stable header,
+zero failures,857 within30gu of the bowl. Chain/API snapshot
+`light-identity-chain-20260926-222940-393.json`:79 scene nodes,183 accepted
+WorkItems, one unrelated queue-slot1005 changed and was rejected, no remaining
+scene traversal. The reader now accepts optional `-CaptureApi` so detached target
+effects do not prevent retention of the bracketing API data.
+
+Within2gu of effect anchor(-9788.865,636.7872,24.67056): earlier A had1 rendered
+and2 upstream contributions. Both B brackets have0 rendered AND0 upstream, with
+frame49019->49045, sequence30101->30108. Thus the observed disappearance is not
+merely view filtering or a failed effect reader. No new on/off signal is inferred
+from stale pointers; the owner action and progressing proven light feed agree.
+
+Both authored UUIDs32A1624E…00000000/…01000000 AND the runtime bowl UUID
+297CB15E561300000000000000000000 and effect UUID447CB15E… remain at the SAME
+pointers as the refreshed A scene snapshot. Runtime effect source child count
+changes1->0, component count13->12. The old render component0x5EC4E7A47E0 is no
+longer its active child; the guarded old association read rejects **Source identity
+changed**. This is not a valid old-component OFF flag: the pointer can be reused.
+The persistent source UUID surviving this OFF is established; AN recovery,
+per-GPU-contribution association and moving-source continuity remain unproven.
+
 ## Next bounded step
 
-First verify the bowl's key/handle/source transition on owner AUS/AN, keeping the
+Next capture owner AN to complete the bowl's key/handle/source comparison, keeping the
 authored UUID separate from recreated runtime effects. Then follow that0x68
 instance's linked emitter records to the GPU allocation/ManyLights group. Use the
 WorkItem route for sources actually registered there, not as a universal path.

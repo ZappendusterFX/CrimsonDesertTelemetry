@@ -7,7 +7,7 @@ Does not call game code or interpret an empty Owner pointer as an absent light.
 JSON snapshots are best-effort, not atomic; the traversal budget is 10 seconds.
 #>
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$SnapshotPath, [string]$OutPath)
+param([Parameter(Mandatory)][string]$SnapshotPath, [string]$OutPath, [switch]$CaptureApi)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 $inputSnapshot = Get-Content -LiteralPath $SnapshotPath -Raw | ConvertFrom-Json
@@ -26,6 +26,12 @@ function ReadBytes([uint64]$a, [int]$n) { ,$reader.Read([IntPtr]$a, $n) }
 function Q([byte[]]$b, [int]$o) { [BitConverter]::ToUInt64($b, $o) }
 function D([byte[]]$b, [int]$o) { [BitConverter]::ToUInt32($b, $o) }
 function HexAddress([uint64]$a) { '0x{0:X}' -f $a }
+function ApiSnapshot {
+    if (-not $CaptureApi) { return $null }
+    $s = Invoke-RestMethod 'http://127.0.0.1:27311/v1/snapshot' -TimeoutSec 2
+    @{utc=[DateTime]::UtcNow.ToString('o'); player=$s.player; camera=$s.camera;
+        rendered=$s.lights.rendered; upstream=$s.lights.upstream}
+}
 $records = [Collections.Generic.List[object]]::new()
 $workRecords = [Collections.Generic.List[object]]::new()
 $queueHeaders = [Collections.Generic.List[object]]::new()
@@ -34,6 +40,8 @@ $seen = [Collections.Generic.HashSet[uint64]]::new()
 $queue = [Collections.Generic.Queue[object]]::new()
 $clock = [Diagnostics.Stopwatch]::StartNew()
 try {
+    $apiBefore = ApiSnapshot
+    $clock.Restart()
     $base = [uint64]$game.MainModule.BaseAddress.ToInt64()
     $guard = '48895C241848896C24204889542410565741564883EC30498BE8488BFA488BF145'
     if ([Convert]::ToHexString((ReadBytes ($base + 0x1851010) ($guard.Length / 2))) -ne $guard) { throw 'Live code guard mismatch.' }
@@ -171,8 +179,10 @@ try {
         utc = [DateTime]::UtcNow.ToString('o'); pid = $game.Id; exeSha256 = $hash;
         inputSnapshot = $SnapshotPath; seconds = $clock.Elapsed.TotalSeconds;
         remaining = $queue.Count; visited = $seen.Count; failures = $failures.ToArray(); records = $records.ToArray();
-        workQueues = $queueHeaders.ToArray(); workRecords = $workRecords.ToArray() }
-    $bytes = [Text.Encoding]::UTF8.GetBytes(($report | ConvertTo-Json -Depth 9))
+        workQueues = $queueHeaders.ToArray(); workRecords = $workRecords.ToArray();
+        apiBefore = $apiBefore; apiAfter = (ApiSnapshot);
+        apiTiming = 'Bracketing API snapshots, not atomic CPU/GPU pairing' }
+    $bytes = [Text.Encoding]::UTF8.GetBytes(($report | ConvertTo-Json -Depth 12))
     $file = [IO.File]::Open($OutPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::Read)
     try { $file.Write($bytes) } finally { $file.Dispose() }
     [pscustomobject]@{ output = $OutPath; records = $records.Count; workRecords = $workRecords.Count;

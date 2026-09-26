@@ -1,4 +1,21 @@
-# Current checkpoint — 2026-09-26, Codex: bowl UUID -> keyed world-effect instance
+# Current checkpoint — 2026-09-26, Codex: bowl AUS captured; source UUID persists
+
+Owner AUS on the identified bowl, PID29928. Within2gu of the known effect anchor,
+earlier A had1 rendered/2 upstream lights; B brackets both have0/0 while API frames
+49019->49045 progress. Both authored UUIDs AND runtime bowl297CB15E… / effect
+447CB15E… remain unchanged at the same pointers. Effect child count1->0,
+components13->12; old child/component association is rejected as source changed.
+Do not read a reused component as an OFF flag. Details in LIGHT_IDENTITY_RESEARCH.
+
+Evidence: `artifacts/light-research/scene-identity-20260926-222933-164.json`
+and `light-identity-chain-20260926-222940-393.json` (now with optional API brackets).
+Registry stable,7479 UUID matches; chain one unrelated changing queue row rejected.
+No production/plugin change. **Next: owner AN on the same bowl**, fresh registry
+and `Read-LightIdentityChain.ps1 -CaptureApi`, then follow its newly active effect
+with Read-WorldEffectIdentity. Compare UUID and handle against prior A5191.
+No background capture/wait. Do not repeat broader discovery or claim GPU IDs solved.
+
+# Previous checkpoint — 2026-09-26, Codex: bowl UUID -> keyed world-effect instance
 
 ID research remains MAIN; no positional tracking or production changes. PID29928
 at bowl near(-9788.865,636.7872,24.67056), player(-9790.68,635.81,23.38).
