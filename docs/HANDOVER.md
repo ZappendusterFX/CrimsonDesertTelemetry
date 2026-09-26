@@ -1,5 +1,10 @@
 # Current checkpoint — 2026-09-26, Codex: native context diagnostic ZIP READY
 
+Owner clarification: the intermittent flashes occur EVERYWHERE, not only in the
+hut. The hut was merely the recorded test location. Treat this as a general
+moving-visibility problem; next capture can be wherever it reproduces. Do not
+require returning indoors or assume a hut-specific geometry/collision defect.
+
 Owner authorized continuing after the captured false-clear batches. No guessed
 mask/filter fix. New private package preserves the2.2.0 production visibility
 algorithm, query count, budgets and defaults (`CDT_RESEARCH=OFF`). Added an idle
