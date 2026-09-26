@@ -1,4 +1,27 @@
-# Current checkpoint — 2026-09-26, Codex: bowl A–B–A confirms source UUID continuity
+# Current checkpoint — 2026-09-26, Codex: same bowl after process restart
+
+Owner AN; new PID796 (same EXE SHA). Player again at the same bowl. Fresh registry
+has7557/7557 UUID matches and stable header; API upstream has the active spot near
+(-9788.826,637.53,24.669) with progressing captures. Authored bowl/effect UUIDs
+32A1624E…00000000/…01000000 remain the same across the restart. Runtime bowl/effect
+UUIDs changed to185D70725613… / 5A5D70725613…. This limits the prior result:
+the runtime source UUID survived one OFF/ON in one process, not a restart.
+
+The new effect component0x22156A29120 resolves by the same opaque key
+DEBA1DCD943EBDAA and new handle11206 to one0x68 manager instance,
+index36/39. Its list has six IDENTICAL 12-byte entries; the middle DWORD is36,
+the instance vector index. A bounded read of all39 instances found each first
+entry's middle DWORD equal to its own vector index. These are not evidence for
+six distinct lights or a known GPU emitter link. Details and paths in
+LIGHT_IDENTITY_RESEARCH.md. The virtual+28 manager method only queues a request
+through140635FE0; no GPU join established from that method.
+
+**Next:** identify the consumer/meaning of the repeated 12-byte entries and
+an actual emitter allocation or another source-to-GPU link. Do not key the public
+API by the effect handle or runtime UUID across restarts. No user toggle needed.
+No plugin changes; preserve concurrent lightshow/modulator work.
+
+# Previous checkpoint — 2026-09-26, Codex: bowl A–B–A confirms source UUID continuity
 
 Owner AN completes the bowl comparison in PID29928. Same runtime source UUID
 447CB15E561300000000000000000000 at0x5ECAF5C0AE0 in ALL three phases; authored

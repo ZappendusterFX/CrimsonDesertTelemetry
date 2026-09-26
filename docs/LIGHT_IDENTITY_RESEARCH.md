@@ -302,7 +302,8 @@ Guarded lookup `world-effect-identity-20260926-223848-233.json` finds:
 
 - Source0x5ECAF5C0AE0, UUID447CB15E561300000000000000000000, unchanged.
 - NEW component0x5EC4E7B4C90; Owner still null. SAME keyDEBA1DCD943EBDAA;
-  NEW handle6010 (prior A5191). Handles are effect generations, not durable IDs.
+  NEW handle6010 (prior A5191). This handle changed on toggle; it is not a
+  durable identifier for this light.
 - One exact match in first manager map: node0x5EBF6F3D2C0,
   record0x5EC29FDB770, index38/39. Translation(-9788.865,636.78723,24.670557).
   List pointer0x5ECD709A0F0, count6; element semantics still unproven.
@@ -328,11 +329,44 @@ effect is removed/recreated with a different handle. Not established: per-light
 GPU membership, the authored->runtime link, moving-torch lifetime, or persistence
 through scene unload/restart. No additional user toggle is required for this result.
 
+### Restarted process — same bowl, 23:09–23:11 local
+
+Owner reported AN. PID796 uses the same EXE hash and the player is again beside
+the exact bowl. Registry `scene-identity-20260926-230907-586.json` is stable:
+7557/7557 UUID matches, zero failures,887 nearby. Authored bowl/effect UUIDs
+32A1624E…00000000/…01000000 remain at the same physical positions with the
+same prefab names. Runtime bowl/effect UUIDs are now185D70725613… and
+5A5D70725613…; their earlier PID29928 UUIDs do not survive process restart.
+The authored-to-runtime parent relationship is still not proven by a pointer edge.
+
+Chain `light-identity-chain-20260926-230915-354.json`: source
+0x2219EDD3B60, runtime effect UUID5A5D7072561300000000000000000000,
+one child and13 components;172 valid WorkItems elsewhere. API upstream
+has one nearby active spot in both brackets, with sequence24267->24272 and
+frame23219->23236. Guarded effect lookup
+`world-effect-identity-20260926-231133-709.json`: component0x22156A29120,
+same keyDEBA1DCD943EBDAA, new handle11206, exact record0x220FB867EA0,
+index36/39, world translation(-9788.865,636.78723,24.670557).
+
+The instance's list pointer0x221AE18F230 has count/capacity6. All six entries
+are identical 12-byte triples `(0x437221BB,36,0x10000)`. A bounded live read of
+all39 records in this map found each record has list count6 and its first
+entry's middle DWORD equals that record's vector index0..38. Thus the six
+entries are not six demonstrated distinct light or emitter IDs. The first and
+last DWORDs have no proven meaning. `rawpages/identity-instance-list-consumer-
+796-20260926.{bin,meta.json}` preserves manager virtual+28 target151FF3B00;
+that function packages a request for140635FE0, without directly traversing
+the0x68 instance list. Do not infer GPU membership from this call alone.
+
+The runtime UUID is a demonstrated identity within the earlier toggle sequence;
+cross-restart identity needs the authored UUID plus a proven parent edge, or a
+different stable key. The per-light GPU join and moving-source continuity remain
+open. Next inspect the actual consumer of the 12-byte entries or another direct
+source-to-GPU allocation edge; avoid treating matching positions or handles as IDs.
+
 ## Next bounded step
 
-Follow the exact0x68 instance's linked emitter records to the GPU allocation/
-ManyLights group, keeping source UUID separate from recreated effect handles. Use the
-WorkItem route for sources actually registered there, not as a universal path.
+Use the WorkItem route for sources actually registered there, not as a universal path.
 Neither route yet yields a proven GPU contribution ID. Do not equate handles,
 queue slots, vector indices or position matches with persistent light identity.
 Moving-source continuity and unload/reuse/restart remain separate tests; no
