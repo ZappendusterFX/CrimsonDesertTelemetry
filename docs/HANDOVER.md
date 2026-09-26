@@ -1,4 +1,29 @@
-# Current checkpoint — 2026-09-26, Codex: 2.2.0 PUBLISHED on GitHub
+# Current checkpoint — 2026-09-26, Codex: intermittent visibility flash reported
+
+Owner reports 2.2.0 works in a hut (one visible light), but movement often briefly
+reveals all hidden lights. Read-only diagnosis; no code, INI, package or game changes.
+
+- Confirmed code path: HUD hides/dims only `blocked`; `unknown` reappears at normal
+  alpha (`overlay_model.cpp:625`, `overlay_hud.cpp:190,552`). Thus loss of verdicts
+  can look like measured visibility without the API actually reporting `clear`.
+- Possible synchronized loss: managed `PhysicsVisibilityClient.Apply` clears its
+  cache above 250 ms rendered capture age (HUD light freshness allows 500 ms);
+  native missing natural query after 350 ms returns code2 for the whole batch,
+  which becomes `physics-query-unavailable`; measurements otherwise expire at
+  500 ms. These are inspected paths, NOT a confirmed cause of this occurrence.
+- Live PID30924 raw evidence: `artifacts/light-research/visibility-flash-30924-20260926-live1/`.
+  581 frames, 17:35:53.787–17:36:03.793 UTC; 239–240 upstream sources, max238 blocked,
+  max4 clear, max11 unknown (waiting-for-physics/stale-physics), no null visibility.
+  Camera X/Z unchanged, Y span0.004gu: effectively STATIONARY. No all-light flash
+  captured. Planned15s recorder hit its existing128MiB raw limit after10s; complete
+  JSONL frames are usable, `after.json` was not produced. Do not call it a movement test.
+
+One next step: bounded raw-stream capture DURING owner movement to distinguish
+mass unknown/null from genuine clear fan results. Do not add movement invalidation,
+hysteresis, conceal stale measurements or rewrite scheduling on this hypothesis.
+Published 2.2.0 below remains unchanged.
+
+# Previous checkpoint — 2026-09-26, Codex: 2.2.0 PUBLISHED on GitHub
 
 Owner explicitly authorized publication after the exact-ZIP live test and scans.
 [GitHub release v2.2.0](https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/tag/v2.2.0)
