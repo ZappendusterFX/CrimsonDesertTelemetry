@@ -1,4 +1,31 @@
-# Current checkpoint — 2026-09-26, Codex: measured context mismatch; private FIX ZIP READY
+# Current checkpoint — 2026-09-26, Codex: engine UUIDs confirmed; ID research is MAIN
+
+Owner installed private `2.2.1-visibility-fix.1` and visually CONFIRMED the
+mass-flash fix works. Do not request another recording/retest of that pattern.
+Separate individual moving-light flicker remains; owner suspects NPC torches.
+Owner rejected positional tracking: finding real source IDs is now the priority.
+
+Read `docs/LIGHT_IDENTITY_RESEARCH.md` next. Current-build read-only PID26452
+registry traversal resolved8,830 SceneObjectClient entries, ALL with registry UUID
+equal to client+0x200. Within100gu of current player:5,116 distinct object UUIDs,
+200 lamp/torch/candle/brazier/fire-named prefab candidates (NOT200 active lights).
+Native lookup RVA1851010 is confirmed; it returns ClientSyncSceneObjectData,
+whose+58 points to client+28. Do not blindly use server UUID offset+1D8 on clients.
+No moving-object lifetime or current ManyLights-to-UUID join proven yet.
+
+Production source unchanged. Unshipped motion-tracking draft was removed and
+preserved ONLY as `artifacts/light-research/visibility-position-tracking-unshipped-20260926.patch`.
+Do not restore it. Managed build outputs can still contain that abandoned draft:
+rebuild from source before any new packaging; immutable fix ZIP is unaffected.
+Research reader: `scripts/Read-SceneObjectIdentity.ps1`, exact-build/bounded/read-only.
+Latest evidence: `artifacts/light-research/scene-identity-20260926-211223-185.json`.
+
+**One next step:** relocate the old proven Source-wrapper -> Owner/WorkItem join
+on this build and connect an actual current ManyLights contribution to its UUID.
+Same-position prefab duplicates are distinct scene instances, not safe to merge.
+No game writes, plugin replacement, publication or background wait in this turn.
+
+# Previous checkpoint — 2026-09-26, Codex: measured context mismatch; private FIX ZIP READY
 
 PID456 synchronized 20s capture completed: 1170 API frames, 302 native rounds.
 All 10 coherent false-clear rounds used query DWORD+0x14 `0x40004027`;
