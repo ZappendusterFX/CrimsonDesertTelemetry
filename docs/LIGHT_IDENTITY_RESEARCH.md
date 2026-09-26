@@ -289,11 +289,49 @@ changed**. This is not a valid old-component OFF flag: the pointer can be reused
 The persistent source UUID surviving this OFF is established; AN recovery,
 per-GPU-contribution association and moving-source continuity remain unproven.
 
+### Owner AN recovery — A–B–A complete, 22:37–22:38 local
+
+Fresh registry `scene-identity-20260926-223737-463.json`: same PID29928,
+7475 UUID matches, stable header, zero failures;857 nearby. Chain
+`light-identity-chain-20260926-223744-491.json`:80 scenes,184 WorkItems,
+zero failures, no remaining traversal. Both authored UUIDs and runtime bowl
+297CB15E… / effect447CB15E… retain their exact A/B pointers and UUIDs.
+Runtime effect source child count returns0->1 and component count12->13.
+
+Guarded lookup `world-effect-identity-20260926-223848-233.json` finds:
+
+- Source0x5ECAF5C0AE0, UUID447CB15E561300000000000000000000, unchanged.
+- NEW component0x5EC4E7B4C90; Owner still null. SAME keyDEBA1DCD943EBDAA;
+  NEW handle6010 (prior A5191). Handles are effect generations, not durable IDs.
+- One exact match in first manager map: node0x5EBF6F3D2C0,
+  record0x5EC29FDB770, index38/39. Translation(-9788.865,636.78723,24.670557).
+  List pointer0x5ECD709A0F0, count6; element semantics still unproven.
+  Both map headers stable. No position-based assignment of source identity.
+
+API counts within2gu of the same effect anchor (both brackets agree per phase):
+
+| Phase | Rendered | Upstream | Capture sequence | Frame within bracket |
+|---|---:|---:|---|---|
+| A,22:20 |1|2|21863->21866|18126->18137|
+| B,22:29 |0|0|30101->30108|49019->49045|
+| A2,22:38 |1|1|38707->38710|16114->16125|
+
+A2's strong spot returns near(-9788.822,637.53,24.6702), luminance0.34–0.35.
+The weak extra point from A is absent in A2; this is NOT identical contribution
+count recovery or a proof that every nearby sample belongs to this bowl.
+The earlier A2 chain brackets also had1 upstream (sequence37704->37710,
+frame12294->12317). Each phase has a progressing feed; frame numbers are not
+assumed globally monotonic between phases. Snapshots remain non-atomic CPU/GPU.
+
+Established: this runtime source UUID survives a normal OFF/ON while its active
+effect is removed/recreated with a different handle. Not established: per-light
+GPU membership, the authored->runtime link, moving-torch lifetime, or persistence
+through scene unload/restart. No additional user toggle is required for this result.
+
 ## Next bounded step
 
-Next capture owner AN to complete the bowl's key/handle/source comparison, keeping the
-authored UUID separate from recreated runtime effects. Then follow that0x68
-instance's linked emitter records to the GPU allocation/ManyLights group. Use the
+Follow the exact0x68 instance's linked emitter records to the GPU allocation/
+ManyLights group, keeping source UUID separate from recreated effect handles. Use the
 WorkItem route for sources actually registered there, not as a universal path.
 Neither route yet yields a proven GPU contribution ID. Do not equate handles,
 queue slots, vector indices or position matches with persistent light identity.

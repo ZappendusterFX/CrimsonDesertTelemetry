@@ -1,19 +1,25 @@
-# Current checkpoint — 2026-09-26, Codex: bowl AUS captured; source UUID persists
+# Current checkpoint — 2026-09-26, Codex: bowl A–B–A confirms source UUID continuity
 
-Owner AUS on the identified bowl, PID29928. Within2gu of the known effect anchor,
-earlier A had1 rendered/2 upstream lights; B brackets both have0/0 while API frames
-49019->49045 progress. Both authored UUIDs AND runtime bowl297CB15E… / effect
-447CB15E… remain unchanged at the same pointers. Effect child count1->0,
-components13->12; old child/component association is rejected as source changed.
-Do not read a reused component as an OFF flag. Details in LIGHT_IDENTITY_RESEARCH.
+Owner AN completes the bowl comparison in PID29928. Same runtime source UUID
+447CB15E561300000000000000000000 at0x5ECAF5C0AE0 in ALL three phases; authored
+UUIDs and runtime bowl297CB15E… also persist at the same pointers. Effect child
+count1->0->1, components13->12->13. New effect component0x5EC4E7B4C90 has SAME
+keyDEBA1DCD943EBDAA but NEW handle6010 (A5191). Exact manager lookup finds record
+0x5EC29FDB770, index38/39, translation(-9788.865,636.78723,24.670557), list count6
+(element semantics still unknown). UUID, not effect handle, survives this toggle.
 
-Evidence: `artifacts/light-research/scene-identity-20260926-222933-164.json`
-and `light-identity-chain-20260926-222940-393.json` (now with optional API brackets).
-Registry stable,7479 UUID matches; chain one unrelated changing queue row rejected.
-No production/plugin change. **Next: owner AN on the same bowl**, fresh registry
-and `Read-LightIdentityChain.ps1 -CaptureApi`, then follow its newly active effect
-with Read-WorldEffectIdentity. Compare UUID and handle against prior A5191.
-No background capture/wait. Do not repeat broader discovery or claim GPU IDs solved.
+Near-bowl API rendered/upstream: A1/2, B0/0, A2=1/1; progressing brackets in each
+phase. Do not claim identical contribution counts: A's weak extra point is absent
+in A2. Evidence: scene-identity-20260926-223737-463.json (7475 matches, stable),
+light-identity-chain-20260926-223744-491.json (184 WorkItems, zero failures),
+world-effect-identity-20260926-223848-233.json (frames16114->16125).
+See LIGHT_IDENTITY_RESEARCH.md for the complete phase comparison and caveats.
+
+**Next:** trace this exact0x68 instance's linked emitter list toward GPU allocation
+and ManyLights membership. Source UUID -> GPU contribution join is NOT solved;
+neither moving-torch continuity nor unload/restart persistence is validated.
+No new user toggle needed. Read-only research, no production/plugin changes,
+no background wait. Concurrent modulator work remains untouched.
 
 # Previous checkpoint — 2026-09-26, Codex: bowl UUID -> keyed world-effect instance
 
