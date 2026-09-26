@@ -29,8 +29,23 @@ reveals all hidden lights. Read-only diagnosis; no code, INI, package or game ch
   This again does NOT validate movement; ask whether the owner saw a flash during
   the recording before attributing a cause. No plugin/INI changes.
 
-One next step: bounded raw-stream capture DURING owner movement to distinguish
-mass unknown/null from genuine clear fan results. Do not add movement invalidation,
+**READY for owner's next `go`:** no capture/process left running. The owner says
+previous recordings started too late and explicitly requests immediate START
+feedback and a 20s recording. First send `Aufnahme startet jetzt – bitte 20 Sekunden
+bewegen`, then run ONLY this prebuilt command (cwd product repository), no build,
+dependency checks or HTTP preflight:
+
+`& .\artifacts\tools\visibility-recorder\VisibilityRecorder.exe 20`
+
+Source: `tools/VisibilityRecorder/`. Compiled now, offline replay checked all 547
+preserved frames: camera/player/capture metadata and both streams' per-light
+visibility/positions identical; gzip JSONL is 7.0MB instead of 134MB. No live capture
+during preparation. Saves a fresh `artifacts/light-research/visibility-motion-*/`
+with `visibility.jsonl.gz` and `summary.json`; all received frames,20s after WebSocket
+connect, bounded8MiB per message/1GiB input. No authored vector or second subscription.
+Send END feedback when done; analyze whether the flash is unknown/null or trueclear.
+
+One next step: that capture DURING owner movement. Do not add movement invalidation,
 hysteresis, conceal stale measurements or rewrite scheduling on this hypothesis.
 Published 2.2.0 below remains unchanged.
 

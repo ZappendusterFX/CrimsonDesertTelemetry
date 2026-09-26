@@ -251,6 +251,20 @@ requires 7.4 or newer.
 
 ## Repository scripts
 
+### Fast visibility recording (prepare before the owner's go)
+
+`tools/VisibilityRecorder/` is a standalone read-only WebSocket client, not shipped
+in the plugin. Build once with `dotnet build tools/VisibilityRecorder -c Release
+-o artifacts/tools/visibility-recorder`. On `go`, give immediate start feedback and
+run `& .\artifacts\tools\visibility-recorder\VisibilityRecorder.exe 20` from this
+repository. No preliminary health request, build, Python dependency or second feed.
+It records all received frames for20s after connection into a new timestamped
+`artifacts/light-research/visibility-motion-*/visibility.jsonl.gz`, retaining camera,
+player, capture metadata, upstream/rendered positions and complete sourceVisibility.
+Omitted authored light arrays/RGB and gzip avoid the old recorder's128MiB failure
+after roughly10s. `summary.json` records completion/failure and timing; partial runs
+are not labeled successful. `--replay <old-raw.jsonl>` is OFFLINE verification only.
+
 Private physics.6 through .10 use `[Experimental] PhysicsVisibility=1` for automatic HUD/API
 sampling; do NOT send `Start-PhysicsProbe.ps1` commands while this mode is active.
 physics.7 has V2 batch mappings,32800bytes (32-byte header +256x128 entries), not
