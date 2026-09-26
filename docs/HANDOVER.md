@@ -18,6 +18,17 @@ reveals all hidden lights. Read-only diagnosis; no code, INI, package or game ch
   captured. Planned15s recorder hit its existing128MiB raw limit after10s; complete
   JSONL frames are usable, `after.json` was not produced. Do not call it a movement test.
 
+- Follow-up on owner's `go`: `artifacts/light-research/visibility-motion-20260926-194008/`
+  contains547 raw frames, 17:40:09.454–17:40:18.884 UTC (9.43s;128MiB limit again).
+  251–255 sources; max4 clear, max17 unknown, no null visibility or scene-wide flash.
+  Unknown reasons include outside-physics-budget, waiting-for-physics, isolated
+  physics-query-unavailable and stale-physics. Player and camera remained essentially
+  stationary throughout (camera Y span0.0012gu, X0, Z0.000011; forward unchanged).
+  Initial compact Python recorder failed before connecting because `websocket` is
+  not installed; existing PowerShell recorder was used immediately instead.
+  This again does NOT validate movement; ask whether the owner saw a flash during
+  the recording before attributing a cause. No plugin/INI changes.
+
 One next step: bounded raw-stream capture DURING owner movement to distinguish
 mass unknown/null from genuine clear fan results. Do not add movement invalidation,
 hysteresis, conceal stale measurements or rewrite scheduling on this hypothesis.
