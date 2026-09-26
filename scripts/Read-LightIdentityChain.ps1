@@ -45,7 +45,7 @@ try {
     $base = [uint64]$game.MainModule.BaseAddress.ToInt64()
     $guard = '48895C241848896C24204889542410565741564883EC30498BE8488BFA488BF145'
     if ([Convert]::ToHexString((ReadBytes ($base + 0x1851010) ($guard.Length / 2))) -ne $guard) { throw 'Live code guard mismatch.' }
-    foreach ($root in ($inputSnapshot.records | Where-Object { $_.prefab -match 'lamp|torch|candle|brazier|fire_spark' } | Select-Object -First 256)) {
+    foreach ($root in ($inputSnapshot.records | Where-Object { $_.prefab -match 'lamp|lantern|torch|candle|brazier|fire_spark' } | Select-Object -First 256)) {
         $queue.Enqueue(@{address = [Convert]::ToUInt64($root.source.Substring(2), 16); expectedUuid = $root.uuidBytes; depth = 0; parent = $null; prefab = $root.prefab})
     }
     while ($queue.Count -and $seen.Count -lt 768 -and $clock.Elapsed.TotalSeconds -lt 10) {

@@ -21,6 +21,14 @@ an actual emitter allocation or another source-to-GPU link. Do not key the publi
 API by the effect handle or runtime UUID across restarts. No user toggle needed.
 Manager virtual+0x10/+0x18 registration was inspected; its separate0x88 vector
 at manager+0xF41F8 was empty in PID796, so that is not a live bowl join.
+Moving-source candidate: player's equip lantern prefab UUID
+85F7456E561300000000000000000000 stayed at the same source pointer while
+moving47.12gu with player between registry snapshots230907 and232746. Later
+233131 registry +233140 chain seeded `lantern` explicitly; its root has0 children
+and0 WorkItems. No lit emitter or GPU light link is proven. The latter registries
+had changing headers, so use per-row UUID checks, not atomic-count claims.
+**Owner input needed:** visibly turn on/equip the portable lantern, then report AN
+while standing still for fresh active-effect capture; one movement test follows.
 No plugin changes; preserve concurrent lightshow/modulator work.
 
 # Previous checkpoint — 2026-09-26, Codex: bowl A–B–A confirms source UUID continuity

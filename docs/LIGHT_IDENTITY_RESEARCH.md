@@ -376,6 +376,26 @@ call was made. Code evidence is in `rawpages/identity-effect-manager-vmethods-
 and `identity-effect-instance-builder-796-20260926.*`. The code bytes also show
 virtual+0x28 queues a request rather than directly traversing the0x68 list.
 
+### Controlled moving-source candidate — player's equip lantern
+
+The registry snapshots `scene-identity-20260926-230907-586.json` and
+`scene-identity-20260926-232746-320.json` share PID796. Same source pointer
+0x221729722E8 and UUID85F7456E561300000000000000000000 at prefab
+`gimmick_equip_lantern_01.prefab` moved47.12gu, from
+(-9791.206,636.83856,23.698704) to(-9766.54,634.91296,-16.406137).
+Other equipment UUIDs moved similarly, and the later player's API position is
+(-9765.951,633.84894,-15.808416), so this is very likely the player's own
+portable lantern. The second registry header changed during enumeration;
+individual UUID matches were valid but the whole snapshot is not atomic.
+
+The research chain's seed regex lacked `lantern`; it now includes it. Fresh
+`scene-identity-20260926-233131-902.json` plus
+`light-identity-chain-20260926-233140-640.json` resolved this root at the same
+UUID, childCount0, 10 components, zero WorkItems with its UUID. This does not
+prove it was lit or produced a ManyLights contribution. The user needs to turn
+it on visibly, then a fresh exact UUID/child/effect/stream capture can test a
+controlled moving light. Do not call spatially nearby faint samples its output.
+
 ## Next bounded step
 
 Use the WorkItem route for sources actually registered there, not as a universal path.
