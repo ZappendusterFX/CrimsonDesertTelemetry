@@ -19,6 +19,8 @@ through140635FE0; no GPU join established from that method.
 **Next:** identify the consumer/meaning of the repeated 12-byte entries and
 an actual emitter allocation or another source-to-GPU link. Do not key the public
 API by the effect handle or runtime UUID across restarts. No user toggle needed.
+Manager virtual+0x10/+0x18 registration was inspected; its separate0x88 vector
+at manager+0xF41F8 was empty in PID796, so that is not a live bowl join.
 No plugin changes; preserve concurrent lightshow/modulator work.
 
 # Previous checkpoint — 2026-09-26, Codex: bowl A–B–A confirms source UUID continuity

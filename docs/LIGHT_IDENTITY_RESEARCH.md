@@ -364,6 +364,18 @@ different stable key. The per-light GPU join and moving-source continuity remain
 open. Next inspect the actual consumer of the 12-byte entries or another direct
 source-to-GPU allocation edge; avoid treating matching positions or handles as IDs.
 
+Follow-up on the manager virtual methods in PID796: virtual+0x10 jumps to
+0x151FEEA50, which assembles a request and calls virtual+0x18 at0x151FEE420.
+The latter conditionally calls0x1430EBF30. That static helper appends an0x88
+record to the separate manager+0xF41F8 vector and returns a handle. The live
+manager's vector pointer/count/capacity were all zero when checked. Therefore
+this particular vector cannot be used to join the current bowl to GPU lights;
+the registration branch may be inactive in this scene. No write or remote game
+call was made. Code evidence is in `rawpages/identity-effect-manager-vmethods-
+796-20260926.{bin,meta.json}`, `identity-effect-manager-register-796-20260926.*`
+and `identity-effect-instance-builder-796-20260926.*`. The code bytes also show
+virtual+0x28 queues a request rather than directly traversing the0x68 list.
+
 ## Next bounded step
 
 Use the WorkItem route for sources actually registered there, not as a universal path.
