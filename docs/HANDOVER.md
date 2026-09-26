@@ -1,4 +1,32 @@
-# Current checkpoint — 2026-09-26, Codex: engine UUIDs confirmed; ID research is MAIN
+# Current checkpoint — 2026-09-26, Codex: renderer WorkItems -> UUIDs verified
+
+Real light-source identity remains the owner's MAIN investigation; no positional
+tracking workaround. The private mass-flash fix was visually accepted; do not
+retest it. Moving-light flicker is separate and not yet fixed.
+
+Read `docs/LIGHT_IDENTITY_RESEARCH.md`. Exact-build read-only PID26452 snapshot
+resolved184 renderer WorkItems through83 owners to83 SceneObjectClient UUIDs.
+Queue slot, owner array membership and source links validated; zero read failures.
+Several WorkItems share a source UUID. NOT184 lights or83 physical lamps: these
+sources are absent from the earlier nearby registry subset and may be local
+effect instances. The join to concrete GPU ManyLights contributions is still open.
+Forward121 effect components had null Owner+250; current code confirms that offset,
+so do not repeat a guessed offset search. Owner work array/count DID move -8.
+
+Evidence: `artifacts/light-research/light-identity-chain-20260926-214049-545.json`
+and the setter/queue live dumps listed in the research note. Reusable reader:
+`scripts/Read-LightIdentityChain.ps1`. No game writes or production changes by Codex.
+After the owner's app restart no CrimsonDesert process was present. Old PID26452
+pointers are historical evidence only; take fresh snapshots when game is running.
+Other concurrent uncommitted modulator/lightshow work is NOT ours; preserve it.
+Managed outputs may still contain the abandoned tracking draft: rebuild before
+packaging, never overwrite the accepted/private or published ZIPs.
+
+**One next step:** capture one active light's emitter/particle allocation together
+with the current queue/ManyLights state to prove WorkItem -> GPU contribution;
+then test the real UUID on a moving source. No polling/wait left running.
+
+# Previous checkpoint — 2026-09-26, Codex: engine UUIDs confirmed; ID research is MAIN
 
 Owner installed private `2.2.1-visibility-fix.1` and visually CONFIRMED the
 mass-flash fix works. Do not request another recording/retest of that pattern.

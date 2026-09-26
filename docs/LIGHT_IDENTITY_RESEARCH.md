@@ -43,7 +43,7 @@ node     = nodePointerArray[nodeIndex]
 node +8  UUID[16]; node +0x18 -> pa::ClientSyncSceneObjectData
 syncData +0x58 -> client +0x28
 client   = *(syncData +0x58) -0x28
-client +0x200 UUID[16]; +0xA0 worldPosition[3]
+client +0x200 UUID[16]; +0xA0 position[3] (world-like on tested registry roots)
 client +0x60 -> stringDescriptor -> UTF-8 prefab characters
 ```
 
@@ -66,7 +66,7 @@ reference, then passes interior+0x1D8 (=client+0x200) to the lookup. World Build
 also documents **SceneObjectServer+0x1D8**. Always establish class and pointer
 origin: **+0x1D8 is not a universal client/light-object offset.**
 
-## Historical source-to-render link, not yet relocated
+## Historical source-to-render reference
 
 `research/light-source-tests/CODEX_HANDOVER_FIRE.md` around lines3395–3565 already
 proved one physical fire-lamp client source through AN/AUS generations:
@@ -85,6 +85,80 @@ At Source+0x1D8 there are changing transform-looking bytes, NOT that UUID.
 This supports one lamp's identity across an old-build AN/AUS cycle; it does not
 prove current-build moving-source continuity. Old Owner+0x1E8 / record+0xD8 is a
 generation/group value, not the stable physical source ID.
+
+## Current-build renderer-to-UUID link — live verified
+
+Read-only PID26452 capture `light-identity-chain-20260926-214049-545.json`
+resolved **184 occupied renderer WorkItems to 83 distinct source UUIDs**, with
+zero read failures. Multiple WorkItems correctly share their owner's source UUID.
+The combined bounded traversal took1.185s. This is NOT184 lights or83 lamps.
+
+```text
+global   = *(base + 0x6C8D058)
+renderer = *(global + 0x14818)          alternative +0x14820 was null
+queue    = *(renderer + 0x6100)         2048 pointer slots
+work     = queue[slot]                 work+0x2B8 must equal slot
+owner    = *work                       current vtable base+0x5BB77A8
+wrapper  = *(owner + 0x1B0)
+source   = *(wrapper + 8) -0x28         SceneObjectClient, base+0x557E120
+uuid     = source+0x200, 16 bytes
+owner+0x2B0 -> WorkItem array; +0x2B8 u32 count; stride0x2F8
+```
+
+Every captured WorkItem also lay in its owner's bounded array at an exact stride.
+Queue slot, owner, source-wrapper links and UUID were reread before acceptance.
+This reduces torn-read risk, but does not make the snapshot atomic or prove
+object lifetime. The array/count offsets moved **-8** from historical
+Owner+0x2B8/+0x2C0; WorkItem+0x2B8 stayed the queue index. Do not extrapolate that
+shift to other fields, especially the old generation ID at Owner+0x1E8.
+
+**Important identity limit:** none of these83 UUIDs matched the earlier5,116
+nearby registry rows. Sampled source positions were local-looking, prefab labels
+unavailable and parent+0x88 null. Owner transform positions at+0xBC/+0xFC did
+include positions near the actual player. These are usable engine effect/source
+identities, not yet proven persistent physical-lamp identities. No GPU light
+allocation was joined, and no moving NPC torch was followed in this capture.
+
+The forward traversal of200 light-named registry roots visited395 clients and
+121 effect components. All121 held a valid source wrapper at Parent+0x258 but
+Parent+0x250 was null. This is **not evidence of missing lights or a shifted
+offset**: the current source setter still explicitly uses both fields.
+The83 reverse-route owners' +0x28 pointers did not match those121 captured
+components either; their parent relationship remains to be inspected directly.
+
+### Relocation evidence and reproducibility
+
+- Current association thunk **0x142FA3E30 -> live0x151899210**, relocated from old
+  0x142ECF350 through callers at0x1404C2DAD/0x1404C37BE. It writes Parent+0x258,
+  gates on+0x5C/+0x250, then invokes current **0x1430E6D00**, which writes
+  Owner+0x1B0. Existing source-wrapper helper is0x1403D5170.
+- Old Owner method0x143010BB0 relocated to **0x1430E5770**; its live instructions
+  establish global0x146C8D058, renderer fields+0x14818/+0x14820 and owner array.
+- **0x142F84700 -> live0x151804440** clears renderer+0x6100[WorkItem+0x2B8]
+  and resets the work slot. It is a **removal helper**, not an insertion proof.
+  Do not inherit the old registration label uncritically.
+- Anchors are exact-build only; unpacked addresses are evidence, not durable
+  signatures. The old/new preserved executables and live byte dumps are retained.
+
+Run `scripts/Read-LightIdentityChain.ps1 -SnapshotPath <fresh-registry.json>`.
+Requires the current PID, a registry snapshot not older than that process, exact
+EXE hash, live code guards and existing Core Release DLL. Caps scene roots256,
+clients768, depth3 and queue2048; traversal budget10s. It records per-row failures,
+unvisited scenes and occupied/inspected queue counts. No remote calls/writes.
+After a restart, create a new registry snapshot; never reuse the old pointers.
+
+Evidence under `artifacts/light-research/` (not committed):
+
+- `light-identity-chain-20260926-214049-545.json`: authoritative combined snapshot,
+  with bounded scene, owner and WorkItem byte arrays for offline inspection.
+- `light-identity-chain-20260926-212755-789.json`: earlier forward-only traversal.
+- `rawpages/light-identity-association-live-26452-20260926.{bin,meta.json}` and
+  `light-identity-owner-setter-26452-20260926.{bin,meta.json}`: current setters.
+- `rawpages/light-identity-workqueue-live-26452-20260926.{bin,meta.json}`:
+  owner array loop and queue-removal helper. These dumps start at each exact
+  requested address, NOT an aligned page; follow metadata offsets.
+- `light-identity-workqueue-25477059-20260926.json`: static report; split unwind
+  ranges truncate the owner function. The live dump supplies its continuation.
 
 ## Gemini / World Builder input: what to retain
 
@@ -126,9 +200,11 @@ Artifacts under `artifacts/light-research/` (outside Git):
 
 ## Next bounded step
 
-Relocate the **already proven Source-wrapper -> Owner/WorkItem association** for
-this build, then establish the link to an actual current ManyLights contribution.
-Use UUIDs for engine objects, but do not assign per-contribution IDs until the
-join and reuse/lifetime are demonstrated. A moving torch and its possibly
-multiple emitter children need a verified owner/contribution relationship. This
-remains research; do not add guessed `sourceId` fields or motion matching to API.
+The relocated queue-to-UUID path now works. Next, capture one actual active
+light's emitter/particle allocation together with the queue and ManyLights state,
+and establish the **WorkItem -> concrete ManyLights contribution** join. Inspect
+that owner's parent/source relationship if needed to separate an effect instance
+from a physical lamp. Do not repeat the whole scene search or equate queue slots
+with GPU light indices. Then verify UUID continuity on a moving source; unload,
+reuse and restart are separate lifetime questions. No guessed `sourceId` fields,
+position-based assignment or production API change until the join is proven.
