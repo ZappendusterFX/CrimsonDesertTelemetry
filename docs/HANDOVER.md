@@ -1,4 +1,30 @@
-# Current checkpoint — 2026-09-26, Codex: renderer WorkItems -> UUIDs verified
+# Current checkpoint — 2026-09-26, Codex: bowl UUID -> keyed world-effect instance
+
+ID research remains MAIN; no positional tracking or production changes. PID29928
+at bowl near(-9788.865,636.7872,24.67056), player(-9790.68,635.81,23.38).
+Queue->UUID reproduced, but this bowl uses a SECOND route with Owner+250 null:
+component+288 effect key + component+270 handle -> renderer+106248 manager maps
+-> exact0x68 instance. Live twice: keyDEBA1DCD943EBDAA, handle5191, index35/39,
+source UUID447CB15E561300000000000000000000. No positional ID assignment.
+Code and exact guarded read path: `docs/LIGHT_IDENTITY_RESEARCH.md`, new bowl section.
+
+Reader `scripts/Read-WorldEffectIdentity.ps1`; positive evidence
+`artifacts/light-research/world-effect-identity-20260926-222051-427.json` includes
+progressing bracketing API frames18126->18137. NOT an atomic GPU allocation join.
+Fresh chain: `light-identity-chain-20260926-221617-114.json`.
+Component0x5EC4E7A47E0. Prior component detached while owner moved; old negative
+map search is INVALID absence evidence. Always recheck source UUID/handle.
+Authored UUID32A1624E430E74563C6A6EAD00000000 (bowl), ...01000000 (effect)
+persisted while pointers/runtime UUID changed. Authored->runtime link unproven.
+
+**Next:** owner AUS/AN on this bowl: fresh registry+chain and API phase snapshots,
+inspect key/handle/runtime-vs-authored identity transitions; do not treat a reader
+rejection as OFF. Then follow the instance's opaque linked list (count6, type not
+decoded) toward GPU allocation. No GPU per-light ID or moving-torch fix yet.
+No capture/wait running. Concurrent lightshow/modulator changes remain untouched;
+private accepted visibility fix and published2.2.0 are not altered or retested.
+
+# Previous checkpoint — 2026-09-26, Codex: renderer WorkItems -> UUIDs verified
 
 Real light-source identity remains the owner's MAIN investigation; no positional
 tracking workaround. The private mass-flash fix was visually accepted; do not

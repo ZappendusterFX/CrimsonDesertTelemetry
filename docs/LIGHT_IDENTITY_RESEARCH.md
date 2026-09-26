@@ -198,13 +198,78 @@ Artifacts under `artifacts/light-research/` (outside Git):
 - Initial live guard mismatch was a33-byte prefix compared against a32-byte read;
   corrected length matches live exactly, not a game-version mismatch.
 
+## Feuerschale: second, handle-based effect path — PID29928
+
+The new process reproduces the queue reader (171 WorkItems initially), but that
+queue did not contain the nearby fire bowl. Do NOT force this source through the
+PrivateEmitter/WorkItem route. Its effect component has Owner+0x250=0 yet a valid
+**+0x270 instance handle** and **+0x288 opaque effect key**. Current transform
+update0x142FA37C0 explicitly handles BOTH routes; after the Owner branch it calls
+the manager below with key, handle and transform. This is code evidence, not a
+guessed integer/position match.
+
+```text
+global = *(base+0x6C8D018)  (equal to the +0x6C8D058 global in this live process)
+renderer = *(global+0x14818)
+manager = *(renderer+0x106248), vtable base+0x5BB7978
+manager virtual+0x20 = 0x1430EC910
+  lookup key at component+0x288 in map manager+0xF4168, else +0xF41B0
+  hash-map lookup0x1403D1E80 returns node+0x10, after node+8 key equality
+  first map's instance vector = node+0x20; fallback vector = node+0x10
+  vector {data pointer, u32 count}, records stride0x68
+  0x1430EC820 binary-searches record+0 by component+0x270 handle
+  exact matching instance has world translation at +0x48/+0x4C/+0x50
+```
+
+Reader `scripts/Read-WorldEffectIdentity.ps1` reimplements this READ-ONLY lookup
+without calling engine functions. Requires fresh chain snapshot, exact hash,
+PID/start-time and source UUID, component/manager vtables; caps tables and vectors,
+checks links again, records table stability, exits after one bounded lookup (5s).
+Optional `-CaptureApi` stores before/after API data, explicitly NOT atomic GPU/CPU
+pairing. API calls have2s timeouts. A detached source or invalid handle is rejected,
+not interpreted as a missing/off light.
+
+Two positive reads, 22:18 and22:20 local, found the same exact instance:
+
+- Runtime source `0x5ECAF5C0AE0`, UUID `447CB15E561300000000000000000000`;
+  component `0x5EC4E7A47E0`, Owner null.
+- Effect key `0xDEBA1DCD943EBDAA`, handle5191; first map has33 entries, matching
+  vector39 instances. Index35 at `0x5EC29FDB638` stores5191 and translation
+  `(-9788.865,636.7872,24.67056)`. The lookup used key+handle, NOT position.
+- Both map headers stable; bracketing API capture progressed sequence21863→21866,
+  frame18126→18137. This establishes a live control, not a GPU allocation join.
+- Instance+8 looks like a separate list descriptor (count/capacity6 at+10/+14).
+  A short prefix had repeating12-byte patterns, but its element type and relation
+  to GPU emitter slots are UNPROVEN. Do not call these six lights or IDs.
+
+Important lifetime observation: the earlier component `0x5EC32FFC990` detached
+between captures (wrapper0, key/handle all-ones). The initial two-map negative read
+was on that retired component and is NOT absence evidence. The guarded reader
+rejects it. Old runtime UUID0ECB4E59… and new447CB15E… differ. Separately, the
+authored bowl/effect UUIDs `32A1624E430E74563C6A6EAD00000000` and `…01000000`
+remained while their pointers changed. Same prefab/position is NOT yet a verified
+authored→runtime parent link. Cause of recreation (owner moved during this turn)
+and persistence across restart remain unproven.
+
+Artifacts under `artifacts/light-research/`:
+
+- `scene-identity-20260926-215927-067.json`, chain `…215935-310.json`: first pose;
+ 7438 registry rows valid;171 queue rows; zero reported failures.
+- `scene-identity-20260926-221609-411.json`, chain `…221617-114.json`: refreshed;
+ 7457 rows valid but registry header changed (not atomic);179 queue rows.
+- `world-effect-identity-20260926-221822-730.json` and `…222051-427.json`: positive
+  key/handle joins; latter includes bracketing API snapshots. Initial report field
+  `assetKey` means the opaque effect key; no full asset-key semantics established.
+- `rawpages/identity-{effect-vmethods,effect-handle-route,effect-handle-helpers,
+  firepot-parent}-29928-20260926.{bin,meta.json}`: live call-path evidence.
+
 ## Next bounded step
 
-The relocated queue-to-UUID path now works. Next, capture one actual active
-light's emitter/particle allocation together with the queue and ManyLights state,
-and establish the **WorkItem -> concrete ManyLights contribution** join. Inspect
-that owner's parent/source relationship if needed to separate an effect instance
-from a physical lamp. Do not repeat the whole scene search or equate queue slots
-with GPU light indices. Then verify UUID continuity on a moving source; unload,
-reuse and restart are separate lifetime questions. No guessed `sourceId` fields,
-position-based assignment or production API change until the join is proven.
+First verify the bowl's key/handle/source transition on owner AUS/AN, keeping the
+authored UUID separate from recreated runtime effects. Then follow that0x68
+instance's linked emitter records to the GPU allocation/ManyLights group. Use the
+WorkItem route for sources actually registered there, not as a universal path.
+Neither route yet yields a proven GPU contribution ID. Do not equate handles,
+queue slots, vector indices or position matches with persistent light identity.
+Moving-source continuity and unload/reuse/restart remain separate tests; no
+production API/plugin change or positional tracking workaround.
