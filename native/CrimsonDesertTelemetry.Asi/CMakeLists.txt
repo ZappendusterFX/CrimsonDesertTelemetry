@@ -101,13 +101,13 @@ set(CDT_CONSOLE_SOURCES
 # relaxing warnings for newly integrated production code.
 set_source_files_properties(${CDT_CONSOLE_SOURCES} PROPERTIES COMPILE_OPTIONS "/WX-;/wd4996")
 add_library(cdt_instruments STATIC src/instruments.cpp src/build_guard.cpp
-    src/render_bridge.cpp src/render_capture.cpp src/filter_thunk.asm src/ambient_thunk.asm
+    src/render_bridge.cpp src/render_capture.cpp src/light_modulator.cpp src/modulator_bridge.cpp src/filter_thunk.asm src/ambient_thunk.asm
     ${CDT_RESEARCH_SOURCES} ${CDT_CONSOLE_SOURCES})
 target_compile_features(cdt_instruments PUBLIC cxx_std_20)
 target_compile_definitions(cdt_instruments PUBLIC UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX CDT_RESEARCH=$<BOOL:${CDT_RESEARCH}>)
 target_compile_options(cdt_instruments PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:/W4;/WX;/permissive->")
 target_include_directories(cdt_instruments PUBLIC src)
-target_link_libraries(cdt_instruments PUBLIC ${CDT_SDF_LIBRARY} minhook d3d12 dxgi bcrypt psapi user32)
+target_link_libraries(cdt_instruments PUBLIC ${CDT_SDF_LIBRARY} minhook d3d12 dxgi d3dcompiler bcrypt psapi user32)
 target_link_libraries(cdt_instruments PRIVATE nlohmann_json::nlohmann_json)
 
 add_library(CrimsonDesertTelemetryAsi SHARED src/bootstrap.cpp)
@@ -235,13 +235,13 @@ target_compile_options(CrimsonDesertTelemetryReleaseFireVisibilityTests PRIVATE 
 target_link_libraries(CrimsonDesertTelemetryReleaseFireVisibilityTests PRIVATE cdt_sdf_fire)
 add_test(NAME release-fire-visibility COMMAND CrimsonDesertTelemetryReleaseFireVisibilityTests)
 add_executable(CrimsonDesertTelemetryRenderCaptureSmoke tests/render_capture_smoke.cpp
-    src/render_capture.cpp src/render_bridge.cpp src/filter_thunk.asm src/ambient_thunk.asm src/console/mem.cpp src/console/util.cpp)
+    src/render_capture.cpp src/render_bridge.cpp src/light_modulator.cpp src/modulator_bridge.cpp src/filter_thunk.asm src/ambient_thunk.asm src/console/mem.cpp src/console/util.cpp)
 target_compile_features(CrimsonDesertTelemetryRenderCaptureSmoke PRIVATE cxx_std_20)
 target_include_directories(CrimsonDesertTelemetryRenderCaptureSmoke PRIVATE src)
 target_compile_definitions(CrimsonDesertTelemetryRenderCaptureSmoke PRIVATE CDT_RENDER_CAPTURE_TEST
     UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_compile_options(CrimsonDesertTelemetryRenderCaptureSmoke PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:/W4;/WX;/permissive->")
-target_link_libraries(CrimsonDesertTelemetryRenderCaptureSmoke PRIVATE cdt_sdf minhook d3d12 dxgi psapi user32)
+target_link_libraries(CrimsonDesertTelemetryRenderCaptureSmoke PRIVATE cdt_sdf minhook d3d12 dxgi d3dcompiler psapi user32)
 add_test(NAME render-capture-d3d12 COMMAND CrimsonDesertTelemetryRenderCaptureSmoke)
 add_test(NAME render-capture-compute-d3d12 COMMAND CrimsonDesertTelemetryRenderCaptureSmoke --compute)
 add_test(NAME manylights-pair-d3d12 COMMAND CrimsonDesertTelemetryRenderCaptureSmoke --manylights-pair)
@@ -256,12 +256,12 @@ add_test(NAME sky-shared-capture-d3d12 COMMAND CrimsonDesertTelemetryRenderCaptu
 add_test(NAME sky-first-capture-d3d12 COMMAND CrimsonDesertTelemetryRenderCaptureSmoke --sky-first)
 set_tests_properties(sky-shared-capture-d3d12 sky-first-capture-d3d12 PROPERTIES TIMEOUT 25)
 add_executable(CrimsonDesertTelemetryRenderContractTests tests/render_contract_tests.cpp
-    src/render_capture.cpp src/render_bridge.cpp src/filter_thunk.asm src/ambient_thunk.asm src/console/mem.cpp src/console/util.cpp)
+    src/render_capture.cpp src/render_bridge.cpp src/light_modulator.cpp src/modulator_bridge.cpp src/filter_thunk.asm src/ambient_thunk.asm src/console/mem.cpp src/console/util.cpp)
 target_compile_features(CrimsonDesertTelemetryRenderContractTests PRIVATE cxx_std_20)
 target_include_directories(CrimsonDesertTelemetryRenderContractTests PRIVATE src)
 target_compile_definitions(CrimsonDesertTelemetryRenderContractTests PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_compile_options(CrimsonDesertTelemetryRenderContractTests PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:/W4;/WX;/permissive->")
-target_link_libraries(CrimsonDesertTelemetryRenderContractTests PRIVATE cdt_sdf minhook d3d12 dxgi psapi user32)
+target_link_libraries(CrimsonDesertTelemetryRenderContractTests PRIVATE cdt_sdf minhook d3d12 dxgi d3dcompiler psapi user32)
 add_test(NAME render-contract-preflight COMMAND CrimsonDesertTelemetryRenderContractTests)
 set_tests_properties(render-contract-preflight PROPERTIES TIMEOUT 15)
 add_executable(CrimsonDesertTelemetryFilterThunkTests tests/filter_thunk_tests.cpp
@@ -320,3 +320,20 @@ target_link_libraries(CrimsonDesertTelemetryClientSmoke PRIVATE cdt_overlay ws2_
 target_compile_options(CrimsonDesertTelemetryClientSmoke PRIVATE /W4 /WX /permissive-)
 add_test(NAME overlay-websocket COMMAND CrimsonDesertTelemetryClientSmoke)
 set_tests_properties(overlay-websocket PROPERTIES TIMEOUT 30)
+
+add_executable(CrimsonDesertTelemetryLightModulatorTests tests/light_modulator_tests.cpp src/light_modulator.cpp)
+target_compile_features(CrimsonDesertTelemetryLightModulatorTests PRIVATE cxx_std_20)
+target_include_directories(CrimsonDesertTelemetryLightModulatorTests PRIVATE src)
+target_compile_definitions(CrimsonDesertTelemetryLightModulatorTests PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(CrimsonDesertTelemetryLightModulatorTests PRIVATE /W4 /WX /permissive-)
+target_link_libraries(CrimsonDesertTelemetryLightModulatorTests PRIVATE d3d12 dxgi d3dcompiler)
+add_test(NAME light-modulator-d3d12 COMMAND CrimsonDesertTelemetryLightModulatorTests)
+set_tests_properties(light-modulator-d3d12 PROPERTIES TIMEOUT 20)
+
+add_executable(CrimsonDesertTelemetryModulatorBridgeTests tests/modulator_bridge_tests.cpp src/modulator_bridge.cpp)
+target_compile_features(CrimsonDesertTelemetryModulatorBridgeTests PRIVATE cxx_std_20)
+target_include_directories(CrimsonDesertTelemetryModulatorBridgeTests PRIVATE src)
+target_compile_definitions(CrimsonDesertTelemetryModulatorBridgeTests PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(CrimsonDesertTelemetryModulatorBridgeTests PRIVATE /W4 /WX /permissive-)
+add_test(NAME modulator-bridge COMMAND CrimsonDesertTelemetryModulatorBridgeTests)
+set_tests_properties(modulator-bridge PROPERTIES TIMEOUT 20)

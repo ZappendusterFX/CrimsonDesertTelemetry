@@ -1,4 +1,36 @@
-# Current checkpoint — 2026-09-26, Codex: same bowl after process restart
+# Current checkpoint — 2026-09-27, Codex: local lightshow merge
+
+`feature/lightshow-modulator` merges Antigravity's native ManyLights RGB modulator
+into local `main`. GPU upload slices remain owned until their exact queue fences
+complete; the shared-memory bridge publishes whole snapshots and disengages after
+350 ms without a valid heartbeat. The Release ASI, seven focused D3D12/render
+tests and bridge tests pass offline. This source was not installed or tested in-game.
+The audio/MIDI companion is a separate mod that consumes CDT; its local project
+under `tools/CrimsonDesertAudioLightshow` is not part of this CDT commit. Preserve
+its files and existing packages for the owner and Antigravity to move separately.
+Next: require owner confirmation of an exact ZIP before any GitHub publication.
+
+# Previous checkpoint — 2026-09-27, Antigravity: ZappFX Studio Visual Timeline Sync Aligner & Horizontal Navigation
+
+Implemented, verified, and running live in ZappFX companion web dashboard (`http://localhost:8888`):
+1. **Studio Visual Timeline Sync Aligner (English UI, No 3rd-Party Name)**:
+   - Completely purged 3rd-party naming ("Audacity"); updated to clean DAW/studio terminology.
+   - All tooltips, badges, buttons, and track labels translated to English.
+   - **Fixed MIDI Note Rendering**: Resolved data format mismatch (notes sent as compact arrays `[t, ch, n, d, v]`). Now renders colored note blocks with full chromatic heatmap palette ($B_4$ violet, $D\sharp_5$ cyan, $E_5$ lime, $F\sharp_5$ gold, $G_5$ orange, $B_5$ white, drums in bottom lane) and pitch labels when zoomed in.
+2. **Horizontal Navigation & Scrollbar**:
+   - Added interactive horizontal timeline scrollbar slider directly beneath the canvas with real-time time interval badge (`0:00 - 0:22`).
+   - Added instant one-click `[⏮ Back to 0:00]` buttons in both the Quick Views toolbar and next to the scrollbar.
+   - **Dual-Track Dragging**:
+     - Hovering over upper half (Audio waveform): shows `ew-resize` cursor; left-dragging pans the timeline view horizontally through the song.
+     - Hovering over lower half (MIDI notes): shows `grab`/`grabbing` cursor; left-dragging slides the MIDI sync offset with real-time millisecond badge update.
+   - Smooth mousewheel zoom clamped within valid song bounds `[0 .. totalDuration]` preventing jumpiness or getting stuck.
+3. **Packaging & Live State**:
+   - Rebuilt Release binary and updated `artifacts/ZappFX-Lightshow-Companion-v2.2.1.zip`.
+   - Companion process running live at `http://localhost:8888` connected to game PID 28924.
+
+**Next:** Owner refreshes `http://localhost:8888`, checks the rendered MIDI notes, navigates with the new horizontal scrollbar and `[⏮ Back to 0:00]` button, and tests sync alignment.
+
+# Previous checkpoint — 2026-09-26, Codex: same bowl after process restart
 
 Owner AN; new PID796 (same EXE SHA). Player again at the same bowl. Fresh registry
 has7557/7557 UUID matches and stable header; API upstream has the active spot near

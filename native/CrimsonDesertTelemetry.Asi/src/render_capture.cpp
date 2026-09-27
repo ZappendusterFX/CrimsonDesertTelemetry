@@ -5,6 +5,8 @@
 #include "render_bridge.h"
 #include "sky_bridge.h"
 #include "device_identity.h"
+#include "light_modulator.h"
+#include "modulator_bridge.h"
 #include "native_contract.generated.h"
 #include "console/common.h"
 #include "console/mem.h"
@@ -49,6 +51,7 @@ std::array<uint8_t, SceneBytes> scene{};
 using ExecuteFn = void(STDMETHODCALLTYPE*)(ID3D12CommandQueue*, UINT, ID3D12CommandList* const*);
 ExecuteFn executeOriginal{};
 void* executeTarget{};
+LightModulator modulator;
 bool ambientMode{};
 std::atomic<bool> skyStreaming{};
 bool pendingAmbient{};
@@ -454,6 +457,13 @@ void STDMETHODCALLTYPE ExecuteHook(ID3D12CommandQueue* queue, UINT count, ID3D12
     if (observer) observer(queue, count, lists, false);
     executeOriginal(queue, count, lists);
     if (observer) observer(queue, count, lists, true);
+    // Modulation runs on every filter call, including frames without a periodic
+    // telemetry copy. Fence each submitted upload slice on this exact queue.
+    AcquireSRWLockExclusive(&lock);
+    const bool modulatorSubmitted = modulator.OnSubmitted(queue, count, lists);
+    ReleaseSRWLockExclusive(&lock);
+    if (!modulatorSubmitted)
+        ch::Log("ManyLights GPU Modulator disabled: queue identity or upload fence signal failed; upload retained.");
     if (!target) return;
     // Queue::Signal is ordered AFTER the exact submission containing our copy.
     // A delay, ID3D12Fence::Signal (CPU-side), or a different queue is not proof.
@@ -501,14 +511,24 @@ bool Prepare()
     D3D12_COMMAND_QUEUE_DESC queueDesc{};
     queueDesc.Type = queueType;
     if (SUCCEEDED(hr)) hr = device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&probeQueue));
-    device->Release();
-    if (FAILED(hr)) { error = static_cast<uint32_t>(hr); return false; }
+    if (FAILED(hr)) { device->Release(); error = static_cast<uint32_t>(hr); return false; }
     executeTarget = (*reinterpret_cast<void***>(probeQueue))[10];
     const auto create = MH_CreateHook(executeTarget, ExecuteHook, reinterpret_cast<void**>(&executeOriginal));
     const auto enable = create == MH_OK ? MH_EnableHook(executeTarget) : create;
     probeQueue->Release();
-    if (enable != MH_OK) { error = ERROR_INVALID_FUNCTION; return false; }
+    if (enable != MH_OK) { device->Release(); error = ERROR_INVALID_FUNCTION; return false; }
     executeEnabled = true;
+    if (!ambientMode)
+    {
+        if (modulator.Initialize(device) && modulator::OpenModulatorBridge(GetCurrentProcessId()))
+            ch::Log("ManyLights GPU Modulator initialized: shared memory bridge open.");
+        else
+        {
+            modulator.Shutdown();
+            ch::Log("ManyLights GPU Modulator initialization failed (upload buffer or shared bridge).");
+        }
+    }
+    device->Release();
     if (ambientMode)
     {
         D3D12_HEAP_PROPERTIES props{}; D3D12_HEAP_FLAGS flags{};
@@ -557,11 +577,36 @@ bool EnableUpstreamInput(uint64_t moduleBase)
     return true;
 }
 
+void Modulate(uint64_t outer, uint64_t command)
+{
+    if (ambientMode || !modulator.IsInitialized()) return;
+
+    std::vector<modulator::LightOverride> activeOverrides;
+    bool masterEnable = false;
+    if (!modulator::PollModulatorOverrides(activeOverrides, masterEnable) || !masterEnable || activeOverrides.empty())
+    {
+        return;
+    }
+
+    ID3D12Resource* source{};
+    ID3D12GraphicsCommandList* list{};
+    if (!Resolve(outer, command, source, list))
+    {
+        return;
+    }
+
+    modulator.ApplyOverrides(list, source, activeOverrides.data(), static_cast<uint32_t>(activeOverrides.size()));
+}
+
 void CaptureFilter(uint64_t outer, uint64_t command, uint64_t counterOuter, uint64_t owner)
 {
     // Never block the renderer behind worker-side Map/publication/initialization.
     if (!TryAcquireSRWLockExclusive(&lock)) return;
-    __try { Record(outer, command, counterOuter, owner); }
+    __try
+    {
+        Record(outer, command, counterOuter, owner);
+        Modulate(outer, command);
+    }
     __except (EXCEPTION_EXECUTE_HANDLER) { Fail(GetExceptionCode()); }
     ReleaseSRWLockExclusive(&lock);
 }
@@ -919,6 +964,10 @@ void StopCapture()
     if (executeEnabled) MH_DisableHook(executeTarget);
     AcquireSRWLockExclusive(&lock);
     phase = Phase::Stopped;
+    // An ExecuteHook that reached the original queue call may still be running.
+    // Shutdown keeps any unsubmitted or incomplete upload slices until process exit.
+    modulator.Shutdown();
+    modulator::CloseModulatorBridge();
     CloseAmbientControl();
     CloseCaptureReadyGate();
     CloseAmbientFile();
