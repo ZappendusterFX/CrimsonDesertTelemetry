@@ -4,11 +4,13 @@ Sporadic hang (once DXGI_ERROR_DEVICE_HUNG) right after "Playable-world signal
 received; native light and sky capture armed." with the lightshow package build
 (51be0e9). A read-only dump of the hung game shows the capture worker blocked in
 `probeQueue->Release()` (`render_capture.cpp:518`, inside `Prepare()`) through
-ReShade's D3D12 wrapper into the NVIDIA driver; no thread suspended. New since
-today: the Crimson Weather ReShade add-on and the modulator init. Owner asks to
-make CDT robust. Full evidence, runs and proposed fix (no queue create/destroy
-at world entry; isolation test without the add-on): docs/CAPTURE_ARMING_HANG.md.
-CDT code is unchanged. Next: Codex decides and implements the fix.
+ReShade's D3D12 wrapper into the NVIDIA driver; no thread suspended. New today in
+that environment: ReShade 6.8, its Crimson Weather add-on, 00dabc7 and the
+modulator init. The same probe queue is in published v2.2.0, so 2.2.0 users with
+ReShade may be exposed: open. Owner asks to make CDT robust. Evidence, controls
+(without the add-on; v2.2.0 with it) and proposed fix (no queue create/destroy at
+world entry): docs/CAPTURE_ARMING_HANG.md. CDT code unchanged. Next: Codex runs
+or requests the controls and implements the fix.
 
 # Previous checkpoint — 2026-09-27, Antigravity: ZappFX Migration to C:\DEV\ZappFX
 
