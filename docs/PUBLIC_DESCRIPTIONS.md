@@ -1,6 +1,7 @@
-# Public descriptions — 2.2.0, 2026-09-26
+# Public descriptions — 2.2.1, 2026-09-27
 
-These texts describe release 2.2.0. The GitHub owner is now
+The ready-to-paste Nexus BBCode describes release 2.2.1; the general feature
+draft below still describes the 2.2 line. The GitHub owner is now
 [ZappendusterFX](https://github.com/ZappendusterFX); old `fabianviol` links
 redirect, but current texts use the new name. Earlier release notes and the
 handover history keep their original links.
