@@ -1,18 +1,15 @@
-# Current checkpoint — 2026-09-27, 2.2.1 GitHub release authorized
+# Current checkpoint — 2026-09-27, 2.2.1 published on GitHub
 
-Final production `v2.2.1` DMM ZIP was built from tracked `3578978` for exact Steam
-build 25477059, without research instrumentation. Builder self-test and ZIP
-validation passed; managed Release suite and all 37 production native CTests
-passed. ZIP: `artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.1-ModManagers.zip`,
-SHA-256 `BD83103552B69CE10847313EF39E22FC9676FF03C4CCE3AD7135CD5549D7DF12`.
-ASI SHA-256 `92D9C624FB894C4C090C9E9EDAA199F1FE53782AE905103A8F561D1006D0E537`.
-Release notes and exact validation are in `docs/releases/v2.2.1*.md`.
-
-The owner authorized GitHub-only publication of this exact ZIP. The sporadic
-capture-start hang is not proven resolved. Preserve the exact ZIP.
-
-**Next:** push the committed source and release notes, tag `v2.2.1`, upload the
-unchanged exact ZIP to GitHub, then verify the public tag and asset digest.
+[GitHub release v2.2.1](https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/tag/v2.2.1)
+is public, non-prerelease and latest. The owner authorized GitHub-only publication.
+Tag points to `08d755931854c844f20d57b8eeb944f5df79109f`. Release ID397798275,
+asset ID593707002, 920030 bytes. GitHub's public asset digest matches the exact
+local ZIP SHA-256 `BD83103552B69CE10847313EF39E22FC9676FF03C4CCE3AD7135CD5549D7DF12`.
+The tag's release workflow succeeded; the Nexus publication workflow was skipped.
+Managed Release suite, 37/37 production native tests and package validation passed.
+The sporadic capture-start hang is not proven resolved. Preserve the ZIP and prior
+hang evidence. No release work remains; a recurrence needs that run's native log
+and dump.
 
 # Previous checkpoint — 2026-09-27, first live capture-arming run
 
