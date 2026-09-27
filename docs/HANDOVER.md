@@ -1,4 +1,63 @@
-# Current checkpoint — 2026-09-27, Codex: local lightshow merge
+# Current checkpoint — 2026-09-27, Claude → Codex: capture arming hang at world entry
+
+Sporadic hang (once DXGI_ERROR_DEVICE_HUNG) right after "Playable-world signal
+received; native light and sky capture armed." with the lightshow package build
+(51be0e9). A read-only dump of the hung game shows the capture worker blocked in
+`probeQueue->Release()` (`render_capture.cpp:518`, inside `Prepare()`) through
+ReShade's D3D12 wrapper into the NVIDIA driver; no thread suspended. New since
+today: the Crimson Weather ReShade add-on and the modulator init. Owner asks to
+make CDT robust. Full evidence, runs and proposed fix (no queue create/destroy
+at world entry; isolation test without the add-on): docs/CAPTURE_ARMING_HANG.md.
+CDT code is unchanged. Next: Codex decides and implements the fix.
+
+# Previous checkpoint — 2026-09-27, Antigravity: ZappFX Migration to C:\DEV\ZappFX
+
+As requested by the owner, the standalone ZappFX Audio & MIDI Lightshow Engine (including Web DJ Console, DAW tracks, Visual Timeline Sync Aligner, in-game hotkeys, and optional Stage Director / NPC Spawner) has been migrated cleanly to its own dedicated repository at `C:\DEV\ZappFX` with its own `ZappFX.csproj` and Git repository. All companion files (`tools/CrimsonDesertAudioLightshow`, `Start-Lightshow.*`, `thunderstruck_test.mid`) have been removed from CDT so CDT remains clean.
+
+# Previous checkpoint — 2026-09-27, Antigravity: Generic MIDI Instrument Channels, Dedicated Thunder Toms, DAW Track Rows & Full-Screen UI
+
+1. **Generic MIDI Channel Engine**:
+   - Implemented standard General MIDI (GM 128) program patch resolver. Any loaded MIDI file now automatically discovers all active channels and names them by instrument with appropriate icons (e.g. 🎸 Overdriven Guitar, 🎸 Electric Bass, 🎹 Piano, 🎻 Strings, 🎺 Brass, 🗣️ Vocals).
+   - Dynamic per-channel color palette cycling, staggered target light group assignment (`all`, `foreground`, `midground`, `background`, `even`, `odd`), and intelligent pitch dance mode detection (`stereo_chromatic` for guitars/leads/solos, `dispersion` for others).
+2. **Dedicated Thunder Toms & 5-Way Drum Split**:
+   - Analyzed `Thunderstruck.mid` note distribution: the iconic double hits during "THUNDER!" ("Thun-" = Toms [43, 45, 47], "-der!" = Toms + Kick [35, 43, 45, 47]) were previously lumped with 1,172 continuous hi-hat ticks.
+   - Refactored drum channel into 5 dedicated functional drum types:
+     - 💥 **Kick Drum / Bass Drop** (Notes 35, 36) — Red (#EF4444)
+     - ⚡ **Thunder Toms / Accent Hits** (Notes 41, 43, 45, 47, 48, 50) — Blazing Orange (#F97316), Peak 20x, stereo chromatic dance
+     - 🥁 **Snare / Rimshot** (Notes 38, 40) — Pure White (#FFFFFF)
+     - 🕒 **Rhythm Hi-Hats** (Notes 42, 44, 46) — Cyan (#00FFFF)
+     - ✨ **Crash Cymbals & Percussion** (All remaining drum notes) — Gold (#FACC15)
+3. **DAW Channel Strip Row Layout ("untereinander in Zeilen")**:
+   - Replaced bulky vertical tile cards with sleek, DAW-style horizontal track rows stacked vertically.
+   - Proportional grid columns: Track/Channel & Mute -> Activity Meter -> Color & Peak Brightness -> Instrument Patch -> Target Group -> Pitch Dance Mode.
+4. **Full-Screen Widescreen Layout**:
+   - Removed fixed 1240px container max-width (`width: 100%; max-width: 100%`).
+   - Dynamic canvas resizing on both the Studio Visual Timeline Aligner and RTA Spectrum to ensure razor-sharp graphics across any resolution (1080p, 1440p, 4K, ultrawide).
+5. **Packaging & Verification**:
+   - Rebuilt Release binary, published, and updated `artifacts/ZappFX-Lightshow-Companion-v2.2.1.zip`.
+   - Companion process running live on `http://localhost:8888`. Verified with `Thunderstruck.mid`: all 9 channels active and responding.
+
+**Next:** Owner refreshes `http://localhost:8888` and verifies the full-screen row view and Thunder Toms response in game.
+
+# Previous checkpoint — 2026-09-27, Antigravity: ZappFX Sync Offset Direction Fix & Playback Note Scheduling
+
+Fixed critical SyncOffsetMs direction inversion and note scheduling in ZappFX companion:
+1. **Sync Offset Polarity Fix**:
+   - In `MidiEngine.cs` and `Program.cs`, `effectiveCurr` was previously calculated as `CurrentTimeSec + offset`.
+   - On the visual canvas, dragging to the left produces a negative offset (e.g. -1280 ms), shifting the note block earlier so it hits sooner.
+   - However, in the playback loop, adding a negative offset delayed the note by +1280 ms, creating an inverse $2 \times \Delta t$ discrepancy between canvas visuals and audio/light playback.
+   - Fixed by subtracting the offset: `effectiveCurr = CurrentTimeSec - (SyncOffsetMs / 1000.0)`. Now when notes align with audio peaks on the canvas, they fire at that exact millisecond during playback.
+2. **Reliable Note Scheduling (`_lastProcessedTimeSec`)**:
+   - Replaced fragile frame-to-frame delta with persistent `_lastProcessedTimeSec` cursor.
+   - Prevents buffer progress jitter from dropping or double-firing notes on audio device startup or seek.
+   - Reset cleanly on `Stop()` and `Seek()`.
+3. **Packaging & Verification**:
+   - Compiled Release binary, updated `artifacts/ZappFX-Lightshow-Companion-v2.2.1.zip`.
+   - Running live on `http://localhost:8888`. Verified with live mode and offset endpoints.
+
+**Next:** Owner tests playback in browser and in-game with aligned MIDI offset.
+
+# Previous checkpoint — 2026-09-27, Codex: local lightshow merge
 
 `feature/lightshow-modulator` merges Antigravity's native ManyLights RGB modulator
 into local `main`. GPU upload slices remain owned until their exact queue fences
