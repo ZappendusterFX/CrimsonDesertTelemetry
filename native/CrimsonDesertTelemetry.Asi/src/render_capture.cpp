@@ -4,6 +4,7 @@
 #include "ambient_probe.h"
 #include "render_bridge.h"
 #include "sky_bridge.h"
+#include "device_identity.h"
 #include "native_contract.generated.h"
 #include "console/common.h"
 #include "console/mem.h"
@@ -279,7 +280,7 @@ bool ResolveInput(uint64_t owner, uint64_t command, ID3D12Resource* source, ID3D
         IUnknown* inputDevice{};
         bool valid = enhancedBarriers && Read(owner + PairInputOwnerOffset, inputOuter) &&
             Resolve(inputOuter, command, candidate, resolvedList) && candidate != source && candidate != counter &&
-            resolvedList == list && SUCCEEDED(candidate->GetDevice(IID_PPV_ARGS(&inputDevice)));
+            resolvedList == list && SUCCEEDED(device_identity::ChildDeviceIdentity(candidate, &inputDevice));
         if (inputDevice) { valid = valid && inputDevice == preparedDeviceIdentity; inputDevice->Release(); }
         ID3D12GraphicsCommandList7* candidateList{};
         if (!valid || FAILED(list->QueryInterface(IID_PPV_ARGS(&candidateList))) || !candidateList) return false;
@@ -320,9 +321,9 @@ void Record(uint64_t outer, uint64_t command, uint64_t counterOuter, uint64_t ow
     IUnknown* sourceDevice{};
     IUnknown* counterDevice{};
     IUnknown* listDevice{};
-    const bool sameDevice = SUCCEEDED(source->GetDevice(IID_PPV_ARGS(&sourceDevice))) &&
-        (ambientCopy || SUCCEEDED(counter->GetDevice(IID_PPV_ARGS(&counterDevice)))) &&
-        SUCCEEDED(list->GetDevice(IID_PPV_ARGS(&listDevice))) &&
+    const bool sameDevice = SUCCEEDED(device_identity::ChildDeviceIdentity(source, &sourceDevice)) &&
+        (ambientCopy || SUCCEEDED(device_identity::ChildDeviceIdentity(counter, &counterDevice))) &&
+        SUCCEEDED(device_identity::ChildDeviceIdentity(list, &listDevice)) &&
         sourceDevice == preparedDeviceIdentity && (ambientCopy || counterDevice == preparedDeviceIdentity) &&
         listDevice == preparedDeviceIdentity && (skyStreaming || list->GetType() == queueType);
     if (sourceDevice) sourceDevice->Release();
@@ -457,7 +458,7 @@ void STDMETHODCALLTYPE ExecuteHook(ID3D12CommandQueue* queue, UINT count, ID3D12
     // Queue::Signal is ordered AFTER the exact submission containing our copy.
     // A delay, ID3D12Fence::Signal (CPU-side), or a different queue is not proof.
     IUnknown* queueDevice{};
-    const bool compatibleQueue = SUCCEEDED(queue->GetDevice(IID_PPV_ARGS(&queueDevice))) &&
+    const bool compatibleQueue = SUCCEEDED(device_identity::ChildDeviceIdentity(queue, &queueDevice)) &&
         queueDevice == preparedDeviceIdentity && queue->GetDesc().Type == queueType;
     if (queueDevice) queueDevice->Release();
     const HRESULT hr = compatibleQueue ? queue->Signal(fence, ++fenceValue) : E_INVALIDARG;
@@ -472,7 +473,7 @@ bool Prepare()
     ID3D12Device* device{};
     HRESULT hr = discoverySource->GetDevice(IID_PPV_ARGS(&device));
     if (FAILED(hr)) return false;
-    hr = device->QueryInterface(IID_PPV_ARGS(&preparedDeviceIdentity));
+    hr = device_identity::CanonicalDeviceIdentity(device, &preparedDeviceIdentity);
     if (FAILED(hr)) { device->Release(); return false; }
     D3D12_HEAP_PROPERTIES heap{};
     heap.Type = D3D12_HEAP_TYPE_READBACK;

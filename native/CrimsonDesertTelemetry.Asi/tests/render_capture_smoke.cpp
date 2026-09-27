@@ -4,12 +4,14 @@
 #include "ambient_probe.h"
 #include "render_bridge.h"
 #include "sky_bridge.h"
+#include "device_identity.h"
 #include "native_contract.generated.h"
 #include <d3d12.h>
 #include <d3d12sdklayers.h>
 #include <dxgi1_4.h>
 #include <wrl/client.h>
 #include <array>
+#include <atomic>
 #include <cstring>
 #include <iostream>
 #include <string>
@@ -40,6 +42,64 @@ namespace contract = cdt::native_contract;
 using Microsoft::WRL::ComPtr;
 void Check(bool value, const char* message) { if (!value) { std::cerr << message << '\n'; ExitProcess(1); } }
 void Hr(HRESULT value, const char* message) { if (FAILED(value)) { std::cerr << std::hex << value << ' '; Check(false,message); } }
+class ReShadeLikeDeviceProxy final : public IUnknown
+{
+public:
+    ReShadeLikeDeviceProxy(ID3D12Device* original, bool malformed = false)
+        : original_(original), malformed_(malformed) {}
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** out) override
+    {
+        if (!out) return E_POINTER;
+        *out = nullptr;
+        if (iid == IID_IUnknown)
+        {
+            *out = this;
+            AddRef();
+            return S_OK;
+        }
+        if (iid == cdt::render::device_identity::ReShadeUnwrappedObject)
+        {
+            if (malformed_) { *out = this; AddRef(); }
+            else { *out = original_; original_->AddRef(); }
+            return S_OK;
+        }
+        return E_NOINTERFACE;
+    }
+    ULONG STDMETHODCALLTYPE AddRef() override { return ++refs_; }
+    ULONG STDMETHODCALLTYPE Release() override { return --refs_; }
+
+private:
+    ID3D12Device* original_;
+    bool malformed_;
+    std::atomic<ULONG> refs_{1};
+};
+
+void CheckReShadeDeviceIdentity(ID3D12Device* device)
+{
+    using cdt::render::device_identity::CanonicalDeviceIdentity;
+    using cdt::render::device_identity::ReShadeUnwrappedObject;
+    ComPtr<ID3D12Device> original;
+    const HRESULT unwrap = device->QueryInterface(ReShadeUnwrappedObject,
+        reinterpret_cast<void**>(original.GetAddressOf()));
+    if (unwrap == E_NOINTERFACE) original = device;
+    else Hr(unwrap, "unwrap test device");
+
+    ComPtr<IUnknown> nativeIdentity;
+    Hr(CanonicalDeviceIdentity(device, nativeIdentity.GetAddressOf()), "canonical native device");
+    ReShadeLikeDeviceProxy proxy(original.Get());
+    ComPtr<IUnknown> proxyIdentity;
+    Hr(proxy.QueryInterface(IID_PPV_ARGS(&proxyIdentity)), "proxy identity");
+    Check(proxyIdentity.Get() != nativeIdentity.Get(), "proxy did not have a distinct COM identity");
+    ComPtr<IUnknown> normalized;
+    Hr(CanonicalDeviceIdentity(&proxy, normalized.GetAddressOf()), "canonical proxy device");
+    Check(normalized.Get() == nativeIdentity.Get(), "same native device behind proxy was rejected");
+
+    ReShadeLikeDeviceProxy malformed(original.Get(), true);
+    IUnknown* refused{};
+    Check(FAILED(CanonicalDeviceIdentity(&malformed, &refused)) && !refused,
+        "malformed device proxy was accepted");
+}
 std::atomic<unsigned> observedBegins{},observedEnds{},invalidSubmissions{};
 void ObserveSubmission(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* lists,bool after)
 {
@@ -97,6 +157,8 @@ int main(int argc, char** argv)
     using namespace cdt::render;
     submissionObserver=ObserveSubmission;
     const bool rejectCounterDevice=argc==2 && std::string(argv[1])=="--counter-device";
+    const bool reshadeComputeTest=argc==2 && std::string(argv[1])=="--compute-reshade";
+    const bool computeTest=reshadeComputeTest || (argc==2 && std::string(argv[1])=="--compute");
     const bool ambientTest=argc==2 && std::string(argv[1])=="--ambient";
     const bool mixedTest=argc==2 && (std::string(argv[1])=="--sky-shared" || std::string(argv[1])=="--sky-first");
     const bool skyFirst=argc==2 && std::string(argv[1])=="--sky-first";
@@ -107,14 +169,17 @@ int main(int argc, char** argv)
     ComPtr<IDXGIFactory4> factory; Hr(CreateDXGIFactory2(0,IID_PPV_ARGS(&factory)),"factory");
     ComPtr<IDXGIAdapter> warp; Hr(factory->EnumWarpAdapter(IID_PPV_ARGS(&warp)),"WARP");
     ComPtr<ID3D12Device> device; Hr(D3D12CreateDevice(warp.Get(),D3D_FEATURE_LEVEL_11_0,IID_PPV_ARGS(&device)),"device");
+    CheckReShadeDeviceIdentity(device.Get());
+    const auto captureListType=computeTest ? D3D12_COMMAND_LIST_TYPE_COMPUTE : D3D12_COMMAND_LIST_TYPE_DIRECT;
     D3D12_COMMAND_QUEUE_DESC queueDesc{};
+    queueDesc.Type=captureListType;
     ComPtr<ID3D12CommandQueue> queue; Hr(device->CreateCommandQueue(&queueDesc,IID_PPV_ARGS(&queue)),"queue");
     ComPtr<ID3D12CommandAllocator> allocator, unrelatedAllocator;
-    Hr(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)),"allocator");
-    Hr(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&unrelatedAllocator)),"other allocator");
+    Hr(device->CreateCommandAllocator(captureListType,IID_PPV_ARGS(&allocator)),"allocator");
+    Hr(device->CreateCommandAllocator(captureListType,IID_PPV_ARGS(&unrelatedAllocator)),"other allocator");
     ComPtr<ID3D12GraphicsCommandList> list, unrelated;
-    Hr(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&list)),"list");
-    Hr(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,unrelatedAllocator.Get(),nullptr,IID_PPV_ARGS(&unrelated)),"other list");
+    Hr(device->CreateCommandList(0,captureListType,allocator.Get(),nullptr,IID_PPV_ARGS(&list)),"list");
+    Hr(device->CreateCommandList(0,captureListType,unrelatedAllocator.Get(),nullptr,IID_PPV_ARGS(&unrelated)),"other list");
     Hr(unrelated->Close(),"other close");
     D3D12_RESOURCE_DESC desc{};
     desc.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER; desc.Width=ambientTest ? AmbientBytes : LightBytes; desc.Height=1;
@@ -124,6 +189,17 @@ int main(int argc, char** argv)
     ComPtr<ID3D12Resource> source, source2, upload, counter, counter2, counterUpload, shortCounter;
     Hr(device->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&desc,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&source)),"source");
     Hr(device->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&desc,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&source2)),"second source");
+    if (reshadeComputeTest)
+    {
+        ComPtr<ID3D12Device> unwrapped;
+        Hr(device->QueryInterface(cdt::render::device_identity::ReShadeUnwrappedObject,
+            reinterpret_cast<void**>(unwrapped.GetAddressOf())), "ReShade proxy missing");
+        ComPtr<IUnknown> resourceDevice, listDevice;
+        Hr(source->GetDevice(IID_PPV_ARGS(&resourceDevice)), "ReShade resource device");
+        Hr(list->GetDevice(IID_PPV_ARGS(&listDevice)), "ReShade compute list device");
+        Check(resourceDevice.Get() != listDevice.Get(),
+            "ReShade proxy/native device identity contrast was not reproduced");
+    }
     desc.Width=CounterBytes*2;
     Hr(device->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&desc,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&counter)),"counter");
     Hr(device->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&desc,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&counter2)),"second counter");
@@ -638,8 +714,9 @@ int main(int argc, char** argv)
     // against resources prepared for another queue type.
     ComPtr<ID3D12CommandAllocator> computeAllocator;
     ComPtr<ID3D12GraphicsCommandList> computeList;
-    Hr(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE,IID_PPV_ARGS(&computeAllocator)),"compute allocator");
-    Hr(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_COMPUTE,computeAllocator.Get(),nullptr,IID_PPV_ARGS(&computeList)),"compute list");
+    const auto incompatibleListType=computeTest ? D3D12_COMMAND_LIST_TYPE_DIRECT : D3D12_COMMAND_LIST_TYPE_COMPUTE;
+    Hr(device->CreateCommandAllocator(incompatibleListType,IID_PPV_ARGS(&computeAllocator)),"incompatible allocator");
+    Hr(device->CreateCommandList(0,incompatibleListType,computeAllocator.Get(),nullptr,IID_PPV_ARGS(&computeList)),"incompatible list");
     ComPtr<ID3D12Device> otherDevice; ComPtr<ID3D12Resource> foreignCounter;
     if (rejectCounterDevice)
     {
