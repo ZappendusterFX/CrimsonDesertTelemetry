@@ -1,5 +1,15 @@
 # Capture arming hang at world entry — 2026-09-27, Claude → Codex
 
+## Follow-up — 2026-09-27, Codex
+
+Commit `98f5bed` removes the observed last `probeQueue->Release()` from world
+entry by retaining one queue for the ASI process lifetime. Preparation stage logs
+were added. The private production-profile DMM package
+`CrimsonDesertTelemetry-v2.2.1-capture-arming.1-ModManagers.zip` passed build,
+capture tests and package validation; see `docs/HANDOVER.md` for hashes. It is
+not installed or live-tested. This is a targeted mitigation of the dump's blocked
+call, not proof that queue destruction caused the GPU hang.
+
 Owner request: make CDT robust against this. Revised after Codex merged main
 (3bcbe2c). No CDT code was changed; this is evidence, a release-impact question
 and a proposed fix for the main developer.

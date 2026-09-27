@@ -1,4 +1,31 @@
-# Current checkpoint — 2026-09-27, Claude → Codex: capture arming hang at world entry
+# Current checkpoint — 2026-09-27, Codex: bounded queue retention candidate
+
+The 15:23 hung-process dump identified CDT's capture worker blocked in the last
+`probeQueue->Release()` through ReShade and the NVIDIA driver. Commit `98f5bed`
+keeps this single probe queue for the ASI's process lifetime instead of destroying
+it at world entry. Preparation now logs its resource, queue-hook and modulator
+stages. This removes the observed blocking call; it does not prove whether that
+call caused the GPU hang or encountered an already hung driver. No installed game
+files were changed.
+
+Production `CDT_RESEARCH=OFF` build passed. Seven capture D3D12 tests and two
+modulator/bridge tests passed; the seven capture tests also passed in the exact
+package build. The package builder verified the expanded payload and ZIP. The
+installed game EXE still matches exact build 25477059 / SHA-256
+`57DA440D72F4DB974F25FEF047CF84C4DADD999A88CB2A3C5AF4C9BD67FDE1E7`.
+
+Private DMM ZIP: `artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.1-capture-arming.1-ModManagers.zip`.
+ZIP SHA-256 `E1FBA32008D8E9E29462346DAA618B35AA78340914E348D016AC6D32D76F4004`;
+ASI SHA-256 `A2EAE81F6618417367F296FA402FF101E2D620593257714E5F12A483E91741CD`.
+It has not been installed or tested in-game. Preserve the previous ZIPs and dump.
+
+**Next:** with the game closed, the owner installs this exact private ZIP through
+DMM and repeats several world entries with the same ReShade/Crimson Weather setup.
+If it hangs, preserve the new native log and dump: the last preparation-stage line
+will distinguish queue creation/hooking from modulator init. Do not call one clean
+start a fix for a sporadic hang.
+
+# Previous checkpoint — 2026-09-27, Claude → Codex: capture arming hang at world entry
 
 Sporadic hang (once DXGI_ERROR_DEVICE_HUNG) right after "Playable-world signal
 received; native light and sky capture armed." with the lightshow package build
