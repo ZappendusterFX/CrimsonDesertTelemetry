@@ -45,6 +45,10 @@ ID3D12Resource* pendingCounter{};
 ID3D12Resource* readback{};
 ID3D12Fence* fence{};
 IUnknown* preparedDeviceIdentity{};
+// One probe queue per process. Releasing the last ReShade queue-wrapper reference
+// at world entry has blocked inside the driver on a real hung startup. The ASI is
+// process-lifetime, so keep this bounded queue until process exit.
+ID3D12CommandQueue* retainedProbeQueue{};
 ID3D12GraphicsCommandList* pendingList{};
 D3D12_COMMAND_LIST_TYPE queueType = D3D12_COMMAND_LIST_TYPE_DIRECT;
 std::array<uint8_t, SceneBytes> scene{};
@@ -481,6 +485,7 @@ void STDMETHODCALLTYPE ExecuteHook(ID3D12CommandQueue* queue, UINT count, ID3D12
 bool Prepare()
 {
     ID3D12Device* device{};
+    ch::Log("ManyLights capture preparation: acquiring source device and readback resources.");
     HRESULT hr = discoverySource->GetDevice(IID_PPV_ARGS(&device));
     if (FAILED(hr)) return false;
     hr = device_identity::CanonicalDeviceIdentity(device, &preparedDeviceIdentity);
@@ -505,19 +510,24 @@ bool Prepare()
         PublishInputState(InputState::Refused);
         ch::Log("ManyLights INPUT refused: device lacks enhanced barriers; filtered output continues.");
     }
+    if (FAILED(hr)) { device->Release(); error = static_cast<uint32_t>(hr); return false; }
+    ch::Log("ManyLights capture preparation: readback and fence ready; acquiring queue hook target.");
     // Obtain the real ExecuteCommandLists implementation from THIS source's
     // device, avoiding a wrong WARP/adapter/system-D3D12 function address.
-    ID3D12CommandQueue* probeQueue{};
     D3D12_COMMAND_QUEUE_DESC queueDesc{};
     queueDesc.Type = queueType;
-    if (SUCCEEDED(hr)) hr = device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&probeQueue));
+    hr = device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&retainedProbeQueue));
     if (FAILED(hr)) { device->Release(); error = static_cast<uint32_t>(hr); return false; }
-    executeTarget = (*reinterpret_cast<void***>(probeQueue))[10];
+    executeTarget = (*reinterpret_cast<void***>(retainedProbeQueue))[10];
+    ch::Log("ManyLights capture preparation: queue created; installing submission hook.");
     const auto create = MH_CreateHook(executeTarget, ExecuteHook, reinterpret_cast<void**>(&executeOriginal));
     const auto enable = create == MH_OK ? MH_EnableHook(executeTarget) : create;
-    probeQueue->Release();
+    // Do not release the probe queue here. Its last Release can enter a graphics
+    // wrapper/driver wait while the game is entering the world. One retained queue
+    // is bounded by this ASI's process lifetime and cannot outlive the process.
     if (enable != MH_OK) { device->Release(); error = ERROR_INVALID_FUNCTION; return false; }
     executeEnabled = true;
+    ch::Log("ManyLights capture preparation: submission hook ready; initializing modulator.");
     if (!ambientMode)
     {
         if (modulator.Initialize(device) && modulator::OpenModulatorBridge(GetCurrentProcessId()))
