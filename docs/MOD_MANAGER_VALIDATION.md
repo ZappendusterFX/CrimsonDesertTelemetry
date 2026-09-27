@@ -1,5 +1,47 @@
 # Mod-manager validation
 
+## DMM 3.1.1 ASI removal reproducer (2026-09-27)
+
+The owner used DMM's ASI plugin delete button with the game closed. DMM's
+`logs/activity.json` recorded at 17:14:00: `Uninstalled ASI:
+CrimsonDesertTelemetry.asi, CrimsonDesertTelemetry.ini,
+CrimsonDesertTelemetry.ini`. The ASI and INI disappeared from both the DMM
+library and `bin64`, so the plugin vanished from the ASI list. The library
+folder remained with seven files. The four runtime companions below remained
+in **both** locations and matched the exact private
+`v2.2.1-capture-arming.1` ZIP byte-for-byte:
+
+- `crimson-desert-telemetry.deps.cfg`
+- `crimson-desert-telemetry.dll`
+- `crimson-desert-telemetry.runtimeconfig.cfg`
+- `CrimsonDesertTelemetry.Core.dll`
+
+This also happened in DMM 1.9.4 and 2.8.1. The owner's separate
+disable-then-delete sequence logged `ASI disabled` at 17:10:25 and
+`Uninstalled ASI: CrimsonDesertTelemetry.ini` at 17:11:17, showing that the
+delete path can run after the ASI has already been removed from `bin64`.
+The current `config.json` still lists `CrimsonDesertTelemetry` in
+`activeAsiMods` and its files in `definitiveLoadOrder`. In
+`backups/asi_overwrite/CrimsonDesertTelemetry.asi`, DMM has `.dmm_added`
+ownership markers for **all four** leftover runtime files. Its
+`vanilla_manifest.json` also lists the two CFG files and the INI as part of
+the `bin64` baseline, so that baseline is not a reliable clean-game inventory.
+The exact DMM code path causing the skipped cleanup is not established; the
+observable failure is that deleting the ASI did not clean its marked
+companions or remove the library folder.
+
+The [DMM Nexus changelog](https://www.nexusmods.com/crimsondesert/mods/633)
+states that a subfolder containing an ASI and companions is supported and
+that `.ini`, `.cfg`, and `.dll` companions deploy with it (v1 ASI pipeline).
+It later claims companion cleanup on disable (v1.3.9) and complete bin64
+cleanup on delete (v3.0.0). The ZIP has one `CrimsonDesertTelemetry/` folder
+with the ASI and companions side by side; no separate ASI packaging
+specification or manifest requirement was found. Therefore the evidence does
+not support a claim that this ZIP is incorrectly packed. Do not assume DMM's
+remove state means those files are gone. With the game closed, check the
+six runtime files against the intended ZIP before every replacement, and
+remove only the four identified leftovers when a clean install is needed.
+
 ## Current checkpoint (2026-09-12)
 
 The new working-feature candidate is tracked in [stable release validation](STABLE_RELEASE_VALIDATION.md).

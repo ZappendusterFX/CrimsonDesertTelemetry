@@ -1,4 +1,18 @@
-# Current checkpoint — 2026-09-27, Codex: bounded queue retention candidate
+# Current checkpoint — 2026-09-27, DMM 3.1.1 removal failure
+
+The owner installed then deleted the private capture-arming ZIP in DMM. No live
+game test of this candidate was reported. DMM removed the ASI and INI from its
+library and game `bin64`, but left both Telemetry DLLs and both CFG companions
+in both locations; all four match the ZIP. DMM has `.dmm_added` ownership
+markers for all four, and its configuration still lists the plugin as active.
+This reproduces the previous incomplete-removal issue on DMM 3.1.1. The
+official DMM changelog says this package layout and companion types are
+supported; the exact faulty cleanup path remains unknown. Full evidence is
+in `docs/MOD_MANAGER_VALIDATION.md`. The game is closed. **Next:** preserve
+this DMM evidence, then remove only the four identified leftovers before the
+next exact-ZIP install; verify all six runtime files after deployment.
+
+# Previous checkpoint — 2026-09-27, Codex: bounded queue retention candidate
 
 The 15:23 hung-process dump identified CDT's capture worker blocked in the last
 `probeQueue->Release()` through ReShade and the NVIDIA driver. Commit `98f5bed`
