@@ -34,7 +34,7 @@ jobs:
         run: |
           .\scripts\Build-ModManagerPackage.ps1 -Version ($env:GITHUB_REF_NAME -replace '^v', '')
       - name: Native regression tests
-        run: ctest --test-dir build/native-package -C Release --output-on-failure
+        run: ctest --test-dir build/native-package-release -C Release --output-on-failure
       - name: Create draft GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

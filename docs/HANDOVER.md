@@ -1,4 +1,20 @@
-# Current checkpoint — 2026-09-27, first live capture-arming run
+# Current checkpoint — 2026-09-27, 2.2.1 GitHub release authorized
+
+Final production `v2.2.1` DMM ZIP was built from tracked `3578978` for exact Steam
+build 25477059, without research instrumentation. Builder self-test and ZIP
+validation passed; managed Release suite and all 37 production native CTests
+passed. ZIP: `artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.1-ModManagers.zip`,
+SHA-256 `BD83103552B69CE10847313EF39E22FC9676FF03C4CCE3AD7135CD5549D7DF12`.
+ASI SHA-256 `92D9C624FB894C4C090C9E9EDAA199F1FE53782AE905103A8F561D1006D0E537`.
+Release notes and exact validation are in `docs/releases/v2.2.1*.md`.
+
+The owner authorized GitHub-only publication of this exact ZIP. The sporadic
+capture-start hang is not proven resolved. Preserve the exact ZIP.
+
+**Next:** push the committed source and release notes, tag `v2.2.1`, upload the
+unchanged exact ZIP to GitHub, then verify the public tag and asset digest.
+
+# Previous checkpoint — 2026-09-27, first live capture-arming run
 
 The owner reinstalled the private `v2.2.1-capture-arming.1` ZIP and entered the
 game without a hang. At 17:24 all six runtime files in `bin64` matched the ZIP.

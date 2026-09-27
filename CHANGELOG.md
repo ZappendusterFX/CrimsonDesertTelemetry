@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.2.1 - 2026-09-27
+
+Release notes: [v2.2.1](docs/releases/v2.2.1.md). Target remains Crimson Desert
+patch 2.03.02 (EXE `1.0.0.2976`, Steam build `25477059`).
+
+- Select the validated native physics-query context for continuous source
+  visibility. This prevents the synchronized false-clear rounds observed in 2.2.0;
+  the owner confirmed the focused private fix in game. Individual moving-light
+  flicker remains a separate open issue.
+- Compare canonical D3D12 device identity through ReShade's native-device proxy
+  when present. The ReShade 6.8 capture-error-6 case passes an offline WARP test;
+  unrelated devices still fail closed.
+- Add a local ManyLights RGB modulator bridge for a separate companion. GPU upload
+  memory remains owned until its submitting queue's fence completes, and the
+  bridge disengages after its heartbeat expires. Light switching is not a
+  supported telemetry feature in this release.
+- Retain the D3D12 probe queue for the ASI process lifetime and log capture
+  preparation stages. This removes the `Release()` call where a hung game dump
+  found CDT's worker blocked. Whether that call caused the sporadic GPU hang is
+  still unproven.
+- Keep the HTTP/WebSocket routes, schema 1.6 and production INI defaults.
+
 ## 2.2.0 - 2026-09-26
 
 Release notes: [v2.2.0](docs/releases/v2.2.0.md). Target unchanged: patch 2.03.02
