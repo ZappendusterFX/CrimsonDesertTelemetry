@@ -1,4 +1,17 @@
-# Current checkpoint — 2026-09-27, DMM 3.1.1 removal failure
+# Current checkpoint — 2026-09-27, first live capture-arming run
+
+The owner reinstalled the private `v2.2.1-capture-arming.1` ZIP and entered the
+game without a hang. At 17:24 all six runtime files in `bin64` matched the ZIP.
+The native log reached queue-hook ready, GPU Modulator initialized and recurring
+capture ready. A passive API check at 17:36 reported supported Steam build
+25477059, `playing`, sequence 37727, and available rendered lights; the earlier
+read had sequence 36826, so publication was progressing. The owner was still
+in-game. This is one successful start of a sporadic failure, not resolution.
+
+**Next:** owner repeats several world entries in the same ReShade/Crimson
+Weather setup. If a hang recurs, preserve that run's native log and dump.
+
+# Previous checkpoint — 2026-09-27, DMM 3.1.1 removal failure
 
 The owner installed then deleted the private capture-arming ZIP in DMM. No live
 game test of this candidate was reported. DMM removed the ASI and INI from its
@@ -8,9 +21,9 @@ markers for all four, and its configuration still lists the plugin as active.
 This reproduces the previous incomplete-removal issue on DMM 3.1.1. The
 official DMM changelog says this package layout and companion types are
 supported; the exact faulty cleanup path remains unknown. Full evidence is
-in `docs/MOD_MANAGER_VALIDATION.md`. The game is closed. **Next:** preserve
-this DMM evidence, then remove only the four identified leftovers before the
-next exact-ZIP install; verify all six runtime files after deployment.
+in `docs/MOD_MANAGER_VALIDATION.md`. At this checkpoint the game was closed.
+The owner subsequently reinstalled the ZIP, verified all six runtime files,
+and posted the DMM bug report on Discord; this issue is paused.
 
 # Previous checkpoint — 2026-09-27, Codex: bounded queue retention candidate
 
