@@ -43,8 +43,14 @@ strong spatial evidence, not a pointer-level source-to-GPU join or a durable
 public ID. No plugin/game writes. The registry-root snapshots missed this
 dynamic route. Occlusion transition for an exact UUID and cross-restart
 persistence remain open. Details and evidence: `docs/LIGHT_IDENTITY_RESEARCH.md`.
-Next bounded ID test: same torch crossing a wall, correlating UUID, ManyLights
-sample and physics visibility; do not use sample index as a source ID.
+The owner reports that moving torches briefly reappear before occlusion hides
+them. Code review explains a likely cause: the physics cache matches only
+within 0.12 gu, while the HUD leaves a newly `unknown` light visible and hides
+it only once `blocked` arrives. The old marker disappears because the moving
+light no longer supplies data at its previous position, not from an occlusion
+decision there. No wall-crossing test is needed to pursue this
+flicker. Next: choose a bounded pending/expired-visibility display policy; do
+not treat sample index as a source ID or reuse an old ray at a new position.
 
 # Previous checkpoint — 2026-09-27, 2.2.1 published on GitHub
 

@@ -33,9 +33,19 @@ The earlier registry snapshots `scene-identity-20260928-182720-125.json` and
 `scene-identity-20260928-183219-891.json` found almost no moving *registry roots*;
 therefore that registry is not a complete list of these dynamic torch sources.
 
-**Next bounded test:** while one torch crosses a wall, observe the same source
-UUID, nearest moving ManyLights contribution and physics visibility status on
-both sides. No new hook or production API change is required for this test.
+**Flicker diagnosis, owner observation plus code:** the owner sees moving torches
+briefly appear in the HUD and disappear after occlusion catches up. In
+`PhysicsVisibilityClient`, `Find` only reuses a cached target within 0.12 gu;
+a moving source beyond that receives a new `unknown` entry pending a ray result.
+`HideOccludedLight` hides only an explicit `blocked` result, so `unknown` remains
+visible until the later blocked measurement. The former marker disappears
+because the current light stream no longer has a contribution at its old
+position, not because that old position received a new occlusion verdict.
+This explains the reported flash
+without needing a new wall-crossing experiment. It does not prove that every
+individual flash has this cause. The next decision is an explicit display policy
+for pending/expired moving-source measurements, preserving raw visibility data
+and avoiding false attribution of stale rays to a new position.
 
 **Owner's main investigation:** find real engine instance identity, especially for
 moving lights. Do not substitute positional/motion tracking. No production API or
