@@ -23,10 +23,14 @@ blocking call but did not resolve this sporadic hang. The owner immediately
 restarted **without changing any settings** at 17:50; the same ASI hash was
 loaded, and the game was responsive and `playing` at 17:52 with sequence
 1982→1983 and rendered lights available. This confirms the failure is
-intermittent in the same setup. **Next:** with the game
-closed, owner disables only the Crimson Weather ReShade add-on and repeats
-several world entries with the same CDT build; preserve a fresh dump/log if it
-hangs again. One clean start is not a control for an intermittent fault.
+intermittent in the same setup. The owner then recalled one deliberate
+difference: the HUD was hidden before loading in the failed run, but not in
+the clean retry. If this was CDT's F8 corner HUD, code only toggles its draw
+state; capture stays active and F10 world markers are separate. The exact HUD
+control has not yet been confirmed, and causation is open. **Next:** confirm
+which HUD/key was used, then alternate otherwise-identical world entries with
+that HUD visible vs hidden before loading. Preserve a fresh dump/log if it
+hangs again; defer the Crimson Weather control until this clue is tested.
 
 # Previous checkpoint — 2026-09-27, 2.2.1 published on GitHub
 
