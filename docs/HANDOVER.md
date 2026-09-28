@@ -58,10 +58,15 @@ before grouping/smoothing, for consumers that need a visibility-filtered RGB
 signal. Same-capture clear-to-unknown transitions are applied immediately, with
 no hidden contribution left in EMA RGB. The 250 ms nearby-blocker presentation
 hint was removed. Managed suite, HTTP/WebSocket smoke, native overlay and
-graphics smoke tests pass; exact package installation and
-moving-torch live acceptance are still pending. Do not use sample index as a
-source ID or reuse an old ray as a new physics verdict. Next step requires the
-game closed for a private DMM ZIP install and live observation.
+graphics smoke tests pass. The exact installed EXE SHA-256 matched the
+25477059 profile. Private production-profile DMM ZIP:
+`artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.1-visibility-failclosed.1-ModManagers.zip`,
+SHA-256 `01B09E527856DD09F62D487220F0F25472C1C53EC7254FD7BCF2C7FB85058B5A`.
+The package validator passed. It has **not** been installed or game-tested;
+only the owner installs via DMM. Do not use sample index as a source ID or reuse
+an old ray as a new physics verdict. Next: owner installs the private ZIP via
+DMM, enables `HideOccluded` with F11 if its INI starts at 0, and observes a
+moving torch behind the hut wall.
 
 # Previous checkpoint — 2026-09-27, 2.2.1 published on GitHub
 
