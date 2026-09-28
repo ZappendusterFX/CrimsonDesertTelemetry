@@ -35,6 +35,17 @@ with the default overlay state versus F8/F9/F10 pressed once before loading.
 Record each outcome and preserve a fresh dump/log on recurrence; defer the
 Crimson Weather control until this clue is tested.
 
+Parallel light-ID result, 2026-09-28: a bounded read-only live comparison in
+PID 37460 found three same-UUID moving sources with guarded prefab label
+`cd_t0000_torch_0001.prefab`. They moved 9.4–46.5 gu; positive-luminance
+ManyLights samples followed each within 0.32–0.56 gu at both endpoints. This is
+strong spatial evidence, not a pointer-level source-to-GPU join or a durable
+public ID. No plugin/game writes. The registry-root snapshots missed this
+dynamic route. Occlusion transition for an exact UUID and cross-restart
+persistence remain open. Details and evidence: `docs/LIGHT_IDENTITY_RESEARCH.md`.
+Next bounded ID test: same torch crossing a wall, correlating UUID, ManyLights
+sample and physics visibility; do not use sample index as a source ID.
+
 # Previous checkpoint — 2026-09-27, 2.2.1 published on GitHub
 
 [GitHub release v2.2.1](https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/tag/v2.2.1)

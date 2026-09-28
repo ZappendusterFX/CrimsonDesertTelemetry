@@ -1,5 +1,42 @@
 # Light-source identity — 2026-09-26
 
+## 2026-09-28: moving torch sources, live bounded comparison
+
+In one running game process (PID 37460, exact supported EXE), two read-only
+WorkItem/ManyLights snapshots at 18:32 and 18:41 resolved three **same-UUID**
+sources that moved 46.5, 18.0 and 9.4 gu. Live guarded reads of each source's
+prefab string returned the exact same label:
+`/character/prefab/6_object/tools/cd_t0000_torch_0001.prefab`.
+
+| Source UUID prefix | Source movement | Nearest positive-luminance ManyLights sample at both endpoints |
+| --- | ---: | --- |
+| `B5F13A15...` | 46.5 gu | 0.32 / 0.32 gu, sample index 1604 |
+| `43873215...` | 18.0 gu | 0.32 / 0.56 gu, sample index 1570 |
+| `7F583215...` | 9.4 gu | 0.45 / 0.49 gu, sample index 1587 |
+
+The source positions come from the WorkItem owner's world transform at +0xBC;
+each selected WorkItem revalidated its source UUID. This is strong two-timepoint
+**spatial evidence** that moving torch scene/effect identities accompany moving
+GPU light contributions, not a proven pointer-level source-to-GPU join. Do not
+promote the coincident sample indices to IDs: other sample indices visibly
+reshuffled during the same 1.3-second capture. UUID lifetime through unload or
+restart, NPC attachment, and an occlusion transition for one exact source remain
+unproven. The matched samples' physics status was `blocked` or `unknown` at these
+endpoints; the owner's report of moving torches visible in the HUD does not by
+itself assign one of those UI markers to these three UUIDs.
+
+Evidence: `artifacts/light-research/light-identity-chain-20260928-183257-547.json`
+and `light-identity-chain-20260928-184131-530.json`, each with bracketing live
+ManyLights API snapshots. The second queue traversal recorded three unrelated
+read/slot-change failures; these three selected source rows passed revalidation.
+The earlier registry snapshots `scene-identity-20260928-182720-125.json` and
+`scene-identity-20260928-183219-891.json` found almost no moving *registry roots*;
+therefore that registry is not a complete list of these dynamic torch sources.
+
+**Next bounded test:** while one torch crosses a wall, observe the same source
+UUID, nearest moving ManyLights contribution and physics visibility status on
+both sides. No new hook or production API change is required for this test.
+
 **Owner's main investigation:** find real engine instance identity, especially for
 moving lights. Do not substitute positional/motion tracking. No production API or
 plugin change in this investigation. The separately accepted mass-flash fix stays.
