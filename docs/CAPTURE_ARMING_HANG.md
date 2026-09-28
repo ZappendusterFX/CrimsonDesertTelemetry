@@ -33,6 +33,13 @@ are also in waits. No `nvlddmkm` or Display reset event was found in the
 closed the unresponsive application; Windows did not close it spontaneously.
 No causal attribution to CDT, ReShade, Weather or the driver is established.
 
+Immediate no-change retry: the owner restarted at 17:50 with the same private
+ASI hash and no settings change. At 17:52 the game process was responsive,
+the API reported `playing` and supported build 25477059, sequence 1982→1983,
+and both light feeds available. The native log again reached recurring capture
+ready. This establishes intermittent behavior under the same configuration;
+one successful retry does not validate the mitigation.
+
 This recurrence passed `Prepare()`, so retaining the probe queue eliminated
 the previously observed blocked `Release()` but did not eliminate the overall
 sporadic world-entry hang. The public v2.2.1 ASI is bytewise different from

@@ -19,7 +19,11 @@ no NVIDIA reset event was found in that time window. Full evidence and limits:
 The installed private candidate differs bytewise from public v2.2.1, but the
 source diff to the public tag contains no native-code change. Treat public
 impact as open. The queue-retention mitigation removed the previously observed
-blocking call but did not resolve this sporadic hang. **Next:** with the game
+blocking call but did not resolve this sporadic hang. The owner immediately
+restarted **without changing any settings** at 17:50; the same ASI hash was
+loaded, and the game was responsive and `playing` at 17:52 with sequence
+1982→1983 and rendered lights available. This confirms the failure is
+intermittent in the same setup. **Next:** with the game
 closed, owner disables only the Crimson Weather ReShade add-on and repeats
 several world entries with the same CDT build; preserve a fresh dump/log if it
 hangs again. One clean start is not a control for an intermittent fault.
