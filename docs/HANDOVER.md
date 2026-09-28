@@ -23,14 +23,17 @@ blocking call but did not resolve this sporadic hang. The owner immediately
 restarted **without changing any settings** at 17:50; the same ASI hash was
 loaded, and the game was responsive and `playing` at 17:52 with sequence
 1982→1983 and rendered lights available. This confirms the failure is
-intermittent in the same setup. The owner then recalled one deliberate
-difference: the HUD was hidden before loading in the failed run, but not in
-the clean retry. If this was CDT's F8 corner HUD, code only toggles its draw
-state; capture stays active and F10 world markers are separate. The exact HUD
-control has not yet been confirmed, and causation is open. **Next:** confirm
-which HUD/key was used, then alternate otherwise-identical world entries with
-that HUD visible vs hidden before loading. Preserve a fresh dump/log if it
-hangs again; defer the Crimson Weather control until this clue is tested.
+intermittent in the same setup. The owner clarified that they pressed **F8,
+F9 and F10 before loading** in the failed run, but not in the clean retry.
+With the installed INI starting both visual layers visible and details on,
+these keys hide the corner HUD, switch its details off, and hide world light
+markers. Native capture and the overlay client continue. When both visual
+layers are hidden and no notification is shown, the overlay skips its GPU
+draw; this is a testable timing clue, not a proven cause. **Next:** keep CDT,
+ReShade and Weather unchanged and compare otherwise-identical world entries
+with the default overlay state versus F8/F9/F10 pressed once before loading.
+Record each outcome and preserve a fresh dump/log on recurrence; defer the
+Crimson Weather control until this clue is tested.
 
 # Previous checkpoint — 2026-09-27, 2.2.1 published on GitHub
 

@@ -40,14 +40,15 @@ and both light feeds available. The native log again reached recurring capture
 ready. This establishes intermittent behavior under the same configuration;
 one successful retry does not validate the mitigation.
 
-The owner then reported that the one deliberate difference in the failed run
-was hiding the HUD before loading; it was left visible in the clean retry.
-The exact HUD/key needs confirmation. If it was CDT's F8 corner HUD,
-`overlay_graphics.cpp` toggles only `state.visible` and corner-HUD drawing;
-F10 world markers are separate, while native capture and the overlay client
-continue. This may change graphics scheduling, but no causal link is proven.
-The next control should alternate otherwise-identical visible/hidden HUD
-world entries before changing the Crimson Weather add-on.
+The owner clarified that they pressed F8, F9 and F10 before loading in the
+failed run, but not in the clean retry. With the installed INI starting the
+corner HUD and world light markers visible and details on, these keys hide
+both visual layers and switch details off. `overlay_graphics.cpp` skips its
+GPU draw when both visual layers are hidden and there is no notification;
+native capture and the overlay client continue. This may change graphics
+scheduling, but no causal link is proven. The next control should alternate
+otherwise-identical world entries with the default overlay state versus all
+three keys pressed once before loading, before changing Crimson Weather.
 
 This recurrence passed `Prepare()`, so retaining the probe queue eliminated
 the previously observed blocked `Release()` but did not eliminate the overall
