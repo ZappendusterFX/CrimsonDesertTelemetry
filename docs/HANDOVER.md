@@ -49,8 +49,15 @@ within 0.12 gu, while the HUD leaves a newly `unknown` light visible and hides
 it only once `blocked` arrives. The old marker disappears because the moving
 light no longer supplies data at its previous position, not from an occlusion
 decision there. No wall-crossing test is needed to pursue this
-flicker. Next: choose a bounded pending/expired-visibility display policy; do
-not treat sample index as a source ID or reuse an old ray at a new position.
+flicker. A bounded provisional display fix is now in source: a pending target
+within 0.75 gu of a blocker measured in the last 250 ms, from a camera within
+0.5 gu, stays `unknown` in the API but is hidden by `HideOccluded` until its new
+ray result. Other unknown/stale lights retain their existing behavior. Managed
+physics tests and overlay tests pass; full managed suite and ASI build pass.
+This has **not** been packaged, installed or live-tested. Do not use sample
+index as a source ID or reuse an old ray as a new physics verdict. Next live
+step requires the game closed for an exact private DMM ZIP install, then an
+in-game moving-torch observation before considering publication.
 
 # Previous checkpoint — 2026-09-27, 2.2.1 published on GitHub
 

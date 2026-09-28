@@ -87,7 +87,7 @@ Do not merge old binaries or metadata into the new package. Preserve your INI pr
 | **F8** | Show/hide the corner HUD and 3D radar |
 | **F9** | Toggle additional diagnostics |
 | **F10** | Show/hide fullscreen light markers |
-| **F11** | Show/hide lights whose nine visibility rays are all blocked; unknown lights always stay visible |
+| **F11** | Show/hide blocked lights; a newly moved light near a recent blocker stays hidden briefly while its new rays are pending |
 
 The HUD does not capture mouse input. Hiding it does not stop telemetry.
 These are defaults: all four shortcuts can be reassigned in the INI using decimal
@@ -149,7 +149,7 @@ DurationMilliseconds=6000
 - `HdrPaperWhiteNits` controls all HDR UI brightness, including markers and notices with the corner HUD disabled. The default is 200 nits, clamped to 80–500. It does not change the game's HDR settings or metadata.
 - Radar/marker swatches visualize measured HDR values; they do not reproduce the game's tone mapping. Nearby contributions share a detail box without merging, summing or smoothing their raw measurements.
 - `[SourceVisibility] Enabled=1` (default) casts nine physics rays from the camera to each light within `[LightOverlay] Radius`. Any free ray reports `clear`, all nine blocked reports `blocked`, and missing, stale or failed results stay `unknown`. It is a sampled collision estimate, not optical transmission, and needs `ManyLights=1`. `0` switches it off; all other light data stays unchanged.
-- `HideOccluded=1` or F11 hides lights with a fresh `blocked` result from the HUD/radar; by default they are only dimmed. Unknown and stale lights always remain shown. Raw and smoothed API records and RGB values remain complete.
+- `HideOccluded=1` or F11 hides lights with a fresh `blocked` result from the HUD/radar; by default they are only dimmed. A pending light within 0.75 game units of a blocker measured in the last 250 ms is also provisionally hidden until its own rays complete, to prevent moving torches flashing through walls. Its API status remains `unknown` with reason `pending-near-recent-blocker`, never a fabricated `blocked` verdict. Other unknown and stale lights remain shown. Raw and smoothed API records and RGB values remain complete.
 - The camera frustum uses the real basis and view angles; its drawn length is schematic. World X/Z axes are not compass north; player-root orientation is not an animated body pose.
 
 The production `CDT_RESEARCH=OFF` profile contains the continuous physics ray fan

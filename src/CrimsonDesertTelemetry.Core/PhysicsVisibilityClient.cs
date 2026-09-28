@@ -13,6 +13,11 @@ public sealed class PhysicsVisibilityClient : IDisposable
     // retain a hidden marker for seconds if queries stop delivering results.
     public const long MaximumAgeMilliseconds = 500;
     public const float DefaultRadius = 35, MaximumRadius = 500;
+    // Display-only hint for a moving target while its new ray is pending.
+    // The API verdict remains unknown; an old ray is never relabelled as current.
+    private const long MovingBlockerHintMilliseconds = 250;
+    private const float MovingBlockerHintRadiusSquared = .75f * .75f;
+    private const float MovingBlockerCameraRadiusSquared = .5f * .5f;
     private readonly float _radiusSquared;
     private readonly int _pid;
     private readonly ulong _born;
@@ -115,6 +120,15 @@ public sealed class PhysicsVisibilityClient : IDisposable
                 DistanceSquared(position, center) > _radiusSquared ? "outside-physics-radius" :
                 e is null ? "outside-physics-budget" :
                 e.Measured == 0 ? e.Reason : now - e.Measured > MaximumAgeMilliseconds ? "stale-physics" : e.Reason;
+            if (e is { Measured: 0 } && reason is "waiting-for-physics" or "physics-budget-pending")
+            {
+                var nearest = _cache.Where(candidate => candidate.Measured > 0 &&
+                        now - candidate.Measured is >= 0 and <= MovingBlockerHintMilliseconds &&
+                        DistanceSquared(candidate.Receiver, camera) <= MovingBlockerCameraRadiusSquared &&
+                        DistanceSquared(candidate.Position, position) <= MovingBlockerHintRadiusSquared)
+                    .MinBy(candidate => DistanceSquared(candidate.Position, position));
+                if (nearest?.Status == "blocked") reason = "pending-near-recent-blocker";
+            }
             var status = reason.Length == 0 ? e!.Status : "unknown";
             // Preserve actual measurement origin/capture; never pretend an older ray
             // was executed on the current frame. HUD understands this method explicitly.

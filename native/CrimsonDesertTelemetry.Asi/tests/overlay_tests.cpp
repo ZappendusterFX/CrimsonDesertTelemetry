@@ -387,6 +387,18 @@ void SourceVisibilityTests(nlohmann::json json,std::chrono::system_clock::time_p
     physicsView.sample=ParseSample(physics.dump(),now);
     Require(!HideOccludedLight(physicsView.sample.renderedLights.records->at(0),physicsView,physicsView.received,true),
         "Stale physics evidence must never hide current raw light");
+    pm["status"]="unknown";pm["attenuationFactor"]=nullptr;
+    pm["reason"]="pending-near-recent-blocker";pm["volumeAgeMillisecondsAtCapture"]=nullptr;
+    physicsView.sample=ParseSample(physics.dump(),now);
+    const auto& provisional=physicsView.sample.renderedLights.records->at(0);
+    Require(CurrentSourceVisibility(provisional,physicsView,physicsView.received).status=="unknown"&&
+        HideOccludedLight(provisional,physicsView,physicsView.received,true)&&
+        !HideOccludedLight(provisional,physicsView,physicsView.received,false),
+        "Recent-blocker hint hides only the filtered presentation, never raw unknown data");
+    pm["reason"]="waiting-for-physics";
+    physicsView.sample=ParseSample(physics.dump(),now);
+    Require(!HideOccludedLight(physicsView.sample.renderedLights.records->at(0),physicsView,physicsView.received,true),
+        "Unrelated pending source must remain visible without a recent blocker");
     std::cout<<"PASS HUD source visibility metadata, physics estimates, hiding, freshness and malformed preservation\n";
 }
 void ShortcutTests()

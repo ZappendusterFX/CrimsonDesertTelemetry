@@ -626,7 +626,10 @@ bool HideOccludedLight(const LightRecord& light,const View& view,const Clock::ti
 {
     if(!hideOccluded)return false;
     const auto visibility=CurrentSourceVisibility(light,view,now);
-    return visibility.status=="blocked"&&visibility.attenuationFactor==0;
+    // A nearby old blocker is only a short-lived presentation hint, never a
+    // new physics verdict. Keep the raw record and its unknown status intact.
+    return (visibility.status=="blocked"&&visibility.attenuationFactor==0)||
+        (visibility.status=="unknown"&&visibility.reason=="pending-near-recent-blocker");
 }
 void UpdateShortcutToggle(bool& value,bool& wasDown,const int key,const bool isDown,const bool foreground)
 {
