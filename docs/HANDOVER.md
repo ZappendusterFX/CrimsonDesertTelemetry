@@ -1,5 +1,15 @@
 # Current checkpoint — 2026-09-28, world-entry hang recurred
 
+Release-package update, 2026-09-28: at the owner's request, production-profile
+`2.2.2` was built from commit `6f058a9` for exact EXE hash
+`57DA440D72F4DB974F25FEF047CF84C4DADD999A88CB2A3C5AF4C9BD67FDE1E7`.
+ZIP: `artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.2-ModManagers.zip`,
+SHA-256 `FFB74EB94FB4B84A3C3019CBFE5D3BC71BFCDA4A8198ADA9CD882E383F30D442`.
+The maintained package builder and validator passed; no additional tests were
+requested or run for this exact ZIP. It is not installed, game-tested or
+published. Only the owner deploys it through DMM. The sporadic world-entry hang
+below remains unresolved; a ZIP build does not establish live compatibility.
+
 After many clean runs reported by the owner, the game hung again on world entry
 with the private capture-arming ZIP installed (ASI SHA-256
 `A2EAE81F6618417367F296FA402FF101E2D620593257714E5F12A483E91741CD`).
