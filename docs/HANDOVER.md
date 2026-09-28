@@ -1,4 +1,30 @@
-# Current checkpoint — 2026-09-27, 2.2.1 published on GitHub
+# Current checkpoint — 2026-09-28, world-entry hang recurred
+
+After many clean runs reported by the owner, the game hung again on world entry
+with the private capture-arming ZIP installed (ASI SHA-256
+`A2EAE81F6618417367F296FA402FF101E2D620593257714E5F12A483E91741CD`).
+The owner could close this hang normally, unlike the earlier harder lockup.
+The native log reached **queue hook ready, modulator initialized, recurring
+capture ready**. The API then reported `loading` with no advancing native
+camera. A read-only dump of hung PID 1792 at 17:44:58 is preserved in
+`artifacts/crash-reports/local-20260928-hang/`; its 102 threads had no
+suspend count. CDT worker TID 5932 was in its regular 5 ms wait, **not** the
+old probe-queue `Release()`. The game thread was waiting inside the engine.
+ReShade's final log line entered a compute queue creation on TID 5932, but the
+dump shows that thread had returned to the CDT loop; it does not prove the
+queue call blocked. Windows logged AppHangB1 when the owner closed the game;
+no NVIDIA reset event was found in that time window. Full evidence and limits:
+`docs/CAPTURE_ARMING_HANG.md`.
+
+The installed private candidate differs bytewise from public v2.2.1, but the
+source diff to the public tag contains no native-code change. Treat public
+impact as open. The queue-retention mitigation removed the previously observed
+blocking call but did not resolve this sporadic hang. **Next:** with the game
+closed, owner disables only the Crimson Weather ReShade add-on and repeats
+several world entries with the same CDT build; preserve a fresh dump/log if it
+hangs again. One clean start is not a control for an intermittent fault.
+
+# Previous checkpoint — 2026-09-27, 2.2.1 published on GitHub
 
 [GitHub release v2.2.1](https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/tag/v2.2.1)
 is public, non-prerelease and latest. The owner authorized GitHub-only publication.

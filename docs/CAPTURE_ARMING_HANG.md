@@ -1,5 +1,46 @@
 # Capture arming hang at world entry — 2026-09-27, Claude → Codex
 
+## Recurrence — 2026-09-28, Codex
+
+The owner reported many clean runs with the private
+`v2.2.1-capture-arming.1` ZIP, then a new world-entry hang on 2026-09-28.
+Unlike the previous hard lockup, the owner could close this one without
+restarting Windows. Installed ASI SHA-256
+`A2EAE81F6618417367F296FA402FF101E2D620593257714E5F12A483E91741CD`;
+game EXE SHA-256
+`57DA440D72F4DB974F25FEF047CF84C4DADD999A88CB2A3C5AF4C9BD67FDE1E7`
+(Steam build 25477059). Native log passed every preparation stage through
+`ManyLights recurring capture ready`. The local API later reported `loading`,
+last capture 17:43:42, with `Native camera source is not advancing`.
+
+Read-only MiniDumpNormal + thread info at 17:44:58, while PID 1792 was still
+hung: `artifacts/crash-reports/local-20260928-hang/hang-174458-pid1792.dmp`,
+355,419 bytes, SHA-256
+`681C77974198EE0E5E75DE9DF6D5CB0DD930BD82CD2AE87EF1479554CE7900B9`.
+All 102 threads have suspend count zero. CDT worker TID 5932 returned to the
+regular 5 ms `WaitForSingleObject(stopEvent, 5)` loop (`CDT+0x5BC5D` is
+the return address); it is **not** in the old `probeQueue->Release()` call.
+The apparent main game thread TID 25836 waits inside a game-code 10 ms
+`WaitForSingleObject` loop (return `CrimsonDesert.exe+0x3E008E1`). This dump
+does not identify what its game-side wait depends on.
+
+ReShade 6.8 registered Crimson Weather v0.8.1. Its final log line at 17:43:41
+entered `CreateCommandQueue` of type 2 (compute) on TID 5932. That same thread
+is back in the CDT wait loop in the later dump, so the line is a timing marker,
+**not evidence the queue call remained blocked**. NVIDIA/D3D12 worker threads
+are also in waits. No `nvlddmkm` or Display reset event was found in the
+17:40–17:50 System log. Windows wrote AppHangB1 at 17:46:53 as the owner
+closed the unresponsive application; Windows did not close it spontaneously.
+No causal attribution to CDT, ReShade, Weather or the driver is established.
+
+This recurrence passed `Prepare()`, so retaining the probe queue eliminated
+the previously observed blocked `Release()` but did not eliminate the overall
+sporadic world-entry hang. The public v2.2.1 ASI is bytewise different from
+this private candidate, but the source diff from the private candidate's
+commit to the public tag contains no native-code change; public exposure is
+open. Next controlled run: keep CDT and ReShade, disable only Crimson Weather,
+then repeat several world entries; a single clean start is inconclusive.
+
 ## Follow-up — 2026-09-27, Codex
 
 Commit `98f5bed` removes the observed last `probeQueue->Release()` from world
