@@ -51,24 +51,8 @@ internal static class PhysicsVisibilityTests
                 "raw measurement sequence/time serialized with documented API names");
         now+=60; Reply(0); var blocked=Apply();
         Check(Visibility(blocked) is {Status:"blocked",AttenuationFactor:0,Method:PhysicsVisibilityClient.Method,SampleCount:9,ClearSampleCount:0,MeasurementSequence:2},"next blocked measurement advances independently of light frame");
-        snapshot=snapshot with {Rendered=rendered with {Sources=[source with {Position=new(11.4f,21,31)}]}};
-        var movedTarget=Visibility(Apply());
-        Check(movedTarget is {Status:"unknown",Reason:"pending-near-recent-blocker",AttenuationFactor:null},
-            "a moving target may inherit only a display hint, never an old blocked verdict");
-        snapshot=snapshot with {Rendered=snapshot.Rendered! with {Camera=camera with {Position=new(12,22,30)}}};
-        Check(Visibility(Apply()).Reason=="waiting-for-physics",
-            "a blocker from a different camera position cannot hide a pending target");
-        snapshot=snapshot with {Rendered=rendered with {Sources=[source with {Position=new(11.4f,21,31)}]}};
-        now+=251;
-        Check(Visibility(Apply()).Reason=="waiting-for-physics",
-            "an old blocker cannot indefinitely hide a moving pending target");
-        snapshot=snapshot with {Rendered=rendered};
         now+=60; Reply(4); var clear=Apply();
         Check(Visibility(clear) is {Status:"clear",AttenuationFactor:1,ClearSampleCount:4},"free neighbors restore immediately, not 4/9 attenuation");
-        snapshot=snapshot with {Rendered=rendered with {Sources=[source with {Position=new(11.5f,21,31)}]}};
-        Check(Visibility(Apply()).Reason=="waiting-for-physics",
-            "a recently clear neighbor cannot create a provisional blocker");
-        snapshot=snapshot with {Rendered=rendered};
         Check(clear.Sources![0]==authored && clear.Rendered!.Sources![0].ColorLinear==source.ColorLinear && clear.Rendered.Sources[0].LuminanceLinear==source.LuminanceLinear,"raw authored/rendered fields preserved");
         now+=60; Reply(0,wrongOrigin:true); Check(Visibility(Apply()).Status=="clear","wrong-origin result must not replace known result");
         snapshot=snapshot with { Rendered=rendered with {Camera=camera with {Position=new(10.3f,22,30)}} };

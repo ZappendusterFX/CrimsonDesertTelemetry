@@ -51,6 +51,11 @@ try {
         $null -ne $smoothed.sources -or $smoothed.settings.timeConstantMilliseconds -ne 200) {
         throw 'Server without --lights must expose unavailable derived data, not fabricate lights.'
     }
+    $visible = Invoke-RestMethod -Uri "http://127.0.0.1:$port/v1/lights/visible"
+    if ($visible.schemaVersion -ne '1.0' -or $visible.status -ne 'unavailable' -or
+        $null -ne $visible.sources -or $visible.coverage -notlike '*visibility-clear-only') {
+        throw 'Visible endpoint must fail closed without light/visibility data.'
+    }
     $derivedSocket = [System.Net.WebSockets.ClientWebSocket]::new()
     $derivedTimeout = [Threading.CancellationTokenSource]::new(5000)
     try {
@@ -62,6 +67,20 @@ try {
         if ($derivedMessage.status -ne 'unavailable' -or $derivedMessage.schemaVersion -ne '1.0') { throw 'Derived WebSocket payload mismatch' }
         $null = $derivedSocket.CloseAsync([System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure,'test complete',$derivedTimeout.Token).GetAwaiter().GetResult()
     } finally { $derivedSocket.Dispose(); $derivedTimeout.Dispose() }
+
+    $visibleSocket = [System.Net.WebSockets.ClientWebSocket]::new()
+    $visibleTimeout = [Threading.CancellationTokenSource]::new(5000)
+    try {
+        $null = $visibleSocket.ConnectAsync([Uri]"ws://127.0.0.1:$port/v1/lights/visible/stream",$visibleTimeout.Token).GetAwaiter().GetResult()
+        $buffer = [byte[]]::new(4096)
+        $received = $visibleSocket.ReceiveAsync([ArraySegment[byte]]::new($buffer),$visibleTimeout.Token).GetAwaiter().GetResult()
+        if (-not $received.EndOfMessage) { throw 'Unexpectedly large unavailable visible message' }
+        $message = [Text.Encoding]::UTF8.GetString($buffer,0,$received.Count) | ConvertFrom-Json
+        if ($message.status -ne 'unavailable' -or $message.coverage -notlike '*visibility-clear-only') {
+            throw 'Visible WebSocket payload mismatch'
+        }
+        $null = $visibleSocket.CloseAsync([System.Net.WebSockets.WebSocketCloseStatus]::NormalClosure,'test complete',$visibleTimeout.Token).GetAwaiter().GetResult()
+    } finally { $visibleSocket.Dispose(); $visibleTimeout.Dispose() }
 
     $sky = Invoke-RestMethod -Uri "http://127.0.0.1:$port/v1/ambient"
     if ($sky.schemaVersion -ne '1.0' -or $sky.scope -ne 'global-upper-hemisphere-sky' -or
@@ -135,7 +154,7 @@ try {
         $socket.Dispose()
     }
 
-    foreach ($streamPath in @('/v1/stream','/v1/lights/smoothed/stream','/v1/ambient/stream')) {
+    foreach ($streamPath in @('/v1/stream','/v1/lights/smoothed/stream','/v1/lights/visible/stream','/v1/ambient/stream')) {
     $remoteSocket = [System.Net.WebSockets.ClientWebSocket]::new()
     try {
         $remoteSocket.Options.SetRequestHeader('Origin', 'https://example.com')

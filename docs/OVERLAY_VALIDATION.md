@@ -8,9 +8,9 @@ sky. Current per-light production metadata has synthetic coverage, but real
 visible/blocked/visible and behind-camera acceptance is still pending.
 
 The HUD/radar display clear/blocked/unknown per-source metadata. Optional
-`HideOccluded=1` hides fresh known blocked sources and provisionally hides a
-pending unknown near a blocker measured within 250 ms. Other stale/unknown
-results stay visible. The provisional hint is not a blocked measurement.
+`HideOccluded=1` shows only fresh known-clear sources. Blocked, pending unknown,
+missing and stale results are hidden in the HUD/radar; raw API results remain
+unchanged, and the separate visible stream applies the same clear-only rule.
 Default F11 toggles this mode without changing any raw or smoothed API
 record or RGB. All four default shortcuts F8/F9/F10/F11 can be reassigned in the
 INI or individually disabled with `0`; see [controls](../README.md#controls-and-configuration)

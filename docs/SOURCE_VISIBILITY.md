@@ -1,5 +1,13 @@
 # Per-light source visibility
 
+**Current development, 2026-09-28:** with `HideOccluded=1`, the HUD/radar now
+show only fresh `clear` results. Pending `unknown`, missing and stale results
+are hidden along with `blocked`. The new `/v1/lights/visible` HTTP/WebSocket feed
+filters the same way *before* grouping/smoothing; raw and existing unfiltered
+streams preserve every record and its honest `unknown` status. This supersedes
+the short-lived nearby-blocker presentation hint. Moving-torch live acceptance
+is still pending; unknown hiding does not make the rays instantaneous.
+
 **Release 2.2.0, 2026-09-26:** the continuous physics ray fan below is the
 production feature, ON by default via `[SourceVisibility] Enabled=1` in the
 `CDT_RESEARCH=OFF` build. Production runs only the continuous fan (same 9 rays,
@@ -210,8 +218,8 @@ It captures one fenced R16 SDF volume, keeps it for at most 1500 ms and uses the
 historical Variant A marcher: skip the first 0.6 and final 1.0 game units, advance by
 `max(distance, 0.05)`, and classify blocked at the first nonpositive sample. The
 implementation has no repeated diagnostic series, history buffer, dump or trace
-logger. `HideOccluded`/F11 consumes only fresh known blocked verdicts in the two HUD
-views; the API records and RGB remain intact.
+logger. This historical OFF fallback predates the current clear-only HUD policy;
+the API records and RGB remain intact.
 
 The dedicated OFF test verifies waiting before the first field, clear and blocked
 results for sources in front of and behind the camera, disabling, and byte-for-byte

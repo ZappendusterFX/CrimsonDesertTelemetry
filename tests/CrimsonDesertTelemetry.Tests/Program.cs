@@ -71,6 +71,7 @@ var tests = new (string Name, Action Run)[]
     ("smoothed local lights fail closed and remove missing groups", SmoothedLightTests.Freshness),
     ("smoothed local lights validate bounds and dense pools", SmoothedLightTests.ValidationAndBounds),
     ("smoothed local lights transport isolation and health invalidation", SmoothedLightTests.TransportIsolation),
+    ("clear-only visible transport hides unknown/blocked while raw remains complete", SmoothedLightTests.VisibleTransport),
     ("engine lights decode verified fields", EngineLightReaderTests.DecodeFields),
     ("engine lights reject and diagnose fields", EngineLightReaderTests.Validation),
     ("engine lights retry a changed walk", EngineLightReaderTests.WalkRetry),

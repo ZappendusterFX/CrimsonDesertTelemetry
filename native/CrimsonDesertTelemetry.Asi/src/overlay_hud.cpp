@@ -70,7 +70,6 @@ const char* VisibilityReasonText(const std::string& reason)
 {
     if(reason=="waiting-for-physics"||reason=="physics-query-unavailable")return "waiting for physics";
     if(reason=="physics-budget-pending")return "queued for physics check";
-    if(reason=="pending-near-recent-blocker")return "checking moving light";
     if(reason=="stale-physics")return "measurement expired";
     if(reason=="outside-physics-radius")return "outside configured radius";
     if(reason=="outside-physics-budget")return "outside sampled target set";
@@ -506,7 +505,7 @@ void DrawLightOverlay(const View& view, const Config& config)
         ? std::format("SOURCE VISIBILITY  /  {} visible  /  {} blocked  /  {} unknown  /  includes off-screen",
             visibilityCounts.visible,visibilityCounts.blocked,visibilityCounts.unknown)
         : "SOURCE VISIBILITY  /  unavailable";
-    const std::string caveat = "Sampled visibility is an estimate / pending near recent blockers stay hidden";
+    const std::string caveat = "Sampled visibility is an estimate / filtered view shows fresh clear only";
     const std::string coverage = engineInput
         ? "Includes lights behind the camera / hollow = not selected by the renderer here, not OFF" : "";
     float legendWidth = 0;

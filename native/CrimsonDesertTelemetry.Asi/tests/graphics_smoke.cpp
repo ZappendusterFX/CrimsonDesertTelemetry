@@ -612,8 +612,8 @@ int wmain(int argc, wchar_t** argv)
                     : SourceVisibility{"unknown","uncovered",std::nullopt,std::nullopt};
                 unknown.sample.renderedLights.records=std::make_shared<const std::vector<LightRecord>>(unknownRecords);
                 unknown.received=Clock::now();
-                Require(frame(false,nullptr,&unknown,true).Around(blockedX,blockedY,14)>10,
-                    "Hide option suppressed an unknown or stale visibility result");
+                Require(frame(false,nullptr,&unknown,true).Around(blockedX,blockedY,14)==0,
+                    "Hide option exposed an unknown or stale visibility result");
             }
             SetHideOccludedForTest(false);occludedOnly.received=Clock::now();
             Require(frame(false,nullptr,&occludedOnly,true).Around(blockedX,blockedY,14)>10,

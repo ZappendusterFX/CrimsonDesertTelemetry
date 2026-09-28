@@ -6,15 +6,33 @@ by the separate [ambient feed](AMBIENT_STREAM.md). Install one complete telemetr
 package through DMM and keep research switches at `0` for production use.
 
 Current production development adds optional [per-light source visibility](SOURCE_VISIBILITY.md)
-to each group's original `contributions`. Raw records, RGB/luminance and EMA
-group RGB are unchanged, and blocked contributions remain present. Metadata is
-not averaged into a group verdict or automatically multiplied into its color.
+to each group's original `contributions`. Raw records, RGB/luminance and this
+unfiltered EMA group RGB are unchanged, and blocked/unknown contributions remain
+present. Metadata is not averaged into a group verdict or multiplied into this color.
 The per-light implementation has synthetic coverage; live visible/blocked/visible
 and behind-camera acceptance remains pending. Camera-local ambient already passed
 its separate open/enclosed/open test in OFF v2.1.9 on build 25246367.
 
 - HTTP: `GET http://127.0.0.1:27311/v1/lights/smoothed`
 - WebSocket: `ws://127.0.0.1:27311/v1/lights/smoothed/stream`
+
+The separate **visibility-filtered** form has the same envelope:
+
+- HTTP: `GET http://127.0.0.1:27311/v1/lights/visible`
+- WebSocket: `ws://127.0.0.1:27311/v1/lights/visible/stream`
+
+It admits only individual contributions whose current `sourceVisibility.status`
+is `clear`, then groups and smooths that subset independently. `blocked`, `unknown`,
+missing and stale measurements contribute no RGB and produce no group in this feed;
+they are **not** relabeled as measured blocked in the raw stream. If visibility
+is disabled/missing for all current lights, this feed reports `unavailable` with
+`visibility-unavailable`, not a falsely measured empty scene. An available empty
+`sources` array means no contribution passed the filter. Tracking IDs belong to
+this feed/session and are not object IDs or interchangeable with the unfiltered feed.
+An unchanged GPU capture is not smoothed twice. If its visibility selection
+changes between host publications, the affected filtered result is rebuilt
+immediately without an EMA tail from a newly hidden contribution. The estimate
+remains subject to the ray sampler's latency and geometry limits.
 
 Both return the same separate envelope, `schemaVersion: "1.0"`. HTTP returns
 200 even when unavailable; inspect `status`, never infer availability from HTTP.
@@ -52,7 +70,7 @@ position. Do not add its `contributions` again, or also add the raw light stream
 Physical output mapping, exposure/brightness scaling, lamp geometry and output
 rate limits belong to the consumer. No physical lamps are driven by telemetry.
 
-For visibility-aware processing, inspect each contribution's metadata separately:
+For custom visibility-aware processing of the unfiltered feed, inspect each contribution's metadata separately:
 members of a group may have different visibility. The existing group EMA includes
 all members; applying one member's verdict to that whole color is not valid.
 Require matching capture sequence and fresh usable metadata as specified in the

@@ -312,8 +312,8 @@ void SourceVisibilityTests(nlohmann::json json,std::chrono::system_clock::time_p
         "Visibility legend excluded the off-screen blocked source");
     Require(!HideOccludedLight(records[1],view,view.received,false)&&
         HideOccludedLight(records[1],view,view.received,true)&&
-        !HideOccludedLight(records[0],view,view.received,true)&&!HideOccludedLight(records[2],view,view.received,true),
-        "Hide option must remove only a fresh known blocker from presentation");
+        !HideOccludedLight(records[0],view,view.received,true)&&HideOccludedLight(records[2],view,view.received,true),
+        "Filtered presentation must show only a fresh clear verdict");
     Require(records.size()==3&&records[1].colorLinear.x==2.5f&&
         CountSourceVisibility(view,view.received,35).blocked==1,
         "Presentation hide mutated raw records or visibility counts");
@@ -325,8 +325,8 @@ void SourceVisibilityTests(nlohmann::json json,std::chrono::system_clock::time_p
     Require(stale.status=="unknown"&&stale.reason=="stale-volume"&&!stale.attenuationFactor&&
         RenderedLightsLive(view,view.received+std::chrono::milliseconds(176),1000),
         "Expired visibility removed fresh raw data or retained a blocked contribution factor");
-    Require(!HideOccludedLight(records[1],view,view.received+std::chrono::milliseconds(176),true),
-        "A stale blocker remained hidden instead of becoming visible unknown");
+    Require(HideOccludedLight(records[1],view,view.received+std::chrono::milliseconds(176),true),
+        "An expired blocker became visible without a fresh clear verdict");
     const auto expiredCounts=CountSourceVisibility(view,view.received+std::chrono::milliseconds(176),35);
     Require(expiredCounts.visible==0&&expiredCounts.blocked==0&&expiredCounts.unknown==3,
         "Legend retained expired visibility counts");
@@ -381,24 +381,26 @@ void SourceVisibilityTests(nlohmann::json json,std::chrono::system_clock::time_p
     physicsView.sample=ParseSample(physics.dump(),now);
     Require(HideOccludedLight(physicsView.sample.renderedLights.records->at(0),physicsView,physicsView.received,true),
         "Physics age must not double-count unrelated GPU capture age");
-    Require(!HideOccludedLight(physicsView.sample.renderedLights.records->at(0),physicsView,physicsView.received+std::chrono::milliseconds(1),true),
-        "Physics expiry must include elapsed transport/display time");
+    Require(HideOccludedLight(physicsView.sample.renderedLights.records->at(0),physicsView,physicsView.received+std::chrono::milliseconds(1),true),
+        "Expired physics clear/blocked evidence must not become a visible unknown");
     pm["volumeAgeMillisecondsAtCapture"]=501;
     physicsView.sample=ParseSample(physics.dump(),now);
-    Require(!HideOccludedLight(physicsView.sample.renderedLights.records->at(0),physicsView,physicsView.received,true),
-        "Stale physics evidence must never hide current raw light");
+    Require(HideOccludedLight(physicsView.sample.renderedLights.records->at(0),physicsView,physicsView.received,true),
+        "Stale physics evidence must not show in the filtered presentation");
     pm["status"]="unknown";pm["attenuationFactor"]=nullptr;
-    pm["reason"]="pending-near-recent-blocker";pm["volumeAgeMillisecondsAtCapture"]=nullptr;
+    pm["reason"]="waiting-for-physics";pm["volumeAgeMillisecondsAtCapture"]=nullptr;
     physicsView.sample=ParseSample(physics.dump(),now);
     const auto& provisional=physicsView.sample.renderedLights.records->at(0);
     Require(CurrentSourceVisibility(provisional,physicsView,physicsView.received).status=="unknown"&&
         HideOccludedLight(provisional,physicsView,physicsView.received,true)&&
         !HideOccludedLight(provisional,physicsView,physicsView.received,false),
-        "Recent-blocker hint hides only the filtered presentation, never raw unknown data");
-    pm["reason"]="waiting-for-physics";
+        "Unknown must hide only from the filtered presentation, never raw data");
+    pm["status"]="clear";pm["attenuationFactor"]=1;
+    pm["reason"]=nullptr;pm["volumeAgeMillisecondsAtCapture"]=0;
+    pm["clearSampleCount"]=1;
     physicsView.sample=ParseSample(physics.dump(),now);
     Require(!HideOccludedLight(physicsView.sample.renderedLights.records->at(0),physicsView,physicsView.received,true),
-        "Unrelated pending source must remain visible without a recent blocker");
+        "Fresh clear physics result must be visible in the filtered presentation");
     std::cout<<"PASS HUD source visibility metadata, physics estimates, hiding, freshness and malformed preservation\n";
 }
 void ShortcutTests()

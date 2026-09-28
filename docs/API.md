@@ -24,7 +24,8 @@ camera-to-rendered-source classifier that previously worked live for fires. Its
 new production package and exact binaries still require live and antivirus
 acceptance. The broader player-to-authored-and-rendered-source bridge remains
 isolated under `CDT_RESEARCH=ON`. Original records, raw RGB/luminance, grouping and
-EMA RGB remain unchanged; no source is removed or attenuated by the API.
+EMA RGB remain unchanged in the raw and unfiltered feeds. The separate
+`/v1/lights/visible` feed selects only `clear` contributions before smoothing.
 
 See [source visibility](SOURCE_VISIBILITY.md) for the exact classifier, bounds,
 offline evidence and required live controls. Older packages may omit these fields;
@@ -187,6 +188,8 @@ Responses have camelCase keys. There are no mandatory custom request headers.
 | `GET /v1/snapshot` | 200: latest published snapshot, including a `loading` or `stopped` snapshot. 503: health object if **no snapshot has been published yet**. |
 | `GET /v1/schema` | 200: embedded [JSON Schema](../schema/telemetry-v1.schema.json), draft 2020-12, for snapshot payloads. It does not describe health responses. |
 | `GET /v1/stream` with WebSocket upgrade | 101: WebSocket connection. 400 without an upgrade (`A WebSocket connection is required.`). 403 for a supplied, disallowed `Origin`. |
+| `GET /v1/lights/visible` | 200: grouped/smoothed local lights containing only contributions with `sourceVisibility.status=clear`. Check `status`; an available empty list is valid. |
+| `GET /v1/lights/visible/stream` with WebSocket upgrade | 101: latest-only visible-light stream, same envelope as HTTP and same origin policy as `/v1/stream`. |
 
 There is no pagination, history query, replay cursor, per-client rate parameter or
 delta format. Repeated snapshot GETs can return the same `sequence`.
@@ -409,7 +412,7 @@ Preview.1/2 lacked this bound and could publish camera-attached ghost contributi
 | `luminanceLinear` | Derived RGB luminance using coefficients 0.212671, 0.71516, 0.07216. Not physical brightness. |
 | `kind` | Recognized `point` or `spot`; otherwise omitted. |
 | `direction`, `coneHalfAngleDegrees` | Spotlight emission direction and cone; invalid/unknown direction is omitted. Points have no direction. |
-| `sourceVisibility` | Optional geometric measurement: `clear`/`blocked`/`unknown`. The physics path (production default since 2.2.0) reports the latest complete `physics-ray-fan` result immediately, without motion invalidation or confirmation delay, expiring after 500 ms. A newly moved target near a recent blocker can be `unknown` with reason `pending-near-recent-blocker`; this is a HUD presentation hint, **not** a measured blocked verdict or a durable source ID. Includes sampled path counts, measured camera/capture/age and optional `measurementSequence` / `measuredAtTickMilliseconds` (Windows uptime, not Unix time). This is a measured-pose result, not guaranteed current-pose visibility or optical transmission %. Raw light records stay intact. Legacy SDF metadata remains separate. See [complete contract](SOURCE_VISIBILITY.md). |
+| `sourceVisibility` | Optional geometric measurement: `clear`/`blocked`/`unknown`. The physics path (production default since 2.2.0) reports the latest complete `physics-ray-fan` result immediately, expiring after 500 ms. A newly moved target can be `unknown` while its own rays are pending; no old blocker is reused as its verdict. Includes sampled path counts, measured camera/capture/age and optional `measurementSequence` / `measuredAtTickMilliseconds` (Windows uptime, not Unix time). This is a measured-pose result, not guaranteed current-pose visibility or optical transmission %. Raw light records stay intact. Legacy SDF metadata remains separate. See [complete contract](SOURCE_VISIBILITY.md). |
 
 Diagnostics count active records, published records, malformed records and records
 outside `lights.nearbyRadius`. Unavailable results omit sources/camera/timing and
@@ -689,8 +692,9 @@ HDR-display/game validation or a current full-suite result. The HDR compositor
 does not change API RGB values.
 Frame-generation/coexistence coverage remains incomplete.
 Marker projection uses the latest published camera, not a Present-synchronous
-camera, and performs no screen-depth test. Optional HUD geometry hiding uses
-fresh SDF metadata instead; missing, stale and unknown verdicts remain visible.
+camera, and performs no screen-depth test. With HUD hiding enabled, only fresh
+`clear` source-visibility results are shown; missing, stale and unknown results
+are hidden from that filtered view but remain in the raw API.
 Its current production live acceptance is pending. Display swatches are a
 visualization, not game tone mapping. Generic light-exposure normalization remains
 unfinished. See [current compatibility reports](COMPATIBILITY_ISSUES.md) for the

@@ -49,15 +49,19 @@ within 0.12 gu, while the HUD leaves a newly `unknown` light visible and hides
 it only once `blocked` arrives. The old marker disappears because the moving
 light no longer supplies data at its previous position, not from an occlusion
 decision there. No wall-crossing test is needed to pursue this
-flicker. A bounded provisional display fix is now in source: a pending target
-within 0.75 gu of a blocker measured in the last 250 ms, from a camera within
-0.5 gu, stays `unknown` in the API but is hidden by `HideOccluded` until its new
-ray result. Other unknown/stale lights retain their existing behavior. Managed
-physics tests and overlay tests pass; full managed suite and ASI build pass.
-This has **not** been packaged, installed or live-tested. Do not use sample
-index as a source ID or reuse an old ray as a new physics verdict. Next live
-step requires the game closed for an exact private DMM ZIP install, then an
-in-game moving-torch observation before considering publication.
+flicker. The owner chose a stricter fail-closed display/consumer rule: with
+`HideOccluded=1`, HUD/radar show only fresh `clear` results; blocked, unknown,
+missing and stale records are hidden. The original raw and smoothed API feeds
+stay complete and keep honest `unknown` metadata. A new independent
+`/v1/lights/visible` HTTP/WebSocket feed includes only `clear` contributions
+before grouping/smoothing, for consumers that need a visibility-filtered RGB
+signal. Same-capture clear-to-unknown transitions are applied immediately, with
+no hidden contribution left in EMA RGB. The 250 ms nearby-blocker presentation
+hint was removed. Managed suite, HTTP/WebSocket smoke, native overlay and
+graphics smoke tests pass; exact package installation and
+moving-torch live acceptance are still pending. Do not use sample index as a
+source ID or reuse an old ray as a new physics verdict. Next step requires the
+game closed for a private DMM ZIP install and live observation.
 
 # Previous checkpoint — 2026-09-27, 2.2.1 published on GitHub
 

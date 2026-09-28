@@ -112,4 +112,72 @@ internal static class SmoothedLightTests
         Check(!raw.Reader.TryRead(out _) && state.LatestBytes!.SequenceEqual(expected),"derived fault changed raw endpoint semantics");
         Check(state.Health.ConnectedClients==2,"subscriptions not counted");
     }
+
+    public static void VisibleTransport()
+    {
+        var state=new TelemetryServerState(Json,60,"1.4",new(0));
+        using var raw=state.Subscribe(); using var smooth=state.Subscribe(true); using var visible=state.SubscribeVisible();
+        Check(state.LatestVisible.Status=="unavailable","startup invented visible lights");
+        SourceVisibilitySnapshot Visibility(string status)=>new(status,status=="unknown"?null:status=="clear"?1:0,
+            status=="unknown"?"waiting-for-physics":null,new(0,0,0),1,null,null,null,null,
+            "physics-ray-fan",9,status=="clear"?9:0);
+        RenderedLightSnapshot V(int id,float x,float r,string status)=>Light(id,x,r) with {SourceVisibility=Visibility(status)};
+        TelemetrySnapshot Snapshot(ulong capture,params RenderedLightSnapshot[] sources)
+        {
+            var render=Input(capture,0,sources) with {CapturedAt=DateTimeOffset.UtcNow};
+            var lights=new EngineLightsSnapshot("available","authored",100,[],new(0,0,0,0,0,0,0,0,0,0),Rendered:render);
+            return new TelemetrySnapshot("1.4",(long)capture,DateTimeOffset.UtcNow,new("test","playing"),
+                new("game-unit","right","y"),[],null,null,null,lights);
+        }
+        state.Publish(Snapshot(1,V(0,0,2,"clear"),V(1,.04f,3,"blocked"),V(2,.06f,4,"unknown")),1,0);
+        var derived=state.LatestVisible;
+        Check(derived.Status=="available" && derived.Sources!.Count==1 &&
+            derived.Sources[0].Contributions.Count==1 && derived.Sources[0].ColorLinear.X==2 &&
+            derived.Sources[0].Contributions[0].SourceVisibility!.Status=="clear",
+            "visible stream leaked blocked/unknown contribution or its RGB");
+        Check(state.LatestSmoothed.Sources![0].Contributions.Count==3 && state.LatestSmoothed.Sources[0].ColorLinear.X==9,
+            "visible filtering mutated the unfiltered smoothed stream");
+        Check(state.Latest!.Lights!.Rendered!.Sources!.Count==3,"visible filtering mutated raw stream");
+        Check(raw.Reader.TryRead(out _) && smooth.Reader.TryRead(out _) && visible.Reader.TryRead(out var bytes) &&
+            JsonSerializer.Deserialize<SmoothedLightsSnapshot>(bytes!,Json)!.Sources![0].Contributions.Count==1,
+            "visible WebSocket feed not published independently");
+        // A changed physics verdict on the same GPU capture must immediately
+        // remove the old contribution without retaining its EMA RGB.
+        state.Publish(Snapshot(1,V(0,0,2,"blocked"),V(1,.04f,3,"clear"),V(2,.06f,4,"unknown")),1,0);
+        Check(state.LatestVisible.Status=="available" && state.LatestVisible.Sources![0].Contributions[0].SampleIndex==1 &&
+            state.LatestVisible.Sources[0].ColorLinear.X==3,
+            "same-capture unknown/blocked transition retained an old light or EMA energy");
+        var repeatedVisible = state.LatestVisible.Sources![0].ColorLinear.X;
+        state.Publish(Snapshot(1,V(0,0,2,"blocked"),V(1,.04f,3,"clear"),V(2,.06f,4,"unknown")),1,0);
+        Check(state.LatestVisible.Sources![0].ColorLinear.X==repeatedVisible,
+            "unchanged GPU capture was smoothed twice");
+        state.Publish(Snapshot(2,V(0,0,2,"blocked"),V(1,.04f,3,"clear"),V(2,.06f,4,"unknown")),1,0);
+        Check(state.LatestVisible.Sources![0].Contributions[0].SampleIndex==1 && state.LatestVisible.Sources[0].ColorLinear.X==3,
+            "next capture did not apply the clear-only filter");
+        state.Publish(Snapshot(2,V(0,0,2,"blocked"),V(1,.04f,3,"unknown")),1,0);
+        Check(state.LatestVisible.Status=="available" && state.LatestVisible.Sources!.Count==0,
+            "same-capture clear-to-unknown transition retained a visible ghost");
+        state.Publish(Snapshot(3,V(0,0,2,"blocked"),V(1,.04f,3,"unknown")),1,0);
+        Check(state.LatestVisible.Status=="available" && state.LatestVisible.Sources!.Count==0,
+            "unknown-only capture retained an old visible source");
+        state.Publish(Snapshot(4,Light(0,0)),1,0);
+        Check(state.LatestVisible.Status=="unavailable" && state.LatestVisible.UnavailableReason=="visibility-unavailable",
+            "disabled physics masqueraded as an empty measured scene");
+        var upstream = new UpstreamLightsSnapshot("available",UpstreamLightDecoder.SourceName,5,5,DateTimeOffset.UtcNow,0,2,
+            [new UpstreamLightSnapshot(8,"standalone",null,new(0,0,-20),new(6,0,0),6*.212671f,"point",null,null,
+                false,null,Visibility("clear")),
+             new UpstreamLightSnapshot(9,"standalone",null,new(0,0,20),new(7,0,0),7*.212671f,"point",null,null,
+                true,1,Visibility("blocked"))],
+            new(0,0,2,0,0,0,0,0,0,2,1,0));
+        var input5=Snapshot(5,V(1,20,7,"blocked"));
+        state.Publish(input5 with {Lights=input5.Lights! with {Upstream=upstream}},1,0);
+        Check(state.LatestVisible.Status=="available" &&
+            state.LatestVisible.Source=="spatially-grouped-manylights-input-clear-only" &&
+            state.LatestVisible.Sources!.Single().Position.Z==-20 &&
+            state.LatestVisible.Sources.Single().ColorLinear.X==6,
+            "visible feed ignored a clear behind-camera input or included blocked renderer output");
+        state.SetHealth("error",true,true,"test",0,0,"test failure");
+        Check(state.LatestVisible.Status=="unavailable" && state.LatestVisible.Sources is null,
+            "health error retained visible output");
+    }
 }

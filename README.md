@@ -30,8 +30,10 @@ for Windows. Internal EXE/Steam identifiers are listed under Compatibility.
 
 Per-light visibility is a sampled collision estimate, not a measurement of how
 much light gets through: any free ray counts as visible, all nine blocked as
-blocked, and anything missing, stale or failed stays `unknown` and is never hidden.
-It is **on by default** in 2.2; raw and smoothed light data do not depend on it.
+blocked, and anything missing, stale or failed stays `unknown` in the raw data.
+It is **on by default** in 2.2; raw and unfiltered smoothed light data do not depend on it.
+With `HideOccluded=1`, the HUD shows only fresh `clear` results. The separate
+`/v1/lights/visible` feed applies the same fail-closed rule to grouped/smoothed RGB.
 Methods and limits are in [source visibility](docs/SOURCE_VISIBILITY.md).
 
 [![Crimson Desert Telemetry: fullscreen light details and a 3D radar with the camera frustum](media/screenshot1.jpg)](https://youtu.be/eyRkkTXAU64)
@@ -149,7 +151,7 @@ DurationMilliseconds=6000
 - `HdrPaperWhiteNits` controls all HDR UI brightness, including markers and notices with the corner HUD disabled. The default is 200 nits, clamped to 80–500. It does not change the game's HDR settings or metadata.
 - Radar/marker swatches visualize measured HDR values; they do not reproduce the game's tone mapping. Nearby contributions share a detail box without merging, summing or smoothing their raw measurements.
 - `[SourceVisibility] Enabled=1` (default) casts nine physics rays from the camera to each light within `[LightOverlay] Radius`. Any free ray reports `clear`, all nine blocked reports `blocked`, and missing, stale or failed results stay `unknown`. It is a sampled collision estimate, not optical transmission, and needs `ManyLights=1`. `0` switches it off; all other light data stays unchanged.
-- `HideOccluded=1` or F11 hides lights with a fresh `blocked` result from the HUD/radar; by default they are only dimmed. A pending light within 0.75 game units of a blocker measured in the last 250 ms is also provisionally hidden until its own rays complete, to prevent moving torches flashing through walls. Its API status remains `unknown` with reason `pending-near-recent-blocker`, never a fabricated `blocked` verdict. Other unknown and stale lights remain shown. Raw and smoothed API records and RGB values remain complete.
+- `HideOccluded=1` or F11 shows only lights with a fresh `clear` result in the HUD/radar; `blocked`, `unknown`, missing and stale results are hidden. With the filter off, raw lights remain visible and blocked ones are dimmed. Raw and unfiltered smoothed API records/RGB stay complete; the separate visible API feed contains only `clear` contributions.
 - The camera frustum uses the real basis and view angles; its drawn length is schematic. World X/Z axes are not compass north; player-root orientation is not an animated body pose.
 
 The production `CDT_RESEARCH=OFF` profile contains the continuous physics ray fan
@@ -188,6 +190,8 @@ Connect through **HTTP** at `http://127.0.0.1:27311` or **WebSocket** at `ws://1
 | `GET /v1/health` | Game, compatibility and capture health |
 | `GET /v1/schema` | JSON Schema for the active payload |
 | `WS /v1/stream` | Live JSON messages |
+| `GET /v1/lights/smoothed`, `WS /v1/lights/smoothed/stream` | All current grouped/smoothed light contributions, regardless of visibility. |
+| `GET /v1/lights/visible`, `WS /v1/lights/visible/stream` | Grouped/smoothed light contributions with a `clear` visibility result only; `unknown` and `blocked` contribute nothing. |
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:27311/v1/snapshot

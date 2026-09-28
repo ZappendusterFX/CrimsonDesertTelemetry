@@ -320,7 +320,8 @@ int RunServer(int port, int rateHz, LightOptions lightOptions, LightSmoothingOpt
             name = "Crimson Desert Telemetry",
             schemaVersion = activeSchemaVersion,
             endpoints = new[] { "/v1/health", "/v1/snapshot", "/v1/schema", "/v1/stream",
-                "/v1/lights/smoothed", "/v1/lights/smoothed/stream", "/v1/ambient", "/v1/ambient/stream", "/v1/ambient/schema" }
+                "/v1/lights/smoothed", "/v1/lights/smoothed/stream", "/v1/lights/visible", "/v1/lights/visible/stream",
+                "/v1/ambient", "/v1/ambient/stream", "/v1/ambient/schema" }
         }, jsonOptions));
         app.MapGet("/v1/health", () => Results.Json(state.Health, jsonOptions));
         app.MapGet("/v1/snapshot", () => state.Latest is { } snapshot
@@ -329,10 +330,12 @@ int RunServer(int port, int rateHz, LightOptions lightOptions, LightSmoothingOpt
         app.MapGet("/v1/schema", () => Results.Bytes(LoadEmbeddedSchema(), "application/schema+json"));
         app.Map("/v1/stream", context => StreamWebSocket(context, state, cancellation.Token));
         app.MapGet("/v1/lights/smoothed", () => Results.Json(state.LatestSmoothed, jsonOptions));
+        app.MapGet("/v1/lights/visible", () => Results.Json(state.LatestVisible, jsonOptions));
         app.MapGet("/v1/ambient", () => Results.Json(state.LatestSky, jsonOptions));
         app.MapGet("/v1/ambient/schema", () => Results.Bytes(LoadEmbeddedSchema("ambient-v1.schema.json"), "application/schema+json"));
         app.Map("/v1/ambient/stream", context => StreamWebSocket(context, state, cancellation.Token, sky: true));
         app.Map("/v1/lights/smoothed/stream", context => StreamWebSocket(context, state, cancellation.Token, true));
+        app.Map("/v1/lights/visible/stream", context => StreamWebSocket(context, state, cancellation.Token, visible: true));
 
         Console.Error.WriteLine($"Listening on http://127.0.0.1:{port} at {rateHz} Hz.");
         var samplingTask = Task.Run(() => SampleContinuously(state, rateHz, lightOptions, privateExact, cancellation.Token),
@@ -359,7 +362,8 @@ int RunServer(int port, int rateHz, LightOptions lightOptions, LightSmoothingOpt
     }
 }
 
-async Task StreamWebSocket(HttpContext context, TelemetryServerState state, CancellationToken cancellationToken, bool smoothed = false, bool sky = false)
+async Task StreamWebSocket(HttpContext context, TelemetryServerState state, CancellationToken cancellationToken,
+    bool smoothed = false, bool sky = false, bool visible = false)
 {
     var origin = context.Request.Headers.Origin.ToString();
     if (!string.IsNullOrEmpty(origin) && !IsAllowedBrowserOrigin(origin))
@@ -374,11 +378,13 @@ async Task StreamWebSocket(HttpContext context, TelemetryServerState state, Canc
         return;
     }
     using var socket = await context.WebSockets.AcceptWebSocketAsync();
-    using var subscription = sky ? state.SubscribeSky() : state.Subscribe(smoothed);
+    using var subscription = sky ? state.SubscribeSky() : visible ? state.SubscribeVisible() : state.Subscribe(smoothed);
     using var connectionCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
     try
     {
-        var sendTask = SendSnapshots(socket, subscription, sky ? state.LatestSkyBytes : smoothed ? state.LatestSmoothedBytes : state.LatestBytes, connectionCancellation.Token);
+        var sendTask = SendSnapshots(socket, subscription,
+            sky ? state.LatestSkyBytes : visible ? state.LatestVisibleBytes : smoothed ? state.LatestSmoothedBytes : state.LatestBytes,
+            connectionCancellation.Token);
         var receiveTask = WaitForWebSocketClose(socket, connectionCancellation.Token);
         await Task.WhenAny(sendTask, receiveTask);
         connectionCancellation.Cancel();
