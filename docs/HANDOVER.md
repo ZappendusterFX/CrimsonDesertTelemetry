@@ -1,4 +1,35 @@
-# Current checkpoint — 2026-09-28, world-entry hang recurred
+# Current checkpoint — 2026-09-29, Defender blocked 2.2.2 ASI
+
+The owner could not enable 2.2.2 in DMM (Windows error 225); the game also
+stopped starting with that ASI. Defender Operational events 1116/1117 at
+18:17–18:35 report `Trojan:Win32/Wacatac.C!ml` and quarantine of
+`CrimsonDesertTelemetry.asi` in both game `bin64` and the DMM library. The
+2.2.2 ZIP remains intact (SHA-256
+`FFB74EB94FB4B84A3C3019CBFE5D3BC71BFCDA4A8198ADA9CD882E383F30D442`);
+its ASI is SHA-256 `152C7B72E2D23322D009F6630A8F6BFA50D91756EB929DEB8B4BAAECA7A23A7E`.
+The 2.2.1 and 2.2.2 ASIs have identical length, imported DLLs/functions and
+nearly identical PE section sizes/entropy. No new suspicious import explains
+this verdict. Prior Wacatac toolchain findings are relevant but do not prove
+this new verdict false. At inspection, all six runtime files in DMM and `bin64`
+matched the working 2.2.1 ZIP; no game process was running.
+
+Private production-profile candidate `2.2.3-avfix.1` preserves the 2.2.2
+functional changes. The native HUD filtered-light path now checks freshness on
+the original visibility record rather than copying its strings for every
+marker; `CurrentSourceVisibility` uses the same freshness helper. All seven
+overlay/graphics tests and the maintained DMM package validator pass. A local
+Defender custom scan of a temporary ASI copy under its real filename passed
+without detection, and its hash was unchanged after scanning. ASI SHA-256
+`D53DD63956251E444C92F6F99FA8C65A373F7E7015E4285BA5A30971CA590179`.
+ZIP: `artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.3-avfix.1-ModManagers.zip`,
+SHA-256 `F997C95B7A0DE6351D51760C8E8FD691B51FB61DA202F8B98E497ECB9015BE9D`.
+This is a local scanner result, not a guarantee against later definitions. The
+candidate is not installed, game-tested or published. Only the owner deploys it
+via DMM. Next: owner tries this exact ZIP with the game closed, then checks
+whether DMM enables it and whether the game reaches a progressing telemetry
+feed; preserve Defender events if it recurs.
+
+# Previous checkpoint — 2026-09-28, world-entry hang recurred
 
 Release-package update, 2026-09-28: at the owner's request, production-profile
 `2.2.2` was built from commit `6f058a9` for exact EXE hash

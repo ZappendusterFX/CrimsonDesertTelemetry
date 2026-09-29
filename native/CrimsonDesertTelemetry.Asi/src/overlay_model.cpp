@@ -584,25 +584,32 @@ const LightSummary* DisplayLights(const View& view, const Clock::time_point now,
     if (RenderedLightsLive(view, now, staleMs)) return &view.sample.renderedLights;
     return nullptr;
 }
-SourceVisibility CurrentSourceVisibility(const LightRecord& light,const View& view,const Clock::time_point now)
+namespace
 {
-    auto result=light.sourceVisibility.value_or(SourceVisibility{});
-    if(result.status!="clear"&&result.status!="blocked")return result;
-    const auto unknown=[&](const char* reason)
-    {
-        result.status="unknown";result.reason=reason;result.attenuationFactor.reset();return result;
-    };
+const char* VisibilityExpiryReason(const SourceVisibility& visibility,const View& view,const Clock::time_point now)
+{
     const auto* lights=DisplayLights(view,now,1000);
-    if(!lights)return unknown("stale-source");
-    if(!result.volumeAgeMillisecondsAtCapture||!std::isfinite(*result.volumeAgeMillisecondsAtCapture)||
-        *result.volumeAgeMillisecondsAtCapture<0)return unknown("invalid-metadata");
+    if(!lights)return "stale-source";
+    if(!visibility.volumeAgeMillisecondsAtCapture||!std::isfinite(*visibility.volumeAgeMillisecondsAtCapture)||
+        *visibility.volumeAgeMillisecondsAtCapture<0)return "invalid-metadata";
     // Include transport age as well as time spent in this view. This is a
     // conservative bound; metadata itself remains frozen with its capture.
     // Physics age already starts at native measurement completion. Adding the
     // unrelated GPU readback age again would prematurely expire this sample.
-    const double sourceAge=result.physicsSampled?0:*lights->ageMilliseconds;
-    if(*result.volumeAgeMillisecondsAtCapture+sourceAge+AgeMs(view,now)>(result.physicsSampled?500:1500))
-        return unknown(result.physicsSampled?"stale-physics":"stale-volume");
+    const double sourceAge=visibility.physicsSampled?0:*lights->ageMilliseconds;
+    if(*visibility.volumeAgeMillisecondsAtCapture+sourceAge+AgeMs(view,now)>(visibility.physicsSampled?500:1500))
+        return visibility.physicsSampled?"stale-physics":"stale-volume";
+    return nullptr;
+}
+}
+SourceVisibility CurrentSourceVisibility(const LightRecord& light,const View& view,const Clock::time_point now)
+{
+    auto result=light.sourceVisibility.value_or(SourceVisibility{});
+    if(result.status!="clear"&&result.status!="blocked")return result;
+    if(const char* reason=VisibilityExpiryReason(result,view,now))
+    {
+        result.status="unknown";result.reason=reason;result.attenuationFactor.reset();
+    }
     return result;
 }
 SourceVisibilityCounts CountSourceVisibility(const View& view,const Clock::time_point now,const float radius)
@@ -625,10 +632,10 @@ SourceVisibilityCounts CountSourceVisibility(const View& view,const Clock::time_
 bool HideOccludedLight(const LightRecord& light,const View& view,const Clock::time_point now,const bool hideOccluded)
 {
     if(!hideOccluded)return false;
-    const auto visibility=CurrentSourceVisibility(light,view,now);
     // Filtered presentation is fail-closed: only a fresh measured clear may
-    // appear. Raw records and the unknown/blocked physics metadata stay intact.
-    return visibility.status!="clear";
+    // appear. Check the original record without copying strings for each marker.
+    const auto& visibility=light.sourceVisibility;
+    return !visibility||visibility->status!="clear"||VisibilityExpiryReason(*visibility,view,now);
 }
 void UpdateShortcutToggle(bool& value,bool& wasDown,const int key,const bool isDown,const bool foreground)
 {
