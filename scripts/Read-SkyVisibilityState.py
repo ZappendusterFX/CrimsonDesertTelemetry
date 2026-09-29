@@ -221,6 +221,10 @@ def snapshot(process, pid, asi, game, loaded):
     result["gameDispatchFirstBytes"] = hook.hex(" ") if hook else None
     target = value("dispatchTarget", "<Q")
     result["dispatchTargetMatchesGame"] = target == game + DISPATCH_RVA if target is not None else None
+    execute = value("renderExecuteTarget", "<Q")
+    # Which ExecuteCommandLists the render hook patched: a graphics wrapper's queue
+    # sees wrapper lists, the runtime's queue sees the unwrapped native lists.
+    result["renderExecuteTargetModule"] = module_of(execute, loaded) if execute else None
     active = value("activeList", "<Q")
     if active:
         vtable = read(process, active, 8)

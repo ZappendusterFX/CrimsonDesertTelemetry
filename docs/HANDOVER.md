@@ -26,9 +26,17 @@ and `latestFrame` 45109→45189 in 2 s, visibility frame equal to `latestFrame`,
 GI constants decode `Ok`/clipmap 1. Evidence:
 `artifacts/light-research/sky-visibility-state-34740-20260929-194407.json`.
 
-**Next:** owner restarts unchanged and stays in the main menu; run the reader
-(expect `recorded-before-submission-hook` if the hypothesis holds), then again
-in-world. A stuck `activeList` with a small `latestFrame` confirms the latch.
+Measured, PID 34740 → restart PID 29116 (same ASI hash), main menu:
+`recorded-before-submission-hook`. Copy recorded at `latestFrame` 1, GI world
+(0,0,0), fence 0, render phase `Discover`, ExecuteHook not installed, stable
+over 2 s. `activeList` 0x20C250500 has its vtable in `dxgi.dll` = ReShade 6.8,
+so it is a wrapper list. Evidence:
+`artifacts/light-research/sky-visibility-state-29116-menu-20260929-195346.json`.
+The latch precondition occurs on a normal start; whether it clears is open.
+
+**Next:** owner loads a save; run the reader in-world. Unchanged `activeList`
+with fence 0 confirms the latch; also note `renderExecuteTargetModule`
+(wrapper queue sees wrapper lists, runtime queue sees native lists).
 Only then fix: gate the ambient copy on `CaptureReady` and/or abandon an
 unobserved list after a timeout. Never derive local RGB from global sky.
 
