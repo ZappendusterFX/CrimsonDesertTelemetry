@@ -1,4 +1,26 @@
-# Current checkpoint — 2026-09-29, Defender blocked 2.2.2 ASI
+# Current checkpoint — 2026-09-29, 2.2.3 release package ready for live test
+
+At the owner's request, the 2.2.2 functional changes and native HUD refactor
+are packaged as the final-version **2.2.3 production ZIP**:
+`artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.3-ModManagers.zip`
+(921,294 bytes), SHA-256
+`8088CCABF2F89345A392EC21356336766A13BE002FBEDDE90E1C1D9185CFE99D`.
+The ASI SHA-256 is `D53DD63956251E444C92F6F99FA8C65A373F7E7015E4285BA5A30971CA590179`,
+matching the scanner-clean private candidate. Exact installed game EXE hash
+matches supported Steam build 25477059. Package validation, managed Release
+build and regression suite, HTTP/WebSocket smoke and all 37/37 native tests
+pass. Defender custom scans of temporary copies of the final ASI and ZIP
+passed with unchanged hashes and no new detection events. Details:
+`docs/releases/v2.2.3-validation.md` and release notes `v2.2.3.md`.
+
+The exact 2.2.3 ZIP is **not installed, live-tested, tagged, pushed or published**.
+The owner's standing release gate requires their live confirmation of this
+exact ZIP before GitHub publication. Only the owner installs through DMM;
+the game must be closed first. Next: owner enables this ZIP in DMM, starts the
+game and reports whether it reaches a progressing telemetry feed. Stop here
+until that result; do not infer live success from the local Defender scan.
+
+# Previous checkpoint — 2026-09-29, Defender blocked 2.2.2 ASI
 
 The owner could not enable 2.2.2 in DMM (Windows error 225); the game also
 stopped starting with that ASI. Defender Operational events 1116/1117 at
