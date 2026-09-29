@@ -13,8 +13,8 @@ Private production-profile ZIP (`-Research off`, INI byte-identical to 2.2.3's):
 921,469 bytes, SHA-256 `5BFED5ACC7FD141B23362DA6F246ADC99AE5F8A0C69B52042385D138BCCC5816`;
 ASI `4113097C56F4B9A65A580A7A4E79ED5A9E37E279F01C50C75122F8476201927E`.
 Expanded: `artifacts/mod-manager/v2.2.4-skyvisibility.1-20260929-200842-802-e5dafc0d/`.
-Not installed or live-tested. Owner activates it in DMM himself; never write to
-`bin64`. `Read-SkyVisibilityState.py` has a profile for this ASI; expected menu
+Not installed or live-tested. Only the owner activates it in DMM; never write
+to `bin64`. `Read-SkyVisibilityState.py` has a profile for this ASI; expected menu
 class `gated-until-submission-hook`, in-world `acquisition-cycling`.
 
 **Crash, published 2.2.3 (PID 22304, 20:01):** the last CDT action was the
