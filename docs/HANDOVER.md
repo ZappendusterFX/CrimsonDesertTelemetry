@@ -35,8 +35,16 @@ stale. Native log reached recurring capture ready; no crash this start. The
 latch precondition is measured absent; one start does not bound the rarer
 timeout path. Evidence: `sky-visibility-state-39076-{menu,world}-*.json`.
 
-**Next:** owner decision on removing the world-entry `CreateCommandQueue`
-(crash above); sky fix otherwise ready for a release decision.
+Codex reviewed both (see CAPTURE_ARMING_HANG.md). No objection to the sky fix.
+It notes pre-existing gaps: no timeout after an observed submission, unchecked
+`queue->Signal()`, `GetCompletedValue()` UINT64_MAX treated as complete, and no
+test for late execution of an abandoned list.
+
+**Next (owner go pending):** one private package with (a) those sky-path gaps
+closed, and (b) the hook address taken from the game's swapchain queue when the
+overlay has one. It keeps the device-identity check and falls back to today's
+probe queue otherwise, with a WARP test that a DIRECT-derived hook observes a
+compute copy and fence.
 
 # Previous checkpoint — 2026-09-29, sky-visibility acquisition latch identified in code
 

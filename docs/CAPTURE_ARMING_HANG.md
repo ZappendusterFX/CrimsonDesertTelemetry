@@ -22,14 +22,32 @@ Evidence (copies; saves not copied): `artifacts/crash-reports/local-20260929-200
 with the 17 MB game minidump `b840061a-….dmp`, Sentry event, launcher log and
 the bin64 logs/INIs of that run.
 
-This is the third world-entry failure whose last CDT action is the compute
-probe queue creation (2026-09-27 hang incl. one DEVICE_HUNG, 2026-09-28 hang).
-It is the first with a driver error and a failed creation call. Whether the
+All three world-entry failures involve the probe queue within seconds, but not
+in the same way (corrected after Codex review): on 2026-09-27 the worker was
+blocked in its `Release()`; on 2026-09-28 its creation was ReShade's last line
+but `Prepare()` completed and the hang came later; on 2026-09-29 the creation
+itself failed. Only this run has a driver error and a failed creation. Whether the
 creation triggers the hang, or a hang already under way blocked it for about
 11 s, is not determined. Candidate mitigation, not implemented: no
 `CreateCommandQueue` at world entry, e.g. take ExecuteCommandLists from an
 existing game queue, or create the probe queue while the game creates its own
 queues at startup.
+
+Codex review, 2026-09-29, no code changed. It agrees the probe queue is used
+only to read `vtable[10]`, and that world entry is not technically required.
+Preferred: take the address from an existing game queue and keep hook
+installation at world entry. Conditions: the canonical device identity must
+match `discoverySource`, and the chosen entry must be shown to observe the real
+compute lists (a DIRECT call alone is no proof). It must also not depend on the
+HUD: `overlay_client.cpp:391` installs no graphics hooks when HUD, light
+overlay and notifications are all off, so there is no swapchain queue then.
+COM guarantees no shared implementation address across queue objects. ReShade
+6.8 source uses one proxy class for DIRECT and COMPUTE.
+
+Measured, 2026-09-29, in a separate process on WARP without ReShade (no GPU,
+no game): DIRECT, COMPUTE and COPY queues share vtable `D3D12Core.dll+0x255230`
+and ExecuteCommandLists `D3D12Core.dll+0x11280`. One machine and runtime
+version only, not a general guarantee.
 
 ## Recurrence — 2026-09-28, Codex
 
