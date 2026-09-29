@@ -45,6 +45,19 @@ PROFILES = {
         "rva": {**_COMMON, "submissionObserved": 0x1B33FC, "latestFrame": 0x1B3408,
                 "activeRowPitch": 0x1B3410, "activeList": 0x1B3418, "recordedAt": 0x1B3720,
                 "abandonedCopies": 0x1B3728}},
+    # Private 2.2.4-worldentry.1: submission hook from the presentation queue, hardened readback.
+    "45F89288130352A6D342C10B6231FA7AF4C5CFC79BCDD93C9F9FB7ECA60DE3E6": {
+        "label": "2.2.4-worldentry.1", "onSubmission": 0x646D0, "codeGuard": 0x64E16,
+        "rva": {"readbackBuffer": 0x1B33F0, "readbackFence": 0x1B33F8, "originalDispatch": 0x1B3400,
+                "dispatchTarget": 0x1B3408, "gameBase": 0x1B3410, "sampleAmbient": 0x1B3418,
+                "requestedSources": 0x1B3419, "sampleSources": 0x1B341A, "acquisitionInFlight": 0x1B341B,
+                "submissionObserved": 0x1B341C, "signalFailed": 0x1B341D, "fenceValue": 0x1B3420,
+                "latestFrame": 0x1B3428, "activeRowPitch": 0x1B3430, "activeList": 0x1B3438,
+                "activeGi": 0x1B3440, "recordedAt": 0x1B3740, "submittedAt": 0x1B3748, "abandonedCopies": 0x1B3790,
+                "submissionObserver": 0x173398, "renderPhase": 0x15D070, "renderExecuteEnabled": 0x1726A9,
+                "renderExecuteTarget": 0x173318, "renderPendingList": 0x1727F8,
+                "executeFromPresentation": 0x1726AB, "retainedProbeQueue": 0x1727F0,
+                "presentationExecute": 0x172650, "presentationDevice": 0x172658}},
 }
 # Code bytes that must match the file in memory: spatial::Start's global stores.
 CODE_GUARD_BYTES = 0x60
@@ -204,7 +217,10 @@ def read_sky(pid):
 
 
 BYTE_FIELDS = ("sampleAmbient", "requestedSources", "sampleSources", "acquisitionInFlight",
-               "renderExecuteEnabled", "submissionObserved")
+               "renderExecuteEnabled", "submissionObserved", "signalFailed", "executeFromPresentation")
+POINTER_FIELDS = ("readbackBuffer", "readbackFence", "originalDispatch", "dispatchTarget", "gameBase",
+                  "activeList", "submissionObserver", "renderExecuteTarget", "renderPendingList",
+                  "retainedProbeQueue", "presentationExecute", "presentationDevice")
 
 
 def snapshot(process, pid, asi, game, loaded, profile):
@@ -216,10 +232,13 @@ def snapshot(process, pid, asi, game, loaded, profile):
     missing = [name for name, value in raw.items() if value is None]
     value = lambda name, fmt: struct.unpack(fmt, raw[name])[0] if raw.get(name) is not None else None
     result = {"tickMs": k32.GetTickCount64(), "unreadable": missing}
-    for name in ("readbackBuffer", "readbackFence", "originalDispatch", "dispatchTarget", "gameBase",
-                 "activeList", "submissionObserver", "renderExecuteTarget", "renderPendingList"):
-        v = value(name, "<Q")
-        result[name] = None if v is None else f"0x{v:X}"
+    for name in POINTER_FIELDS:
+        if name in raw:
+            v = value(name, "<Q")
+            result[name] = None if v is None else f"0x{v:X}"
+    if "presentationExecute" in raw:
+        v = value("presentationExecute", "<Q")
+        result["presentationExecuteModule"] = module_of(v, loaded) if v else None
     for name in BYTE_FIELDS:
         if name in raw:
             result[name] = value(name, "<B")
@@ -229,6 +248,8 @@ def snapshot(process, pid, asi, game, loaded, profile):
     if "recordedAt" in raw:
         result["recordedAtTickMs"] = value("recordedAt", "<Q")
         result["abandonedCopies"] = value("abandonedCopies", "<Q")
+    if "submittedAt" in raw:
+        result["submittedAtTickMs"] = value("submittedAt", "<Q")
     phase = value("renderPhase", "<I")
     result["renderPhase"] = RENDER_PHASES[phase] if phase is not None and phase < len(RENDER_PHASES) else phase
     observer = value("submissionObserver", "<Q")

@@ -1,4 +1,35 @@
-# Current checkpoint — 2026-09-29, private sky-visibility fix ZIP; 2.2.3 world-entry GPU hang
+# Current checkpoint — 2026-09-29, private world-entry ZIP (no probe queue, hardened sky readback)
+
+Owner-approved after Codex review. Commit `f89d819`:
+- `Prepare()` takes ExecuteCommandLists from the swapchain queue captured by the
+  overlay (`presentation_queue.h`) if its canonical device equals the capture
+  source's. Then no probe queue is created at world entry. Otherwise (HUD, light
+  overlay and notices all off, or another device) the old probe queue remains.
+  An unobserved compute list still ends in the existing 60 s capture timeout,
+  whose log now names the hook source.
+- Sky readback: failed `Signal`, or a fence incomplete after 5 s, abandons the
+  copy (retained buffer). A completed value of UINT64_MAX stops the path as
+  Unavailable (device removed).
+- Tests: `render-capture-presentation-hook-d3d12` (DIRECT-derived hook observes
+  a compute copy+fence on WARP, no probe queue); `--compute` publishes a foreign
+  identity and must fall back. `spatial-acquire-latch` has 108 checks, incl.
+  late execution of an abandoned list. Five mutations each fail their test.
+  CTest 39/39 on the package tree (`CDT_RESEARCH=OFF`).
+
+ZIP `artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.4-worldentry.1-ModManagers.zip`,
+921,688 bytes, SHA-256 `57316B3AC27DD0A6CC115C7DB4D2C4A91EE56BE8897EE8191343CC14296820B4`;
+ASI `45F89288130352A6D342C10B6231FA7AF4C5CFC79BCDD93C9F9FB7ECA60DE3E6`; INI
+byte-identical to 2.2.3. Expanded: `artifacts/mod-manager/v2.2.4-worldentry.1-20260929-204823-545-92ccd779/`.
+Not installed or live-tested; only the owner activates it in DMM. Reader profile
+added (shows `executeFromPresentation`, `retainedProbeQueue`, hook module).
+
+**Next:** owner installs it and enters the world several times. Per start
+check: native log has `submission hook target from the game's presentation
+queue`; ReShade.log has no world-entry `CreateCommandQueue`; the reader shows
+`acquisition-cycling` with `retainedProbeQueue` 0. A single clean start does not
+show the hang is gone.
+
+# Previous checkpoint — 2026-09-29, private sky-visibility fix ZIP; 2.2.3 world-entry GPU hang
 
 **Fix (commit `cc10a5e`):** `spatial_acquire.cpp` records no ambient copy until
 `OnSubmission` has been called once (proves the render ExecuteHook). A copy
