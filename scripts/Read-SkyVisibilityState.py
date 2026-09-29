@@ -1,14 +1,14 @@
 """Read-only snapshot of the camera sky-visibility acquisition state.
 
-Exact-build diagnostic for the published 2.2.3 ASI only. Reads, never writes:
+Exact-build diagnostic for the ASIs listed in PROFILES only. Reads, never writes:
 the spatial_acquire.cpp statics (Start/Dispatch/OnSubmission/Poll), the render
 submission hook that feeds OnSubmission, the game's dispatch hook bytes, and the
 visibility block of the sky bridge mapping. Takes a bounded series of snapshots so
 progression (or a stuck latch) is visible. No game calls, no hooks, no writes.
 
-The static addresses were read from the disassembly of the exact 2.2.3 ASI
-(SHA-256 below); the script refuses any other ASI. A refused or failed read is
-NOT evidence that a stage is absent.
+The static addresses were read from the disassembly of each exact ASI (SHA-256
+keys below); the script refuses any other ASI. A refused or failed read is NOT
+evidence that a stage is absent.
 """
 import argparse
 import ctypes
@@ -22,23 +22,32 @@ import struct
 import sys
 import time
 
-ASI_SHA256 = "D53DD63956251E444C92F6F99FA8C65A373F7E7015E4285BA5A30971CA590179"
 ASI_NAME = "crimsondeserttelemetry.asi"
 GAME_NAME = "crimsondesert.exe"
 DISPATCH_RVA = 0x389C000  # game, build 25477059
-# ASI RVAs (image base 0x180000000), from dumpbin /disasm of the exact 2.2.3 ASI.
-RVA = {
+# ASI RVAs (image base 0x180000000), from dumpbin /disasm of each exact ASI.
+_COMMON = {
     "readbackBuffer": 0x1B33D0, "readbackFence": 0x1B33D8, "originalDispatch": 0x1B33E0,
     "dispatchTarget": 0x1B33E8, "gameBase": 0x1B33F0, "sampleAmbient": 0x1B33F8,
     "requestedSources": 0x1B33F9, "sampleSources": 0x1B33FA, "acquisitionInFlight": 0x1B33FB,
-    "latestFrame": 0x1B33FC, "fenceValue": 0x1B3400, "activeRowPitch": 0x1B3408,
-    "activeList": 0x1B3410, "activeGi": 0x1B3420,
+    "fenceValue": 0x1B3400, "activeGi": 0x1B3420,
     "submissionObserver": 0x173378, "renderPhase": 0x15D070, "renderExecuteEnabled": 0x172689,
     "renderExecuteTarget": 0x1732F8, "renderPendingList": 0x1727D8,
 }
-ON_SUBMISSION_RVA = 0x64480
+PROFILES = {
+    # Published 2.2.3.
+    "D53DD63956251E444C92F6F99FA8C65A373F7E7015E4285BA5A30971CA590179": {
+        "label": "2.2.3", "onSubmission": 0x64480, "codeGuard": 0x64B46,
+        "rva": {**_COMMON, "latestFrame": 0x1B33FC, "activeRowPitch": 0x1B3408, "activeList": 0x1B3410}},
+    # Private 2.2.4-skyvisibility.1: hook-gated recording and bounded submission timeout.
+    "4113097C56F4B9A65A580A7A4E79ED5A9E37E279F01C50C75122F8476201927E": {
+        "label": "2.2.4-skyvisibility.1", "onSubmission": 0x64480, "codeGuard": 0x64BE6,
+        "rva": {**_COMMON, "submissionObserved": 0x1B33FC, "latestFrame": 0x1B3408,
+                "activeRowPitch": 0x1B3410, "activeList": 0x1B3418, "recordedAt": 0x1B3720,
+                "abandonedCopies": 0x1B3728}},
+}
 # Code bytes that must match the file in memory: spatial::Start's global stores.
-CODE_GUARD_RVA, CODE_GUARD_BYTES = 0x64B46, 0x60
+CODE_GUARD_BYTES = 0x60
 RENDER_PHASES = ["Discover", "Found", "Preparing", "Ready", "Recorded", "Submitting",
                  "WaitingGpu", "Failed", "Stopped"]
 VISIBILITY_STATES = {0: "Unavailable", 1: "Valid", 2: "Fallback"}
@@ -194,29 +203,36 @@ def read_sky(pid):
             "visibilityFrame": vis_frame, "visibilityTickMs": vis_tick}
 
 
-def snapshot(process, pid, asi, game, loaded):
+BYTE_FIELDS = ("sampleAmbient", "requestedSources", "sampleSources", "acquisitionInFlight",
+               "renderExecuteEnabled", "submissionObserved")
+
+
+def snapshot(process, pid, asi, game, loaded, profile):
     raw = {}
-    for name, rva in RVA.items():
-        size = 768 if name == "activeGi" else 1 if name in (
-            "sampleAmbient", "requestedSources", "sampleSources", "acquisitionInFlight", "renderExecuteEnabled") \
+    for name, rva in profile["rva"].items():
+        size = 768 if name == "activeGi" else 1 if name in BYTE_FIELDS \
             else 4 if name in ("latestFrame", "renderPhase") else 8
         raw[name] = read(process, asi + rva, size)
     missing = [name for name, value in raw.items() if value is None]
-    value = lambda name, fmt: struct.unpack(fmt, raw[name])[0] if raw[name] is not None else None
+    value = lambda name, fmt: struct.unpack(fmt, raw[name])[0] if raw.get(name) is not None else None
     result = {"tickMs": k32.GetTickCount64(), "unreadable": missing}
     for name in ("readbackBuffer", "readbackFence", "originalDispatch", "dispatchTarget", "gameBase",
                  "activeList", "submissionObserver", "renderExecuteTarget", "renderPendingList"):
         v = value(name, "<Q")
         result[name] = None if v is None else f"0x{v:X}"
-    for name in ("sampleAmbient", "requestedSources", "sampleSources", "acquisitionInFlight", "renderExecuteEnabled"):
-        result[name] = value(name, "<B")
+    for name in BYTE_FIELDS:
+        if name in raw:
+            result[name] = value(name, "<B")
     result["latestFrame"] = value("latestFrame", "<I")
     result["fenceValue"] = value("fenceValue", "<Q")
     result["activeRowPitch"] = value("activeRowPitch", "<Q")
+    if "recordedAt" in raw:
+        result["recordedAtTickMs"] = value("recordedAt", "<Q")
+        result["abandonedCopies"] = value("abandonedCopies", "<Q")
     phase = value("renderPhase", "<I")
     result["renderPhase"] = RENDER_PHASES[phase] if phase is not None and phase < len(RENDER_PHASES) else phase
     observer = value("submissionObserver", "<Q")
-    result["observerIsSpatialOnSubmission"] = observer == asi + ON_SUBMISSION_RVA if observer is not None else None
+    result["observerIsSpatialOnSubmission"] = observer == asi + profile["onSubmission"] if observer is not None else None
     hook = read(process, game + DISPATCH_RVA, 5)
     result["gameDispatchFirstBytes"] = hook.hex(" ") if hook else None
     target = value("dispatchTarget", "<Q")
@@ -246,6 +262,9 @@ def classify(series):
     progressed = last["fenceValue"] != first["fenceValue"] or last["latestFrame"] != first["latestFrame"]
     if progressed:
         return "acquisition-cycling (state=%s)" % last["sky"].get("visibilityState")
+    if last.get("submissionObserved") == 0 and not last["acquisitionInFlight"]:
+        # Fixed builds record nothing until the render ExecuteHook has called the observer.
+        return "gated-until-submission-hook (expected before the playable-world gate)"
     if not last["acquisitionInFlight"] and not last["fenceValue"] and last["readbackBuffer"] in (None, "0x0"):
         return "no-acquisition-ever-recorded (Dispatch never passed Resolve with sampleAmbient)"
     if last["acquisitionInFlight"] and last["activeList"] not in (None, "0x0") and not last["renderExecuteEnabled"]:
@@ -283,20 +302,22 @@ def main():
             raise SystemExit(f"module lookup failed: asi={asi} game={game}")
         asi_path, asi_base, _ = asi[0]
         digest = hashlib.sha256(open(asi_path, "rb").read()).hexdigest().upper()
-        if digest != ASI_SHA256:
-            raise SystemExit(f"refused: loaded ASI {asi_path} is {digest}, reader is only valid for {ASI_SHA256}")
-        memory = read(process, asi_base + CODE_GUARD_RVA, CODE_GUARD_BYTES)
-        if memory is None or memory != file_bytes_at_rva(asi_path, CODE_GUARD_RVA, CODE_GUARD_BYTES):
+        profile = PROFILES.get(digest)
+        if profile is None:
+            raise SystemExit(f"refused: loaded ASI {asi_path} is {digest}; no profile for it")
+        guard = profile["codeGuard"]
+        memory = read(process, asi_base + guard, CODE_GUARD_BYTES)
+        if memory is None or memory != file_bytes_at_rva(asi_path, guard, CODE_GUARD_BYTES):
             raise SystemExit("refused: in-memory spatial::Start code does not match the ASI file")
         series = []
         for index in range(args.samples):
             if index:
                 time.sleep(args.interval_ms / 1000)
-            series.append(snapshot(process, pid, asi_base, game[0][1], loaded))
+            series.append(snapshot(process, pid, asi_base, game[0][1], loaded, profile))
     finally:
         k32.CloseHandle(process)
     report = {"createdUtc": datetime.datetime.now(datetime.timezone.utc).isoformat(), "pid": pid,
-              "asiPath": asi_path, "asiSha256": digest, "asiBase": f"0x{asi_base:X}",
+              "asiPath": asi_path, "asiSha256": digest, "asiProfile": profile["label"], "asiBase": f"0x{asi_base:X}",
               "gameBase": f"0x{game[0][1]:X}", "classification": classify(series), "snapshots": series}
     text = json.dumps(report, indent=2)
     if args.out:

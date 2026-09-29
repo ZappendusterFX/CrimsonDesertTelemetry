@@ -1,4 +1,34 @@
-# Current checkpoint — 2026-09-29, sky-visibility acquisition latch identified in code
+# Current checkpoint — 2026-09-29, private sky-visibility fix ZIP; 2.2.3 world-entry GPU hang
+
+**Fix (commit `cc10a5e`):** `spatial_acquire.cpp` records no ambient copy until
+`OnSubmission` has been called once (proves the render ExecuteHook). A copy
+unobserved for 5 s is abandoned: its buffer is retained unreleased, a new one
+is used with the same fence; at 8 abandonments per process the path stops and
+publishes Unavailable. New WARP test `spatial-acquire-latch` (70 checks);
+mutations removing the gate or the timeout each fail it. Production CTest
+38/38, managed 79/79, package validators PASS.
+
+Private production-profile ZIP (`-Research off`, INI byte-identical to 2.2.3's):
+`artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.4-skyvisibility.1-ModManagers.zip`,
+921,469 bytes, SHA-256 `5BFED5ACC7FD141B23362DA6F246ADC99AE5F8A0C69B52042385D138BCCC5816`;
+ASI `4113097C56F4B9A65A580A7A4E79ED5A9E37E279F01C50C75122F8476201927E`.
+Expanded: `artifacts/mod-manager/v2.2.4-skyvisibility.1-20260929-200842-802-e5dafc0d/`.
+Not installed or live-tested. Owner activates it in DMM himself; never write to
+`bin64`. `Read-SkyVisibilityState.py` has a profile for this ASI; expected menu
+class `gated-until-submission-hook`, in-world `acquisition-cycling`.
+
+**Crash, published 2.2.3 (PID 22304, 20:01):** the last CDT action was the
+world-entry compute probe queue creation (ReShade 20:01:16, CDT worker TID
+27760). nvlddmkm 153 followed at 20:01:23; `CreateCommandQueue` returned
+E_OUTOFMEMORY (native log 20:01:27), and the game crashed with
+DXGI_ERROR_DEVICE_HUNG at 20:01:28. Correlation, not proven cause. Unrelated
+to the sky fix, which does not touch this. Evidence: `artifacts/crash-reports/local-20260929-2001/`,
+details in `docs/CAPTURE_ARMING_HANG.md`.
+
+**Next:** owner tests the ZIP (menu + world reads). Separately, owner decision
+on removing the world-entry `CreateCommandQueue`.
+
+# Previous checkpoint — 2026-09-29, sky-visibility acquisition latch identified in code
 
 2.2.3 is published on GitHub; no release work remains. Diagnosis only; no
 product source, INI or package changed. Stage of the failed run is still NOT

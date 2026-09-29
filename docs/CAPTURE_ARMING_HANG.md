@@ -1,5 +1,36 @@
 # Capture arming hang at world entry — 2026-09-27, Claude → Codex
 
+## Recurrence with GPU error and game crash — 2026-09-29, Claude
+
+Published 2.2.3 (installed ASI SHA-256 `D53DD639…0179`, unchanged INI), game
+PID 22304 started 19:59:46, save loaded 20:00:25–29. Measured sequence:
+
+- 20:01:16.135 ReShade 6.8: `ID3D12Device::CreateCommandQueue`, type 2
+  (compute), TID 27760. A heuristic stack scan of the crash dump finds
+  CrimsonDesertTelemetry.asi return addresses on TID 27760 (the CDT worker,
+  back in an ntdll wait at crash time).
+- Native log: playable-world signal, then `readback and fence ready; acquiring
+  queue hook target`, then `ManyLights disabled after capture failure
+  0x8007000E` (file written 20:01:27). At that stage only `CreateCommandQueue`
+  stores its HRESULT, so the probe queue creation returned E_OUTOFMEMORY.
+- 20:01:23 System log `nvlddmkm` 153 on GPUID b00; the first nvlddmkm event
+  in three days.
+- 20:01:28 the game's crash reporter: `DXGI_ERROR_DEVICE_HUNG (887a0006)`,
+  raised by game thread 34876. Memory load 82%, 5.6 GiB physical free.
+
+Evidence (copies; saves not copied): `artifacts/crash-reports/local-20260929-2001/`
+with the 17 MB game minidump `b840061a-….dmp`, Sentry event, launcher log and
+the bin64 logs/INIs of that run.
+
+This is the third world-entry failure whose last CDT action is the compute
+probe queue creation (2026-09-27 hang incl. one DEVICE_HUNG, 2026-09-28 hang).
+It is the first with a driver error and a failed creation call. Whether the
+creation triggers the hang, or a hang already under way blocked it for about
+11 s, is not determined. Candidate mitigation, not implemented: no
+`CreateCommandQueue` at world entry, e.g. take ExecuteCommandLists from an
+existing game queue, or create the probe queue while the game creates its own
+queues at startup.
+
 ## Recurrence — 2026-09-28, Codex
 
 The owner reported many clean runs with the private
