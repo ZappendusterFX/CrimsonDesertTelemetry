@@ -1,4 +1,4 @@
-# Current checkpoint — 2026-09-29, 2.2.3 release package ready for live test
+# Current checkpoint — 2026-09-29, 2.2.3 live test passed with optional sky gap
 
 At the owner's request, the 2.2.2 functional changes and native HUD refactor
 are packaged as the final-version **2.2.3 production ZIP**:
@@ -13,12 +13,18 @@ pass. Defender custom scans of temporary copies of the final ASI and ZIP
 passed with unchanged hashes and no new detection events. Details:
 `docs/releases/v2.2.3-validation.md` and release notes `v2.2.3.md`.
 
-The exact 2.2.3 ZIP is **not installed, live-tested, tagged, pushed or published**.
-The owner's standing release gate requires their live confirmation of this
-exact ZIP before GitHub publication. Only the owner installs through DMM;
-the game must be closed first. Next: owner enables this ZIP in DMM, starts the
-game and reports whether it reaches a progressing telemetry feed. Stop here
-until that result; do not infer live success from the local Defender scan.
+The owner enabled this exact ZIP in DMM and reported that the game runs. All
+six deployed runtime files in DMM and `bin64` match the ZIP. A read-only live
+check showed `playing`, supported build, advancing health sequence 6465→12972,
+global sky capture sequence 216→432 and recurring native ManyLights capture.
+The owner also reported missing Camera Sky Visibility/local RGB. The ambient
+API has fresh global sky but `visibility: null`; the sky bridge's visibility
+state/frame/tick are all zero after several minutes. This optional path was
+also absent in a 2.1.14 session on the same patch; the 2.2.3 code did not
+change its spatial acquisition. The exact native reason remains unknown.
+Release notes and validation now state this limitation explicitly. The owner
+has confirmed the exact ZIP's DMM/game startup, satisfying the live release
+gate. Next: GitHub-only publication of the exact immutable ZIP; no Nexus upload.
 
 # Previous checkpoint — 2026-09-29, Defender blocked 2.2.2 ASI
 
