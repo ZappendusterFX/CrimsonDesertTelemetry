@@ -66,13 +66,6 @@ Complete ZIP contents do not prove complete manager deployment. JSON Mod Manager
 and manual ASI-loader installation need the same files; their current full
 installation/uninstallation matrix remains pending.
 
-Compatibility fix retained from 2.1.11: an overlay-owned DXGI reference could keep
-an old flip-model swapchain alive while NVIDIA Streamline or the game replaced it
-for the same window. That failure was observed as CreateSwapChainForHwnd
-E_ACCESSDENIED. Automated nested/startup-style and runtime display/HDR replacement
-tests pass. One of the two reporters confirmed the fix; the second has not
-reported back. Include a DMM support bundle if a crash persists.
-
 Controls and configuration
 --------------------------
 The supplied INI enables the supported telemetry, ambient, upstream-light,

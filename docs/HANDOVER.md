@@ -17,13 +17,13 @@ PUBLIC_DESCRIPTIONS:
   pending" sentence.
 - Added the missing 2.2.3 CHANGELOG entry.
 
-Left open for the owner: README says both Streamline reporters' confirmation is
-pending, while the packaged README says one confirmed (no evidence found in docs).
-The Nexus BBCode is still the 2.2.1 text; not updated for this GitHub-only release.
+Owner decisions: the Streamline paragraph was removed from README.md and the
+packaged README source (the built 2.2.4 ZIP keeps it, owner accepted). The
+exact-ZIP live-confirmation rule was removed from AGENTS.md/CLAUDE.md. The Nexus
+BBCode is still the 2.2.1 text; not updated for this GitHub-only release.
 `docs/OVERLAY_VALIDATION.md` still says no all-features live run passed.
 
-**Next:** owner installs this exact ZIP via DMM and confirms one start (project
-rule). Then push main plus tag `v2.2.4`. The release workflow creates a *draft*
+**Next:** push main plus tag `v2.2.4`. The release workflow creates a *draft*
 with a CI-built ZIP; replace that asset with the exact local ZIP, verify the
 digest, publish as latest. GitHub only; `gh` is not installed on this machine.
 

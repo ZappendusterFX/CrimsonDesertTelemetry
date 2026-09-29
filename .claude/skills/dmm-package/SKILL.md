@@ -116,7 +116,7 @@ wait or poll; the owner returns with a result. The handover contains:
 4. Exactly what to look at in the game, and which log line proves the feature
    started (`CrimsonDesertTelemetry.native.log` / `.bootstrap.log` beside the game EXE).
 
-## 7. Release only: after the owner confirms the exact ZIP
+## 7. Release only: after the owner's release go
 
 The live test covers these exact bytes. If anything changes afterwards, build a
 new version instead of rebuilding the same one.

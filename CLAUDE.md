@@ -4,7 +4,8 @@ Documentation is for the assistants, not homework for the user.
 
 Current user priority (2026-09-26): release 2.2.0 = all-around ManyLights input
 plus physics source visibility, ON by default in production (owner decision).
-Publish on GitHub only, and only after the owner live-confirms the exact ZIP.
+Publish on GitHub only. No separate live confirmation of the exact release ZIP
+is required (owner decision, 2026-09-29).
 GitHub owner is now ZappendusterFX (formerly fabianviol). Light switching is
 deferred. Read HANDOVER first. Preserve published packages and historical crash
 evidence. This does not authorize unrelated fixes.
@@ -32,8 +33,5 @@ evidence. This does not authorize unrelated fixes.
 - Old research paths under `C:\DEV\CrimsonHue` map to this repository after the 2026-09-06 migration.
 - Antivirus detections: [docs/ANTIVIRUS_FINDINGS.md](docs/ANTIVIRUS_FINDINGS.md) records what was MEASURED. Microsoft's Wacatac verdict is toolchain drift, proven by rebuilding the 2.0.0 source today, and no feature removal fixes it. Bitdefender's Barys signature is pinned to commit 6937fa9, the bounded repeated readback series. Do not cut functionality on a hunch; both detections were misattributed at first glance.
 - Build 25246367: current production Ambient Occlusion passed controlled open/enclosed/open validation on 2026-09-12. Production per-light source visibility is still under implementation/validation; preserved research success is not production acceptance. Exact state and evidence are in `docs/HANDOVER.md`. Hardcoded native anchors also live in `spatial_acquire.cpp`; verify the applicable anchors after any update.
-- For 2.1.12, release acceptance requires the exact ZIP live test of the supported
-  telemetry, ManyLights, ambient and HUD paths. Per-light geometric visibility is
-  not an acceptance criterion while explicitly experimental and default-off. Keep
-  raw/EMA light records intact and research preserved. Do not claim the visibility
-  classifier is reliable or complete.
+- Keep raw/EMA light records intact and research preserved. Do not claim the
+  visibility classifier is reliable or complete.

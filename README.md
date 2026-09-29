@@ -241,13 +241,6 @@ patch version. Older
 player/camera profiles remain preserved; they do not establish compatibility of
 the current native package with an older or unknown game executable.
 
-Version 2.1.11 addresses a DXGI swapchain-lifetime defect found while investigating
-two NVIDIA Streamline crash reports. Telemetry now releases its old flip-model
-swapchain references before Streamline or the game creates a replacement for the
-same window. Automated nested and runtime replacement tests pass; confirmation on
-the two external reporter systems remains pending. Evidence stays in
-[compatibility issues](docs/COMPATIBILITY_ISSUES.md).
-
 Native capture validates the EXE, hook instructions and surrounding caller/binding contexts before instrumentation. Shared build contracts and the read-only command below help recover after updates:
 
 ```powershell
