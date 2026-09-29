@@ -1,4 +1,38 @@
-# Current checkpoint — 2026-09-29, camera sky visibility recovered on a later start
+# Current checkpoint — 2026-09-29, sky-visibility acquisition latch identified in code
+
+2.2.3 is published on GitHub; no release work remains. Diagnosis only; no
+product source, INI or package changed. Stage of the failed run is still NOT
+measured.
+
+Code path (`spatial_acquire.cpp`, production): `Start` enables the GI dispatch
+hook at process start. `Dispatch` records one copy whenever `Resolve` passes and
+nothing is in flight, then sets `activeList` and `acquisitionInFlight`.
+`OnSubmission` is called ONLY from render_capture's `ExecuteHook`, which is
+installed in `Prepare` after the playable-world gate. `Poll` returns while
+`activeList` is set. There is no timeout or re-arm. A copy recorded on a list
+that is not submitted again after that hook exists therefore stops the path
+permanently, and `PublishVisibility` is never called: state/frame/tick stay 0,
+exactly the failed signature. Unavailable publication also zeroes frame/tick,
+so the bridge alone cannot separate the two. Measured precedent (2026-09-23,
+same hook and `Resolve`): SDF acquisition caught loading frames 7/8 before
+the gate. SDF was then gated on `CaptureReady`; the ambient copy never was.
+Leading hypothesis, not proven for the failed run.
+
+New read-only reader `scripts/Read-SkyVisibilityState.py` (exact 2.2.3 ASI
+hash, in-memory code guard; RVAs from `dumpbin /disasm`, no PDB exists) reads the
+spatial statics, render hook state, game hook bytes and sky visibility block,
+and classifies the stage. Control in the working PID 34740: fence 30943→31002
+and `latestFrame` 45109→45189 in 2 s, visibility frame equal to `latestFrame`,
+GI constants decode `Ok`/clipmap 1. Evidence:
+`artifacts/light-research/sky-visibility-state-34740-20260929-194407.json`.
+
+**Next:** owner restarts unchanged and stays in the main menu; run the reader
+(expect `recorded-before-submission-hook` if the hypothesis holds), then again
+in-world. A stuck `activeList` with a small `latestFrame` confirms the latch.
+Only then fix: gate the ambient copy on `CaptureReady` and/or abandon an
+unobserved list after a timeout. Never derive local RGB from global sky.
+
+# Previous checkpoint — 2026-09-29, camera sky visibility recovered on a later start
 
 After the 2.2.3 release, the owner disabled CrimsonDesertNpcSpawn in DMM and
 camera sky visibility/local ambient RGB became available. The owner then enabled
