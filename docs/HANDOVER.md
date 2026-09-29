@@ -42,7 +42,8 @@ exactly two lists, 0x20C250500 and 0x20FE53F40. The frame-1 list is one of the
 two in-world lists, so its first observed submission cleared the latch.
 Evidence: `sky-visibility-state-29116-world-20260929-195621.json` and
 `sky-visibility-active-lists-29116-*.json` in `artifacts/light-research/`.
-Minor: that first publish carries frame 1 / GI world (0,0,0) with a current tick.
+Minor, from code (not observed): that first publish carries frame 1 / GI world
+(0,0,0) with a current tick.
 
 Conclusion: the precondition occurs on normal starts; recovery depends on the
 frame-1 list being reused after the hook exists. The failed run's stage is
