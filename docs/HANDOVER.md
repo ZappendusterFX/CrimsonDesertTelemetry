@@ -1,4 +1,33 @@
-# Current checkpoint — 2026-09-29, private world-entry ZIP (no probe queue, hardened sky readback)
+# Current checkpoint — 2026-09-29, 2.2.4 release ZIP built, awaiting exact-ZIP confirmation
+
+The owner reported six clean starts of `2.2.4-worldentry.1` in all combinations
+and asked for a GitHub release plus a full description review. Release ZIP:
+`artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.4-ModManagers.zip`, SHA-256
+`0F3E5A2BA34CA410981BF045485CB1F7FBEAD1BE82C229F611E983AD95A8DD6B`, from commit
+`ef5d98a`. The ASI is byte-identical to the live-tested `worldentry.1` ASI.
+Details: `docs/releases/v2.2.4-validation.md`; notes: `docs/releases/v2.2.4.md`.
+
+Description review, corrected in README, packaged README, INI comments and
+PUBLIC_DESCRIPTIONS:
+- F11/HideOccluded shows only fresh clear lights (texts claimed unknown stays
+  shown, or described a removed 250 ms blocker hint).
+- Local sky no longer described as unavailable for whole sessions.
+- DMM leftovers also in 3.1.1; `/v1/lights/visible` added to the packaged README.
+- Documented the UI-off probe-queue fallback; removed the stale "live run
+  pending" sentence.
+- Added the missing 2.2.3 CHANGELOG entry.
+
+Left open for the owner: README says both Streamline reporters' confirmation is
+pending, while the packaged README says one confirmed (no evidence found in docs).
+The Nexus BBCode is still the 2.2.1 text; not updated for this GitHub-only release.
+`docs/OVERLAY_VALIDATION.md` still says no all-features live run passed.
+
+**Next:** owner installs this exact ZIP via DMM and confirms one start (project
+rule). Then push main plus tag `v2.2.4`. The release workflow creates a *draft*
+with a CI-built ZIP; replace that asset with the exact local ZIP, verify the
+digest, publish as latest. GitHub only; `gh` is not installed on this machine.
+
+# Previous checkpoint — 2026-09-29, private world-entry ZIP (no probe queue, hardened sky readback)
 
 Owner-approved after Codex review. Commit `f89d819`:
 - `Prepare()` takes ExecuteCommandLists from the swapchain queue captured by the
