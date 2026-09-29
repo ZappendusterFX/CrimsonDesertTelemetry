@@ -356,8 +356,14 @@ bounded unwind ranges, not complete cross-range control flow or runtime unpackin
   inspect parameters before use, do not regenerate the research instead.
 - Binary comparisons: `Get-FileHash -Algorithm SHA256`; source comparisons:
   `git diff` / `git diff --check`. No custom comparison service is needed.
-- GitHub/Nexus publishing previously used web interfaces; no new publishing
-  automation is claimed here. Building a diagnostic ZIP does not publish it.
+- GitHub releases: `C:\Program Files\GitHub CLI\gh.exe` (not on PATH in older
+  shells), logged in as ZappendusterFX. Pushing a `v*` tag makes the Release
+  workflow create a draft with a CI-built ZIP. Replace that asset with the
+  validated local ZIP, then publish:
+  `gh release upload <tag> <zip> --clobber`, then
+  `gh release edit <tag> --notes-file docs/releases/<tag>.md --draft=false --latest`.
+  Verify the asset digest. Use absolute links in release notes; relative ones 404
+  in release bodies. Nexus stays manual. Building a diagnostic ZIP does not publish it.
 
 ## Shell traps that have cost time here
 

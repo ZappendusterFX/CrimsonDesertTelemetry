@@ -1,4 +1,28 @@
-# Current checkpoint — 2026-09-29, 2.2.4 release ZIP built, awaiting exact-ZIP confirmation
+# Current checkpoint — 2026-09-29, 2.2.4 published on GitHub
+
+[GitHub release v2.2.4](https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/tag/v2.2.4)
+is public and latest. Its asset is the exact local ZIP (SHA-256
+`0F3E5A2BA34CA410981BF045485CB1F7FBEAD1BE82C229F611E983AD95A8DD6B`), verified by
+GitHub's digest and an unauthenticated download. The CI-built draft asset was
+replaced before publication. Nexus untouched. Details:
+`docs/releases/v2.2.4-validation.md`.
+
+Publishing route from now on: the GitHub CLI is installed at
+`C:\Program Files\GitHub CLI\gh.exe` and logged in as ZappendusterFX (keyring).
+- Push the tag; the Release workflow creates a draft with a CI-built ZIP.
+- `gh release upload <tag> <local zip> --clobber` replaces that asset.
+- `gh release edit <tag> --notes-file ... --draft=false --latest` publishes.
+- Verify the digest.
+
+Release notes need absolute links: GitHub rewrites relative links in release
+bodies to 404 paths. Both links in the published v2.2.3 notes are broken
+(left unchanged).
+
+No open release work. Remaining open items: the sporadic world-entry hang,
+since six clean starts are no proof; Nexus BBCode still at 2.2.1;
+`docs/OVERLAY_VALIDATION.md` wording.
+
+# Previous checkpoint — 2026-09-29, 2.2.4 release ZIP built, awaiting exact-ZIP confirmation
 
 The owner reported six clean starts of `2.2.4-worldentry.1` in all combinations
 and asked for a GitHub release plus a full description review. Release ZIP:
