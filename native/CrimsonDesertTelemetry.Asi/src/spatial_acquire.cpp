@@ -48,9 +48,11 @@ std::mutex acquireMutex;
 // one was recorded at frame 1 and cleared only because that list happened to be
 // reused in-world (measured 2026-09-29). Record only once a call proves the hook.
 std::atomic<bool> submissionObserved{};
-// A list that is still unobserved after this is abandoned and the copy re-armed.
-constexpr uint64_t SubmissionTimeoutMs = 5000;
-uint64_t recordedAt = 0;
+// A list still unobserved after this, a failed Signal, or a fence still
+// incomplete after the GPU timeout abandons the copy and re-arms it.
+constexpr uint64_t SubmissionTimeoutMs = 5000, GpuTimeoutMs = 5000;
+uint64_t recordedAt = 0, submittedAt = 0;
+bool signalFailed = false;
 // An abandoned list can still be submitted unobserved and then write its buffer.
 // Such a buffer is never read or released again, not even at unload; bounded.
 constexpr size_t MaximumAbandonedCopies = 8;
@@ -94,8 +96,25 @@ void OnSubmission(ID3D12CommandQueue* queue, UINT count, ID3D12CommandList* cons
     
     if (listFound) {
         fenceValue++;
-        queue->Signal(readbackFence.Get(), fenceValue);
+        // A failed Signal leaves this value unreachable; Poll abandons the copy.
+        signalFailed = FAILED(queue->Signal(readbackFence.Get(), fenceValue));
+        submittedAt = GetTickCount64();
         activeList = nullptr;
+    }
+}
+
+// Caller holds acquireMutex.
+void Abandon()
+{
+    abandonedBuffers[abandonedCopies++] = readbackBuffer.Detach();
+    activeList = nullptr;
+    acquisitionInFlight = false;
+    signalFailed = false;
+    if (abandonedCopies == MaximumAbandonedCopies)
+    {
+        // Stop re-arming for this process instead of retaining more buffers.
+        sampleAmbient = false;
+        sky::PublishVisibility(0.0, sky::Visibility::Unavailable, 0, 0);
     }
 }
 
@@ -235,22 +254,29 @@ void Poll()
     }
     if(sampleSources)sdf::acquire::Poll();
     std::lock_guard<std::mutex> lock(acquireMutex);
-    if (acquisitionInFlight && activeList && GetTickCount64() - recordedAt > SubmissionTimeoutMs)
+    if (!acquisitionInFlight) return;
+    const auto now = GetTickCount64();
+    if (activeList)
     {
-        abandonedBuffers[abandonedCopies++] = readbackBuffer.Detach();
-        activeList = nullptr;
-        acquisitionInFlight = false;
-        if (abandonedCopies == MaximumAbandonedCopies)
-        {
-            // Stop re-arming for this process instead of retaining more buffers.
-            sampleAmbient = false;
-            sky::PublishVisibility(0.0, sky::Visibility::Unavailable, 0, 0);
-        }
+        if (now - recordedAt > SubmissionTimeoutMs) Abandon();
         return;
     }
-    if (!acquisitionInFlight || !readbackFence || !readbackBuffer || activeList) return;
-
-    if (readbackFence->GetCompletedValue() >= fenceValue)
+    if (!readbackFence || !readbackBuffer) return;
+    if (signalFailed) { Abandon(); return; }
+    const auto completed = readbackFence->GetCompletedValue();
+    if (completed == UINT64_MAX)
+    {
+        // Device removed: this is not a completed copy. Never map or re-arm.
+        acquisitionInFlight = false;
+        sampleAmbient = false;
+        sky::PublishVisibility(0.0, sky::Visibility::Unavailable, 0, 0);
+        return;
+    }
+    if (completed < fenceValue)
+    {
+        if (now - submittedAt > GpuTimeoutMs) Abandon();
+        return;
+    }
     {
         void* mappedData = nullptr;
         if (SUCCEEDED(readbackBuffer->Map(0, nullptr, &mappedData)))

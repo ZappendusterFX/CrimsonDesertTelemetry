@@ -1,5 +1,6 @@
 #include "overlay.h"
 #include "overlay_hdr.h"
+#include "presentation_queue.h"
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <wrl/client.h>
@@ -516,6 +517,7 @@ void Track(IUnknown* suppliedDevice, IDXGISwapChain* chain) noexcept
         state.renderer.reset();
         state.candidate = chain3;
         state.queue = queue;
+        render::presentation_queue::Publish(queue.Get());
         state.window = desc.OutputWindow;
         state.failed = false;
         state.changingColorSpace = state.explicitColorSpace = false;

@@ -253,6 +253,8 @@ target_compile_options(CrimsonDesertTelemetryRenderCaptureSmoke PRIVATE "$<$<COM
 target_link_libraries(CrimsonDesertTelemetryRenderCaptureSmoke PRIVATE cdt_sdf minhook d3d12 dxgi d3dcompiler psapi user32)
 add_test(NAME render-capture-d3d12 COMMAND CrimsonDesertTelemetryRenderCaptureSmoke)
 add_test(NAME render-capture-compute-d3d12 COMMAND CrimsonDesertTelemetryRenderCaptureSmoke --compute)
+add_test(NAME render-capture-presentation-hook-d3d12 COMMAND CrimsonDesertTelemetryRenderCaptureSmoke --compute-presentation)
+set_tests_properties(render-capture-presentation-hook-d3d12 PROPERTIES TIMEOUT 20)
 add_test(NAME manylights-pair-d3d12 COMMAND CrimsonDesertTelemetryRenderCaptureSmoke --manylights-pair)
 set_tests_properties(manylights-pair-d3d12 PROPERTIES TIMEOUT 20)
 add_test(NAME manylights-upstream-d3d12 COMMAND CrimsonDesertTelemetryRenderCaptureSmoke --upstream)

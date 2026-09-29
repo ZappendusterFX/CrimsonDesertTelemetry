@@ -5,6 +5,7 @@
 #include "render_bridge.h"
 #include "sky_bridge.h"
 #include "device_identity.h"
+#include "presentation_queue.h"
 #include "native_contract.generated.h"
 #include <d3d12.h>
 #include <d3d12sdklayers.h>
@@ -32,6 +33,7 @@ void CaptureAmbient(uint64_t sky, uint64_t command, uint64_t path);
 void EnableSkyForTest();
 bool InitializePairForTest(const wchar_t* directory);
 bool InitializeUpstreamForTest();
+bool ProbeQueueCreatedForTest();
 }
 // The smoke executable links only memory/log support from imported research.
 namespace cdt::instruments { bool OwnsCodeAddress(uint64_t) { return false; } }
@@ -158,7 +160,11 @@ int main(int argc, char** argv)
     submissionObserver=ObserveSubmission;
     const bool rejectCounterDevice=argc==2 && std::string(argv[1])=="--counter-device";
     const bool reshadeComputeTest=argc==2 && std::string(argv[1])=="--compute-reshade";
-    const bool computeTest=reshadeComputeTest || (argc==2 && std::string(argv[1])=="--compute");
+    // Hook address taken from a DIRECT presentation queue must still observe the
+    // compute capture list and its fence, without creating a probe queue.
+    const bool presentationTest=argc==2 && std::string(argv[1])=="--compute-presentation";
+    const bool plainComputeTest=argc==2 && std::string(argv[1])=="--compute";
+    const bool computeTest=reshadeComputeTest || presentationTest || plainComputeTest;
     const bool ambientTest=argc==2 && std::string(argv[1])=="--ambient";
     const bool mixedTest=argc==2 && (std::string(argv[1])=="--sky-shared" || std::string(argv[1])=="--sky-first");
     const bool skyFirst=argc==2 && std::string(argv[1])=="--sky-first";
@@ -643,6 +649,15 @@ int main(int argc, char** argv)
         std::cout<<"Ambient WARP: explicit named-event start, idle ignores loading, repeated bounded runs preserve fence ordering/files, busy requests discarded, fault/stop prevent restart; resource guards, both producers, exact bytes/provenance and no API leak.\n";
         return 0;
     }
+    ComPtr<ID3D12CommandQueue> presentationQueue;
+    if (presentationTest || plainComputeTest)
+    {
+        D3D12_COMMAND_QUEUE_DESC direct{}; direct.Type=D3D12_COMMAND_LIST_TYPE_DIRECT;
+        Hr(device->CreateCommandQueue(&direct,IID_PPV_ARGS(&presentationQueue)),"presentation queue");
+        if (presentationTest) presentation_queue::Publish(presentationQueue.Get());
+        // A queue of another device must be refused: the probe queue remains the fallback.
+        else presentation_queue::Publish((*reinterpret_cast<void***>(presentationQueue.Get()))[10], factory.Get());
+    }
     InitializeCaptureForTest(reinterpret_cast<uint64_t>(fakeBase));
     Check(!CaptureReady(), "loading world opened the SDF acquisition gate");
     const auto capture=[&] {
@@ -668,6 +683,8 @@ int main(int argc, char** argv)
     PollCapture(); // prepare readback and install real same-device submission hook
     CheckCapture(std::strcmp(CapturePhaseForTest(),"ready (no copy recorded)")==0,
         bridge,device.Get(),"capture preparation did not become ready");
+    Check(ProbeQueueCreatedForTest()==!presentationTest, presentationTest ?
+        "probe queue created despite a matching presentation queue" : "fallback probe queue missing");
     capture();
     CheckCapture(std::strcmp(CapturePhaseForTest(),"recorded (not submitted)")==0,
         bridge,device.Get(),"capture step did not record a GPU copy");

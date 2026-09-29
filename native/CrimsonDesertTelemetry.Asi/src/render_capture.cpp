@@ -5,6 +5,7 @@
 #include "render_bridge.h"
 #include "sky_bridge.h"
 #include "device_identity.h"
+#include "presentation_queue.h"
 #include "light_modulator.h"
 #include "modulator_bridge.h"
 #include "native_contract.generated.h"
@@ -49,6 +50,7 @@ IUnknown* preparedDeviceIdentity{};
 // at world entry has blocked inside the driver on a real hung startup. The ASI is
 // process-lifetime, so keep this bounded queue until process exit.
 ID3D12CommandQueue* retainedProbeQueue{};
+bool executeFromPresentation{};
 ID3D12GraphicsCommandList* pendingList{};
 D3D12_COMMAND_LIST_TYPE queueType = D3D12_COMMAND_LIST_TYPE_DIRECT;
 std::array<uint8_t, SceneBytes> scene{};
@@ -512,14 +514,28 @@ bool Prepare()
     }
     if (FAILED(hr)) { device->Release(); error = static_cast<uint32_t>(hr); return false; }
     ch::Log("ManyLights capture preparation: readback and fence ready; acquiring queue hook target.");
-    // Obtain the real ExecuteCommandLists implementation from THIS source's
-    // device, avoiding a wrong WARP/adapter/system-D3D12 function address.
-    D3D12_COMMAND_QUEUE_DESC queueDesc{};
-    queueDesc.Type = queueType;
-    hr = device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&retainedProbeQueue));
-    if (FAILED(hr)) { device->Release(); error = static_cast<uint32_t>(hr); return false; }
-    executeTarget = (*reinterpret_cast<void***>(retainedProbeQueue))[10];
-    ch::Log("ManyLights capture preparation: queue created; installing submission hook.");
+    // Prefer the game's own presentation queue on THIS source's device: no extra
+    // queue at world entry. Whether its entry also sees the compute lists is
+    // proven only by an observed submission; otherwise the submission timeout
+    // stops capture. Without a matching queue (HUD off), keep the probe queue.
+    const auto presentation = presentation_queue::Current();
+    executeFromPresentation = presentation.execute && presentation.device == preparedDeviceIdentity;
+    if (executeFromPresentation)
+    {
+        executeTarget = presentation.execute;
+        ch::Log("ManyLights capture preparation: submission hook target from the game's presentation queue; no probe queue created.");
+    }
+    else
+    {
+        // Obtain the real ExecuteCommandLists implementation from THIS source's
+        // device, avoiding a wrong WARP/adapter/system-D3D12 function address.
+        D3D12_COMMAND_QUEUE_DESC queueDesc{};
+        queueDesc.Type = queueType;
+        hr = device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&retainedProbeQueue));
+        if (FAILED(hr)) { device->Release(); error = static_cast<uint32_t>(hr); return false; }
+        executeTarget = (*reinterpret_cast<void***>(retainedProbeQueue))[10];
+        ch::Log("ManyLights capture preparation: queue created; installing submission hook.");
+    }
     const auto create = MH_CreateHook(executeTarget, ExecuteHook, reinterpret_cast<void**>(&executeOriginal));
     const auto enable = create == MH_OK ? MH_EnableHook(executeTarget) : create;
     // Do not release the probe queue here. Its last Release can enter a graphics
@@ -922,7 +938,8 @@ void PollCapture()
     const auto now = GetTickCount64();
     if (phase == Phase::Recorded && now - issuedAt > SubmissionTimeoutMs)
     {
-        ch::Log("Capture submission timeout: recorded command list was not observed within %llu ms.", SubmissionTimeoutMs);
+        ch::Log("Capture submission timeout: recorded command list was not observed within %llu ms (hook target: %s).",
+            SubmissionTimeoutMs, executeFromPresentation ? "presentation queue" : "probe queue");
         Fail(WAIT_TIMEOUT);
     }
     else if (phase == Phase::WaitingGpu && now - submittedAt > GpuTimeoutMs)
@@ -1034,6 +1051,7 @@ bool InitializeAmbientForTest(uint64_t moduleBase, const wchar_t* directory)
     return ambientAcceptRequests;
 }
 uint32_t AmbientSamplesForTest() { return ambientSamples; }
+bool ProbeQueueCreatedForTest() { return retainedProbeQueue != nullptr; }
 void EnableSkyForTest() { skyStreaming = true; }
 
 const char* CapturePhaseForTest()
