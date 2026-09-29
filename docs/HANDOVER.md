@@ -37,8 +37,21 @@ added (shows `executeFromPresentation`, `retainedProbeQueue`, hook module).
 
 Evidence: `artifacts/light-research/sky-visibility-state-36256-world-*.json`.
 
-**Next:** further world entries by the owner; per start the same three checks.
-One clean start does not show the sporadic hang is gone.
+**Live start 2 without ReShade, PID 39772:** the owner renamed `dxgi.dll` to
+`dxgi.dll.disabled` and disabled Crimson Weather in DMM. The process loads
+System32 `dxgi.dll` and no ReShade module. It uses the game's Agility runtime
+`bin64\D3D12\D3D12Core.dll`, not the System32 one measured on WARP.
+- Native log: presentation-queue hook target, no probe queue.
+- Reader: hook = presentation entry = `D3D12Core.dll+0x3370`, `retainedProbeQueue` 0.
+  Fence 1158→1213 in 1.8 s, `Valid`, 0 abandoned.
+- Rendered/upstream lights: capture sequence 572→582. This shows live that the
+  DIRECT-queue entry also observes the game's compute capture list in this runtime.
+- Local ambient RGB available.
+
+Evidence: `sky-visibility-state-39772-noreshade-*.json`.
+
+**Next:** further world entries (with and without ReShade) by the owner; per
+start the same checks. Two clean starts do not show the sporadic hang is gone.
 
 # Previous checkpoint — 2026-09-29, private sky-visibility fix ZIP; 2.2.3 world-entry GPU hang
 
