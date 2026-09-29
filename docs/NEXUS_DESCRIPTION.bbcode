@@ -1,89 +1,88 @@
-[size=5][b]Crimson Desert Telemetry 2.2.1[/b][/size]
+[size=5][b]Crimson Desert Telemetry[/b][/size]
+[b]Live lights all around the player—including behind the camera—with light occlusion checks on by default.[/b]
 
-[b]All-around engine lights and physics visibility remain on by default. Version 2.2.1 improves visibility stability and ReShade 6.8 capture compatibility.[/b]
-
-Telemetry now reads the game's light-source data [b]before the renderer's view-dependent filtering[/b]. Turning away no longer means losing those sources from your radar or telemetry stream. The game's own physics queries estimate whether geometry blocks the path from the camera to each nearby light.
+Telemetry reads the game's current light data [b]before the renderer's view-dependent filtering[/b]. Turning away no longer removes those sources from the radar or telemetry stream. The game's physics queries estimate whether geometry blocks the path from the camera to each nearby light.
 
 [b]Supports Crimson Desert patch 2.03.02 on Steam for Windows.[/b]
 
-[size=4][b]What's new in 2.2.1[/b][/size]
-
+[size=4][b]What's new in 2.2.4[/b][/size]
 [list]
-[*][b]Visibility stability:[/b] continuous physics queries use the validated game-query context, preventing the synchronized false-clear flashes observed in 2.2.0.[/*]
+[*][b]Camera-local sky visibility fixed:[/b] camera sky visibility and the derived local ambient estimate no longer stay unavailable for a whole session. Their GPU copy could start during loading, before Telemetry's submission hook existed. It now starts only once that hook is active.[/*]
+[*][b]More robust sky readback:[/b] a copy that is not submitted or not completed within 5 seconds is discarded and retried. A removed graphics device reports the field as unavailable instead of a sample.[/*]
+[*][b]No extra Direct3D 12 queue at world entry:[/b] Telemetry now finds the game's command submission function through the game's own presentation queue. It no longer creates its own queue while the world loads, a step that coincided with a rare GPU hang. With HUD, markers and notices all disabled, the previous method remains as fallback.[/*]
+[*][b]Corrected texts:[/b] the INI and README now describe F11 correctly: it shows only lights with a fresh clear result.[/*]
+[/list]
+Six test starts with and without ReShade were clean. That does not prove the rare world-entry hang is gone. If the game hangs while entering the world, please report it with the four CrimsonDesertTelemetry*.log files beside the game EXE.
+
+[size=4][b]Also included[/b][/size]
+[list]
+[*][b]Clear-only light stream (2.2.3):[/b] HTTP and WebSocket endpoints provide grouped, smoothed light data containing only contributions measured as clear.[/*]
+[*][b]Fail-closed HUD filtering (2.2.3):[/b] with light hiding enabled, blocked, unknown, missing and stale results stay out of the markers and radar. A moving light is not briefly shown merely because its next physics result is pending.[/*]
+[*][b]Raw data preserved:[/b] the original and unfiltered smoothed streams still contain all captured contributions. Unknown remains unknown in their metadata; it is not falsely reported as blocked.[/*]
+[*][b]All-around light capture:[/b] current engine lights remain available beyond the camera's view, including behind you.[/*]
+[*][b]Light occlusion checks:[/b] nine physics rays sample the path from the camera toward each nearby light. Results are clear, blocked or unknown. Enabled by default.[/*]
+[*][b]Decoded fire groups:[/b] particle groups become summed light contributions instead of dozens of separate particle records. One physical fire can still produce several contributions.[/*]
+[*][b]3D radar and fullscreen markers:[/b] filled dots indicate renderer-selected lights; hollow rings indicate current sources the renderer did not select for this view. Hollow does not mean OFF.[/*]
 [*][b]ReShade 6.8 compatibility:[/b] native capture recognizes the same D3D12 device through ReShade's proxy while still rejecting a different device.[/*]
-[*][b]Capture startup:[/b] the probe command queue stays alive through the process lifetime, and preparation stages are logged for diagnosis.[/*]
 [*][b]Optional lightshow bridge:[/b] a separate companion can temporarily modulate ManyLights RGB through a local bridge that disengages when its heartbeat expires. The companion is not included in this ZIP.[/*]
 [/list]
 
-[size=4][b]All-around light features introduced in 2.2[/b][/size]
-
-[list]
-[*][b]All-around light capture:[/b] current engine lights remain available beyond the camera's view, including behind you.[/*]
-[*][b]Physics-based occlusion:[/b] nine rays sample the path from the camera toward each light. Results are clear, blocked or unknown. Enabled by default.[/*]
-[*][b]Fire groups decoded:[/b] particle groups become summed light contributions instead of dozens of separate particle records. One physical fire can still produce several contributions.[/*]
-[*][b]Updated radar and markers:[/b] filled dots indicate renderer-selected lights; hollow rings indicate current sources the renderer did not select for this view. Hollow does not mean OFF.[/*]
-[*][b]API schema 1.6:[/b] adds lights.upstream, renderer-selection information and physics visibility metadata while preserving the existing rendered-light stream.[/*]
-[*][b]All-around smoothing:[/b] the separate grouped and smoothed stream now uses upstream light data when enabled.[/*]
-[/list]
-
 [size=4][b]What you get[/b][/size]
-
 [list]
 [*][b]Light data:[/b] world position, linear HDR RGB, derived luminance, and direction/cone angle for recognized spotlight contributions.[/*]
-[*][b]Raw and smoothed streams:[/b] retain the original contributions or use a separate spatially grouped, configurable smoothing feed for your own applications.[/*]
+[*][b]Three ways to consume lights:[/b] complete raw contributions, a separate grouped and smoothed feed, or the clear-only grouped and smoothed feed.[/*]
 [*][b]Player and camera:[/b] player position and root orientation, plus native render-camera position, orientation and projection parameters.[/*]
-[*][b]Ambient/sky:[/b] global sky RGB, with optional camera-local sky visibility and a derived local ambient estimate when available.[/*]
+[*][b]Ambient/sky:[/b] global sky RGB, plus camera-local sky visibility and a derived local ambient estimate whenever a valid sample exists. These local fields are optional and can be null.[/*]
 [*][b]Two in-game views:[/b] fullscreen light markers with detail cards and a player-centered 3D radar with the camera frustum.[/*]
 [*][b]Local HTTP/WebSocket APIs:[/b] use the data in overlays, tools, research or external lighting integrations.[/*]
 [*][b]Single ASI:[/b] automatic host startup, configurable hotkeys, status notices and SDR/HDR10/scRGB UI.[/*]
 [/list]
 
 [url=https://youtu.be/eyRkkTXAU64]Watch the telemetry and HUD demonstration[/url]
-The video shows an earlier version; all-around source capture and physics visibility were introduced in 2.2.0.
+The video shows an earlier version; all-around capture and light occlusion were introduced in 2.2.0.
+[img]https://raw.githubusercontent.com/ZappendusterFX/CrimsonDesertTelemetry/v2.2.4/media/screenshot1.jpg[/img]
 
-[img]https://raw.githubusercontent.com/ZappendusterFX/CrimsonDesertTelemetry/v2.2.1/media/screenshot1.jpg[/img]
-
-[size=4][b]How light visibility works[/b][/size]
-
-The mod casts nine physics rays from the [b]camera position[/b] toward points around each light, including sources behind the camera.
-
+[size=4][b]How light occlusion works[/b][/size]
+The mod casts nine physics rays from the [b]camera position[/b] toward points around each nearby light, including sources behind the camera.
 [list]
 [*][b]Clear:[/b] at least one sampled path is unobstructed.[/*]
 [*][b]Blocked:[/b] all nine sampled paths are obstructed.[/*]
 [*][b]Unknown:[/b] the measurement is missing, invalid, incomplete or older than 500 ms.[/*]
 [/list]
+This helps distinguish a wall from a lantern's metal cage: a cage bar can block the center ray while neighboring rays still pass through.
 
-This helps distinguish a wall from a lantern's metal cage: a cage bar can block the center ray while neighboring rays still pass through. Blocked markers are dimmed by default; press F11 to hide them. Unknown sources are not hidden.
+By default, blocked markers are dimmed. Press [b]F11[/b] to show [b]only lights measured as clear[/b] in both the fullscreen markers and radar. Blocked and unknown lights are hidden in this filtered view. Press F11 again to return to the complete view.
 
-[b]This is a sampled collision estimate, not optical transmission or a percentage of visible brightness.[/b] Narrow gaps can produce clear paths, while geometry without suitable collision may not block the queries.
+[b]This is a sampled collision estimate, not optical transmission or a percentage of visible brightness.[/b] Narrow gaps can produce clear paths, while geometry without suitable collision may not block the queries. A newly moved light may briefly be unknown while its next measurement is pending.
 
 The supplied radius is [b]100 game units around the player[/b], configurable from 1 to 500 through LightOverlay/Radius. Rays still originate at the camera. Up to 256 targets share a bounded query budget; crowded scenes can refresh individual lights less frequently.
 
-Visibility metadata never removes API light records or changes their RGB. The smoothed colors are not automatically reduced by occlusion; consumers can use the supplied visibility metadata for their own filtering.
+The [b]raw and existing smoothed API streams remain complete[/b]: visibility metadata does not remove their light records or change their RGB. For applications that want only clear contributions, use:
+[code]
+GET /v1/lights/visible
+WS  /v1/lights/visible/stream[/code]
+This separate feed filters contributions [b]before[/b] grouping and smoothing, so blocked or unknown RGB does not leak into a visible group's color. If visibility data is unavailable, the feed reports unavailable rather than pretending the scene contains no lights.
 
-To disable physics visibility:
-
+To disable light occlusion checks:
 [code]
 [SourceVisibility]
 Enabled=0[/code]
+The raw light data remains available; the clear-only feed then cannot provide measured visible lights.
 
 [size=4][b]Install or upgrade[/b][/size]
-
 Requires:
 [list]
 [*]Windows x64 and Crimson Desert patch [b]2.03.02[/b] on Steam.[/*]
 [*]Microsoft [b].NET 8 ASP.NET Core Runtime (x64)[/b].[/*]
 [*]One compatible x64 ASI loader installed for the game.[/*]
 [/list]
-
 [list]
 [*]Close Crimson Desert before installing, updating or removing Telemetry.[/*]
 [*]Back up your INI preferences. Disable/remove the previous Telemetry package and any separate legacy console ASI.[/*]
-[*]Import and [b]activate/deploy[/b] the complete CrimsonDesertTelemetry-v2.2.1-ModManagers.zip in your mod manager. Importing alone is insufficient.[/*]
+[*]Import and [b]activate/deploy[/b] the complete CrimsonDesertTelemetry-v2.2.4-ModManagers.zip in your mod manager. Importing alone is insufficient.[/*]
 [*]Keep all six runtime files together beside the game EXE. Do not mix versions.[/*]
 [*]Merge your preferences into the new INI, launch the game and load a save.[/*]
 [/list]
-
 [code]
 CrimsonDesertTelemetry.asi
 CrimsonDesertTelemetry.Core.dll
@@ -93,113 +92,28 @@ crimson-desert-telemetry.deps.cfg
 crimson-desert-telemetry.runtimeconfig.cfg[/code]
 
 [b]DMM upgrade note:[/b] Local tests with DMM 2.8.1 and 3.1.1 found that removal/upgrades can leave old Telemetry companions behind. With the game closed and the old package removed, check these four files before redeploying. Remove only stale Telemetry copies, not your ASI loader:
-
 [code]
 CrimsonDesertTelemetry.Core.dll
 crimson-desert-telemetry.dll
 crimson-desert-telemetry.deps.cfg
 crimson-desert-telemetry.runtimeconfig.cfg[/code]
-
 Keep the .cfg filenames unchanged. Renaming them to .json can make DMM interpret them as game patches.
 
 Supplied defaults:
-
 [code]
 [Lights]
 Upstream=1
-
 [SourceVisibility]
 Enabled=1
-
 [LightOverlay]
 Radius=100
 HideOccluded=0[/code]
-
 Restart the game after INI changes. Hot-unloading is unsupported.
 
 [size=4][b]Controls[/b][/size]
-
 [list]
 [*][b]F8:[/b] show/hide the corner HUD and 3D radar.[/*]
 [*][b]F9:[/b] show/hide detailed diagnostics.[/*]
 [*][b]F10:[/b] show/hide fullscreen light markers.[/*]
-[*][b]F11:[/b] hide/show freshly classified blocked lights in both light views.[/*]
+[*][b]F11:[/b] toggle between all captured lights and clear-only lights in both in-game views.[/*]
 [/list]
-
-All four shortcuts are configurable in the INI using decimal Windows virtual-key codes; 0 disables a shortcut. Hiding the HUD does not stop telemetry. Automatic hiding in every game menu is not implemented.
-
-Brief success notices appear when data becomes ready. Startup and compatibility errors provide visible status information. Unsupported executables are rejected rather than using guessed addresses.
-
-[size=4][b]HTTP and WebSocket[/b][/size]
-
-The server binds to local IPv4 loopback only:
-
-[code]
-GET http://127.0.0.1:27311/v1/snapshot
-GET http://127.0.0.1:27311/v1/health
-GET http://127.0.0.1:27311/v1/schema
-WS  ws://127.0.0.1:27311/v1/stream
-
-GET http://127.0.0.1:27311/v1/lights/smoothed
-WS  ws://127.0.0.1:27311/v1/lights/smoothed/stream
-
-GET http://127.0.0.1:27311/v1/ambient
-GET http://127.0.0.1:27311/v1/ambient/schema
-WS  ws://127.0.0.1:27311/v1/ambient/stream[/code]
-
-Snapshot schema 1.6 exposes [b]lights.upstream[/b] alongside the existing rendered records. Renderer selection and geometric visibility are separate: a source can be outside the view but still have a clear path to the camera.
-
-The smoothed feed groups nearby contributions and applies a configurable exponential smoothing filter, defaulting to 200 ms. With upstream capture enabled, it reports unavailable when that source is missing rather than silently switching to view-filtered data. The HUD can fall back to rendered data and labels this [b]RENDERED ONLY[/b].
-
-[url=https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/API.md]API reference[/url]
-[url=https://github.com/ZappendusterFX/CrimsonDesertTelemetry/tree/main/examples]Client examples[/url]
-
-The telemetry API does not switch game lights or control physical lamps. The optional lightshow bridge is separate and changes RGB only while its companion is active.
-
-[size=4][b]Data limits and compatibility[/b][/size]
-
-[b]All-around does not mean a permanent registry of every lamp in the world.[/b] The upstream stream covers supported light records the engine currently supplies before view selection. Streaming and earlier engine decisions still limit coverage. A missing record does not prove a lamp is OFF.
-
-A physical lamp can have multiple contributions. Group positions can be derived centers, and proximity grouping is not proven object identity. Authored, rendered and upstream arrays overlap: do not add them together.
-
-Special negative-RGB/view-space records are excluded from the upstream stream and counted in diagnostics. The existing rendered stream remains available separately.
-
-Linear HDR RGB is renderer data, not lumens, 0–255 color or final screen pixels. Values can exceed 1.0. Tone mapping and physical-lamp conversion belong to the consuming application.
-
-[b]Camera-local sky visibility and derived local ambient RGB remain optional.[/b] They can be unavailable for an entire session on patch 2.03.02 even while global sky RGB works. Check availability and freshness.
-
-[b]No NVIDIA or DLSS requirement.[/b] Neither Nsight nor PIX is needed to run the mod. Capture and UI use DirectX 12. SDR, HDR10 and FP16 scRGB have automated test coverage; live HDR-display and AMD/Intel game testing remain unverified.
-
-Technical compatibility identifiers: EXE 1.0.0.2976, Steam build 25477059. A future game update can require a mod update.
-
-[size=4][b]Validation and support[/b][/size]
-
-The 2.2.1 production package passed the managed Release suite, [b]37/37 native tests[/b] and package validation. The focused visibility correction was confirmed in game. The sporadic capture-start hang's root cause remains unproven.
-
-[url=https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/releases/v2.2.1-validation.md]2.2.1 validation record[/url]
-
-If a startup error or crash occurs, include the game crash record and these logs from beside the game EXE:
-
-[code]
-CrimsonDesertTelemetry.bootstrap.log
-CrimsonDesertTelemetry.host.log
-CrimsonDesertTelemetry.native.log
-CrimsonDesertTelemetry.overlay.log[/code]
-
-The release retains the earlier host-startup and swapchain-lifetime fixes. WebView is not a runtime requirement. Historical GPU hangs were recorded, but their causes were not conclusively established; a successful test is not a promise of compatibility with every system.
-
-[url=https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/tag/v2.2.1]GitHub release and source[/url]
-
-ZIP SHA-256:
-[code]
-BD83103552B69CE10847313EF39E22FC9676FF03C4CCE3AD7135CD5549D7DF12[/code]
-
-[size=4][b]Credits[/b][/size]
-
-Created by [b]ZappendusterFX[/b], developed with [b]Claude and Codex (OpenAI)[/b].
-
-Special thanks to [url=https://github.com/Moon-yungg/crimson-desert-world-builder]Moon-yungg and the World Builder project[/url] for the camera-compatibility contribution and engine research that helped unlock the physics-query approach.
-
-Additional community research, dependencies and licenses are credited in the [url=https://github.com/ZappendusterFX/CrimsonDesertTelemetry]repository[/url]. Contributions, testing and pull requests are welcome.
-
-MIT-licensed unofficial community project; not affiliated with Pearl Abyss.

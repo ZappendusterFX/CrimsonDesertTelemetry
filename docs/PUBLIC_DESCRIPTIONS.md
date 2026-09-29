@@ -1,8 +1,8 @@
 # Public descriptions — 2.2.4, 2026-09-29
 
-The ready-to-paste Nexus BBCode has not been updated since 2.2.1-era text and
-is not part of the GitHub-only 2.2.4 release; review it before any Nexus upload.
-The general feature draft below describes the 2.2 line as of 2.2.4. The GitHub owner is now
+The ready-to-paste Nexus BBCode is updated for 2.2.4. It is based on the owner's
+live 2.2.3 Nexus text. The general feature draft below describes the 2.2 line as
+of 2.2.4. The GitHub owner is now
 [ZappendusterFX](https://github.com/ZappendusterFX); old `fabianviol` links
 redirect, but current texts use the new name. Earlier release notes and the
 handover history keep their original links.
