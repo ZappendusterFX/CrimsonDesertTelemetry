@@ -34,9 +34,24 @@ so it is a wrapper list. Evidence:
 `artifacts/light-research/sky-visibility-state-29116-menu-20260929-195346.json`.
 The latch precondition occurs on a normal start; whether it clears is open.
 
-**Next:** owner loads a save; run the reader in-world. Unchanged `activeList`
-with fence 0 confirms the latch; also note `renderExecuteTargetModule`
-(wrapper queue sees wrapper lists, runtime queue sees native lists).
+In-world, same PID, owner confirmed it works: `acquisition-cycling`, fence
+791→846 and frame 10213→10287 in 1.8 s, `Valid`. The render hook patched
+ReShade's queue (`dxgi.dll+0x1347E0`), so it sees wrapper lists, consistent with
+`activeList`. A 5 s read-only sampling found the GI copy alternating between
+exactly two lists, 0x20C250500 and 0x20FE53F40. The frame-1 list is one of the
+two in-world lists, so its first observed submission cleared the latch.
+Evidence: `sky-visibility-state-29116-world-20260929-195621.json` and
+`sky-visibility-active-lists-29116-*.json` in `artifacts/light-research/`.
+Minor: that first publish carries frame 1 / GI world (0,0,0) with a current tick.
+
+Conclusion: the precondition occurs on normal starts; recovery depends on the
+frame-1 list being reused after the hook exists. The failed run's stage is
+still not measured (no reader ran in it).
+
+**Next (owner decision):** fix = record no ambient copy until the render
+submission hook is installed, plus a bounded submission timeout. That needs a
+new version; 2.2.3 stays unchanged. On any recurrence first run
+`Read-SkyVisibilityState.py` (expect `recorded-before-submission-hook`).
 Only then fix: gate the ambient copy on `CaptureReady` and/or abandon an
 unobserved list after a timeout. Never derive local RGB from global sky.
 
