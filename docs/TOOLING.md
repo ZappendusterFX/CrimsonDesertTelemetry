@@ -364,6 +364,9 @@ bounded unwind ranges, not complete cross-range control flow or runtime unpackin
   `gh release edit <tag> --notes-file docs/releases/<tag>.md --draft=false --latest`.
   Verify the asset digest. Use absolute links in release notes; relative ones 404
   in release bodies. Nexus stays manual. Building a diagnostic ZIP does not publish it.
+- If `git push` fails with `could not read Username` (Git Credential Manager gave
+  no credential after the gh login), push once with gh as helper, without
+  changing config: `git -c credential.helper= -c "credential.helper=!'C:/Program Files/GitHub CLI/gh.exe' auth git-credential" push origin main`.
 
 ## Shell traps that have cost time here
 
