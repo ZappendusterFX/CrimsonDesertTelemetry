@@ -23,11 +23,22 @@ byte-identical to 2.2.3. Expanded: `artifacts/mod-manager/v2.2.4-worldentry.1-20
 Not installed or live-tested; only the owner activates it in DMM. Reader profile
 added (shows `executeFromPresentation`, `retainedProbeQueue`, hook module).
 
-**Next:** owner installs it and enters the world several times. Per start
-check: native log has `submission hook target from the game's presentation
-queue`; ReShade.log has no world-entry `CreateCommandQueue`; the reader shows
-`acquisition-cycling` with `retainedProbeQueue` 0. A single clean start does not
-show the hang is gone.
+**Live start 1, PID 36256 (owner DMM install, all six runtime files = ZIP):**
+- Native log: `submission hook target from the game's presentation queue; no
+  probe queue created`, then recurring capture ready.
+- ReShade.log: exactly 12 `CreateCommandQueue` calls, all on the game thread
+  during startup (20:53:50–20:54:05), none at world entry. The crash run had
+  the same 12 plus CDT's.
+- Reader: `acquisition-cycling`, `executeFromPresentation` 1,
+  `retainedProbeQueue` 0; hook and presentation entry are both
+  `dxgi.dll+0x1347E0`. Fence 1599→1654 in 1.8 s, 0 abandoned, `Valid`.
+- API: rendered and upstream lights available, capture sequence 1195→1205;
+  local ambient RGB available, not stale.
+
+Evidence: `artifacts/light-research/sky-visibility-state-36256-world-*.json`.
+
+**Next:** further world entries by the owner; per start the same three checks.
+One clean start does not show the sporadic hang is gone.
 
 # Previous checkpoint — 2026-09-29, private sky-visibility fix ZIP; 2.2.3 world-entry GPU hang
 
