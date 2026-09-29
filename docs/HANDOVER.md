@@ -25,8 +25,18 @@ DXGI_ERROR_DEVICE_HUNG at 20:01:28. Correlation, not proven cause. Unrelated
 to the sky fix, which does not touch this. Evidence: `artifacts/crash-reports/local-20260929-2001/`,
 details in `docs/CAPTURE_ARMING_HANG.md`.
 
-**Next:** owner tests the ZIP (menu + world reads). Separately, owner decision
-on removing the world-entry `CreateCommandQueue`.
+**Live, owner-installed via DMM, PID 39076 (all six runtime files = ZIP):**
+main menu `gated-until-submission-hook`: no copy, no buffer, fence/frame 0,
+observer not yet called, render `Discover` (2.2.3 had a frame-1 copy here).
+In-world `acquisition-cycling`: observed 1, fence 707→765 and frame
+7342→7414 in 1.8 s, `Valid`, visibility frame = `latestFrame`, 0 abandoned.
+`/v1/ambient`: visibility 0.333 age 16 ms, local ambient RGB available, not
+stale. Native log reached recurring capture ready; no crash this start. The
+latch precondition is measured absent; one start does not bound the rarer
+timeout path. Evidence: `sky-visibility-state-39076-{menu,world}-*.json`.
+
+**Next:** owner decision on removing the world-entry `CreateCommandQueue`
+(crash above); sky fix otherwise ready for a release decision.
 
 # Previous checkpoint — 2026-09-29, sky-visibility acquisition latch identified in code
 
