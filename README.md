@@ -7,7 +7,11 @@ Inspect positions, colors and brightness of current light contributions from fir
 **New in 2.2:**
 
 - **Lights all around you.** Telemetry now reads the game's light list *before* the renderer discards what the current view cannot see. Lights behind the camera and out of view stay in the API, radar and markers. A fire bowl arrives as one light instead of many flickering particles.
-- **Which lights actually reach you.** The game's own physics casts nine rays from the camera to every nearby light. A wall blocks all nine; a lantern cage blocks only some, so the lantern stays visible. The HUD dims blocked lights (F11 hides them) and the API reports `clear` / `blocked` / `unknown` per light.
+- **Which lights actually reach you.** The game's own physics casts nine rays from the camera to every nearby light. A wall blocks all nine; a lantern cage blocks only some, so the lantern stays visible. The HUD dims blocked lights (F11 shows only fresh `clear` ones) and the API reports `clear` / `blocked` / `unknown` per light.
+
+**Fixed in 2.2.4:** camera-local sky visibility and the local ambient estimate no
+longer stay unavailable for a whole session, and no extra Direct3D 12 queue is
+created at world entry. See the [2.2.4 release notes](docs/releases/v2.2.4.md).
 
 [Published downloads](https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases)
 · [Watch the demo](https://youtu.be/eyRkkTXAU64)
@@ -17,10 +21,11 @@ Inspect positions, colors and brightness of current light contributions from fir
 The [grouped and smoothed local-light stream](docs/SMOOTHED_LIGHTS.md) retains
 the original contributions. The separate [ambient feed](docs/AMBIENT_STREAM.md)
 carries global sky RGB. Camera-local sky visibility and its derived working RGB
-estimate are available only when the native spatial sample succeeds; on patch
-2.03.02 they have also remained unavailable for an entire live session. Those
-fields are nullable and must not be treated as guaranteed output. Global sky RGB
-itself remains unoccluded.
+estimate are available only when the native spatial sample succeeds. Before
+2.2.4 a startup race could leave them unavailable for a whole session; that
+cause is fixed. They remain nullable, for example where the engine's sky volume
+does not cover the camera, and must not be treated as guaranteed output. Global
+sky RGB itself remains unoccluded.
 
 The product goal is to answer both **how exposed the player/camera location is to
 the sky and environment** and **which individual nearby game lights can actually
@@ -51,7 +56,7 @@ Methods and limits are in [source visibility](docs/SOURCE_VISIBILITY.md).
 | **Fullscreen light overlay** | Markers at projected light positions; aim toward a source to inspect position, color, brightness and distance |
 | **3D light radar** | All nearby lights with height (filled = renderer-selected, hollow = outside the current view), blocked lights dimmed, player heading and a camera frustum that follows pitch and roll |
 | **Local API** | HTTP snapshots and health, WebSocket streaming, JSON Schema and JSON Lines recordings |
-| **Ambient / sky** | Global sky RGB; optional camera-local sky visibility and derived working RGB when a valid spatial sample arrives. Earlier tests succeeded, but the local fields were unavailable in one 2.03.02 release-candidate session. |
+| **Ambient / sky** | Global sky RGB; optional camera-local sky visibility and derived working RGB when a valid spatial sample arrives (nullable fields). |
 | **Status notices** | Brief success when data becomes ready; actionable startup/build/capture errors |
 
 Lighting, both HUD views and status notices are enabled in the supplied configuration. Each can be configured separately; the HUD is not required to consume the API.
@@ -74,8 +79,8 @@ Requirements:
 4. Import **and activate/deploy** the new package in Definitive Mod Manager (DMM) or JSON Mod Manager. Keep all included files together.
 5. Start the game and load a save. The local host starts automatically.
 
-DMM 2.8.1 clean deployment was verified locally. Its upgrade/removal path can
-leave both Telemetry DLLs and both lowercase CFG files behind. With the game
+DMM 2.8.1 clean deployment was verified locally. Its upgrade/removal path, also
+in DMM 3.1.1, can leave both Telemetry DLLs and both lowercase CFG files behind. With the game
 closed, remove the old package, verify and delete only those four leftover
 Telemetry files, then import the new ZIP. Do not delete your ASI loader. A complete
 matrix for other systems remains open; see the [validation record](docs/MOD_MANAGER_VALIDATION.md).
@@ -89,7 +94,7 @@ Do not merge old binaries or metadata into the new package. Preserve your INI pr
 | **F8** | Show/hide the corner HUD and 3D radar |
 | **F9** | Toggle additional diagnostics |
 | **F10** | Show/hide fullscreen light markers |
-| **F11** | Show/hide blocked lights; a newly moved light near a recent blocker stays hidden briefly while its new rays are pending |
+| **F11** | Toggle `HideOccluded`: show only lights with a fresh `clear` result; blocked, unknown and stale lights stay hidden until a new `clear` measurement |
 
 The HUD does not capture mouse input. Hiding it does not stop telemetry.
 These are defaults: all four shortcuts can be reassigned in the INI using decimal
@@ -146,7 +151,7 @@ DurationMilliseconds=6000
 - `[Lights] Upstream=1` (default) also captures the renderer's light **input** with every sample: all current engine lights, including behind the camera. HUD, radar, visibility and smoothing then use it; `0` keeps only the view-filtered output.
 - `[Ambient] Enabled=1` enables the separate sky/ambient path and requires native ManyLights capture.
 - `NearbyRadius` controls the API's player-centered light radius; `LightOverlay.Radius` controls both light views. Distances are **game units**, not a claimed metre conversion.
-- Disable **Overlay, LightOverlay and Notifications** to skip all UI hooks/client. The server and light capture have their own switches.
+- Disable **Overlay, LightOverlay and Notifications** to skip all UI hooks/client. The server and light capture have their own switches. Without any UI, native capture locates its submission hook with its own queue at world entry, as before 2.2.4.
 - `InitiallyVisible=0` hides an enabled view at launch; hotkeys cannot enable a view whose `Enabled=0`.
 - `HdrPaperWhiteNits` controls all HDR UI brightness, including markers and notices with the corner HUD disabled. The default is 200 nits, clamped to 80–500. It does not change the game's HDR settings or metadata.
 - Radar/marker swatches visualize measured HDR values; they do not reproduce the game's tone mapping. Nearby contributions share a detail box without merging, summing or smoothing their raw measurements.
@@ -176,9 +181,7 @@ The status display starts independently of game-memory validation, so an unknown
 - `CrimsonDesertTelemetry.overlay.log`
 
 Known behavior: after returning to the title screen without restarting, data/HUD may persist briefly before becoming stale or being replaced during loading. The views remain hideable with F8/F10. Telemetry availability is not a definitive menu/loading-screen detector.
-Automatic hiding in every game menu is not implemented. A live run with all
-production features enabled still needs validation; synthetic UI tests do not
-establish that result.
+Automatic hiding in every game menu is not implemented.
 
 ## Use the data
 
@@ -262,6 +265,7 @@ Important boundaries:
 - Visibility rays sample fixed points on the camera-to-light path. Thin gaps can make a light behind a fence or cage `clear`, and geometry without collision (foliage, some decorations) does not block. Results can be up to 500 ms old; fast motion can expose capture/projection latency. Visibility does not establish correct candles, lamps or a complete list of all sources.
 - HDR UI is composited in linear light, with configurable white brightness and unchanged pixels outside the UI. It does not tone-map the whole scene. Rendering HDR UI uses two extra full-resolution GPU textures plus a scene copy/composite; the SDR path has no extra compositor pass.
 - Unrecognized output format/color-space combinations remain unsupported. Automated HDR rendering tests do not establish live HDR game or display compatibility; frame generation, other upscalers and AMD/Intel game setups remain unvalidated.
+- Earlier versions sporadically hung the GPU at world entry in a setup with ReShade. 2.2.4 no longer creates a Direct3D 12 queue there while any UI is enabled. Six test starts with and without ReShade were clean; that does not prove the issue is gone. Please report a recurrence with the four logs listed above.
 - The external host reads process memory. The unified ASI uses guarded renderer hooks, GPU copies and optional UI hooks; the full system is **not purely read-only instrumentation**. The console that can change debug values is available only in a separate `CDT_RESEARCH=ON` build.
 
 ## Build, test and contribute
@@ -284,7 +288,7 @@ under the normal packaged filename. See [INI validation](docs/INI_VALIDATION.md)
 
 GitHub CI covers managed/API tests and native capture, guard and UI tests. Current acceptance and outstanding checks are recorded in [the handover](docs/HANDOVER.md); historical test totals are not a result for a new package.
 
-See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [current public description drafts](docs/PUBLIC_DESCRIPTIONS.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
+See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.4.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [current public description drafts](docs/PUBLIC_DESCRIPTIONS.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
 
 ## Credits and scope
 

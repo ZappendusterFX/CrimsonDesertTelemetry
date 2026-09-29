@@ -1,6 +1,6 @@
 param(
     [ValidatePattern('^[0-9A-Za-z][0-9A-Za-z.+-]*$')]
-    [string]$Version = '2.2.1',
+    [string]$Version = '2.2.4',
     [ValidatePattern('^[0-9]+$')]
     [string]$NativeBuildId = '25477059',
     # Private diagnostic builds ship ready to run instead of forcing a hand edit

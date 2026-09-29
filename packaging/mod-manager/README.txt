@@ -10,11 +10,20 @@ New in 2.2:
   camera stay in the API, radar and markers. A fire bowl arrives as one light.
 - Which lights actually reach you. The game's own physics casts nine rays from
   the camera to every nearby light. A wall blocks all nine; a lantern cage only
-  some, so the lantern stays visible. The HUD dims blocked lights (F11 hides
-  them) and the API reports clear/blocked/unknown per light. ON by default.
+  some, so the lantern stays visible. The HUD dims blocked lights (F11 shows
+  only fresh clear ones) and the API reports clear/blocked/unknown per light.
+  ON by default.
+
+Fixed in 2.2.4:
+- Camera-local sky visibility and the local ambient estimate no longer stay
+  unavailable for a whole session. Their copy was sometimes recorded during
+  loading, before the GPU submission hook existed.
+- No extra Direct3D 12 queue is created at world entry. That step coincided with
+  a GPU hang in one crash. The submission hook now comes from the game's own
+  presentation queue when the HUD, markers or notices are enabled.
 
 Source and support: https://github.com/ZappendusterFX/CrimsonDesertTelemetry
-Validation: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/STABLE_RELEASE_VALIDATION.md
+Validation: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/releases/v2.2.4-validation.md
 API: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/API.md
 
 Requirements and installation
@@ -35,8 +44,8 @@ crimson-desert-telemetry.dll
 crimson-desert-telemetry.deps.cfg
 crimson-desert-telemetry.runtimeconfig.cfg
 
-Important DMM upgrade/removal note: local tests with DMM 2.8.1 showed that deleting
-this package can leave both Telemetry DLLs and both lowercase CFG files behind,
+Important DMM upgrade/removal note: local tests with DMM 2.8.1 and 3.1.1 showed that
+deleting this package can leave both Telemetry DLLs and both lowercase CFG files behind,
 and an upgrade can retain an older deps.cfg. With the game closed, remove the old
 package in DMM, then verify and delete only these four leftover Telemetry files
 before importing the new ZIP:
@@ -68,8 +77,9 @@ Controls and configuration
 --------------------------
 The supplied INI enables the supported telemetry, ambient, upstream-light,
 light-visibility and HUD paths. F8: corner HUD/radar. F9: details.
-F10: fullscreen light markers. F11: hide/show lights whose nine visibility rays
-are all blocked (by default they are only dimmed); unknown lights stay shown.
+F10: fullscreen light markers. F11 (HideOccluded): show only lights with a fresh
+clear result; blocked, unknown, missing and stale ones are hidden until a new
+clear measurement arrives. Off by default: blocked lights are only dimmed.
 Each shortcut accepts a decimal Windows virtual-key code; 0 disables that key.
 Defaults: Overlay.ToggleKey=119, Overlay.DetailsKey=120,
 LightOverlay.ToggleKey=121, LightOverlay.OcclusionToggleKey=122.
@@ -98,8 +108,9 @@ requires valid player and render-camera data. Native light/sky capture waits for
 that first playable-world signal, so initial menu/shader loading cannot consume a
 GPU transaction. Consult logs if graphics initialization fails.
 Set Enabled=0 in Overlay, LightOverlay AND Notifications to disable all UI owners
-and UI hooks/client. InitiallyVisible=0 only hides an enabled view. Server and
-native light capture are independently configured.
+and UI hooks/client. Native capture then locates its submission hook with its own
+queue at world entry, the method used before 2.2.4. InitiallyVisible=0 only hides
+an enabled view. Server and native light capture are independently configured.
 
 API and data limits
 -------------------
@@ -109,6 +120,7 @@ Schema:    http://127.0.0.1:27311/v1/schema
 WebSocket: ws://127.0.0.1:27311/v1/stream
 Ambient:   http://127.0.0.1:27311/v1/ambient
 Smoothed:  http://127.0.0.1:27311/v1/lights/smoothed
+Visible:   http://127.0.0.1:27311/v1/lights/visible  (clear contributions only)
 
 The host listens on loopback only. Do not launch another host on its port.
 Routes remain v1; light-enabled snapshots use additive schema 1.6, otherwise 1.1.
@@ -116,14 +128,16 @@ lights.upstream lists every current engine light of a capture, including behind
 the camera; rendererSelected marks those the renderer also used in this view.
 Upstream and rendered lights carry sourceVisibility clear/blocked/unknown with
 method physics-ray-fan, ray counts and measurement age (expires after 500 ms).
-Unknown/stale lights remain present with null attenuation; nothing is removed.
+In the raw and smoothed feeds unknown/stale lights remain present with null
+attenuation; nothing is removed. Only the visible feed omits non-clear lights.
 Authored/rendered/upstream arrays overlap; do not add them together. It is not a
 persistent light registry; a missing source does not prove OFF.
 Linear HDR RGB/luminance are renderer values, not lumens or final pixels.
 Ambient contains global sky, camera-local sky exposure and their derived estimate.
 Exposure is sampled at the camera location, not the fraction of sky on screen.
-An earlier package passed open/enclosed/open; this build's acceptance check is
-separate. It is not measured room brightness. Camera-orientation sensitivity
+The local fields stay optional: they are null without a valid sample, e.g. where
+the engine's sky volume does not cover the camera. An earlier package passed an
+open/enclosed/open test. It is not measured room brightness. Camera-orientation sensitivity
 remains under investigation. Root orientation is not body pose; display spot-arrow
 and frustum lengths are schematic. Fast motion can expose projection latency.
 

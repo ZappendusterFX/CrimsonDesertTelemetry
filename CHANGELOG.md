@@ -1,5 +1,37 @@
 # Changelog
 
+## 2.2.4 - 2026-09-29
+
+Release notes: [v2.2.4](docs/releases/v2.2.4.md). Target remains Crimson Desert
+patch 2.03.02 (EXE `1.0.0.2976`, Steam build `25477059`).
+
+- Record the camera sky-visibility copy only after the render submission hook has
+  observed a submission. A copy recorded during loading, before that hook existed,
+  could stop camera-local sky visibility and the local ambient estimate for the
+  whole session.
+- Abandon a sky-visibility copy that stays unsubmitted for 5 s, whose fence
+  `Signal` fails, or whose fence stays incomplete for 5 s. Its readback buffer
+  stays reserved, at most 8 per process. A device-removed fence value is no
+  longer treated as a completed copy.
+- Take the submission hook from the game's own presentation queue instead of
+  creating a D3D12 queue at world entry. The previous method remains the
+  fallback when all UI is disabled or the queue belongs to another device.
+- Correct the INI, packaged README and public texts: F11/`HideOccluded` shows only
+  fresh `clear` lights, and the DMM leftover note also applies to DMM 3.1.1.
+- Routes, schema 1.6 and INI values are unchanged.
+
+## 2.2.3 - 2026-09-29
+
+Release notes: [v2.2.3](docs/releases/v2.2.3.md).
+
+- With `HideOccluded=1`, HUD and radar show only fresh `clear` lights. Blocked,
+  unknown, missing and stale results are hidden, and the 250 ms nearby-blocker
+  hint was removed.
+- Add `/v1/lights/visible` over HTTP and WebSocket with only `clear`
+  contributions before grouping and smoothing. Raw and smoothed feeds are unchanged.
+- The native HUD checks filtered visibility on the original record without
+  per-marker copies.
+
 ## 2.2.1 - 2026-09-27
 
 Release notes: [v2.2.1](docs/releases/v2.2.1.md). Target remains Crimson Desert
