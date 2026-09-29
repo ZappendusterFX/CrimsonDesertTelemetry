@@ -1,4 +1,31 @@
-# Current checkpoint — 2026-09-29, 2.2.3 live test passed with optional sky gap
+# Current checkpoint — 2026-09-29, camera sky visibility recovered on a later start
+
+After the 2.2.3 release, the owner disabled CrimsonDesertNpcSpawn in DMM and
+camera sky visibility/local ambient RGB became available. The owner then enabled
+NpcSpawn again; both fields still worked. The only other reported change was
+CrimsonWeather's `HotkeyToggleEffect` from F10 to F4. This A/B/A observation does
+not establish which change, restart or deployment timing caused recovery.
+
+Read-only evidence from the current game process (PID 34740, started 19:25:29):
+health is `playing` with sequence 9703; `/v1/ambient` is available, sky capture
+sequence 319, visibility value 0.478868 at frame 10560, and
+`localEnvironmentAmbientEstimateWorking.available=true` with fresh RGB. The
+deployed Telemetry ASI still hashes to the exact 2.2.3 release
+`D53DD63956251E444C92F6F99FA8C65A373F7E7015E4285BA5A30971CA590179`.
+NpcSpawn's log shows its swapchain hooks chained in front of Telemetry's and
+both running in this successful process. CrimsonWeather also initialized.
+Its INI was last written at 19:26:43, after this process started; no measured
+sample establishes when its hotkey change took effect.
+
+The prior failing process had fresh global sky but sky-bridge visibility
+state/frame/tick all zero. There is no evidence yet for a permanent NpcSpawn
+conflict or a direct F10 cause. Investigate the intermittent native spatial
+acquisition/startup path and capture the first failed guard or readback stage on
+a recurrence. Do not infer local RGB from global sky alone. GitHub release 2.2.3
+is published with the exact validated ZIP; do not rebuild or replace it for
+this diagnosis.
+
+# Previous checkpoint — 2026-09-29, 2.2.3 live test passed with optional sky gap
 
 At the owner's request, the 2.2.2 functional changes and native HUD refactor
 are packaged as the final-version **2.2.3 production ZIP**:
