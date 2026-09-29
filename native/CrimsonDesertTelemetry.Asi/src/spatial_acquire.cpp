@@ -43,6 +43,19 @@ ID3D12GraphicsCommandList* activeList = nullptr;
 // The sampler consumes the complete CPU GI upload-source block, not scene data.
 std::array<uint8_t, ConstantBytes> activeGi{};
 std::mutex acquireMutex;
+// OnSubmission runs only inside the render queue hook, installed after the
+// playable-world gate. A copy recorded earlier cannot be observed: on 25477059
+// one was recorded at frame 1 and cleared only because that list happened to be
+// reused in-world (measured 2026-09-29). Record only once a call proves the hook.
+std::atomic<bool> submissionObserved{};
+// A list that is still unobserved after this is abandoned and the copy re-armed.
+constexpr uint64_t SubmissionTimeoutMs = 5000;
+uint64_t recordedAt = 0;
+// An abandoned list can still be submitted unobserved and then write its buffer.
+// Such a buffer is never read or released again, not even at unload; bounded.
+constexpr size_t MaximumAbandonedCopies = 8;
+std::array<ID3D12Resource*, MaximumAbandonedCopies> abandonedBuffers{};
+size_t abandonedCopies = 0;
 
 template<class T> bool Read(uint64_t address, T& value)
 {
@@ -69,6 +82,7 @@ bool Resolve(uint64_t owner, uint64_t command, ID3D12Resource*& resource, ID3D12
 
 void OnSubmission(ID3D12CommandQueue* queue, UINT count, ID3D12CommandList* const* lists, bool after)
 {
+    submissionObserved.store(true, std::memory_order_release);
     if(sampleSources)sdf::acquire::Submission(queue,count,lists,after);
     std::lock_guard<std::mutex> lock(acquireMutex);
     if (!acquisitionInFlight || !after || !readbackFence || !activeList) return;
@@ -108,7 +122,7 @@ uint64_t Dispatch(uint64_t command, uint32_t x, uint32_t y, uint32_t z, uint64_t
                 sdf::acquire::ObserveContext(list,giArray,camera,frame,GetTickCount64(),giBefore==giArray);
         }
         std::lock_guard<std::mutex> lock(acquireMutex);
-        if(!sampleAmbient||acquisitionInFlight)return result;
+        if(!sampleAmbient||acquisitionInFlight||!submissionObserved.load(std::memory_order_acquire))return result;
         Microsoft::WRL::ComPtr<ID3D12Device> device;
         if (SUCCEEDED(resource->GetDevice(IID_PPV_ARGS(&device))))
         {
@@ -140,7 +154,10 @@ uint64_t Dispatch(uint64_t command, uint32_t x, uint32_t y, uint32_t z, uint64_t
                 heapProperties.CreationNodeMask = 1;
                 heapProperties.VisibleNodeMask = 1;
                 
-                if (SUCCEEDED(device->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &bufferDesc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&readbackBuffer))))
+                // After an abandoned copy only the buffer is replaced; the fence
+                // and its monotonic value continue.
+                if (SUCCEEDED(device->CreateCommittedResource(&heapProperties, D3D12_HEAP_FLAG_NONE, &bufferDesc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&readbackBuffer))) &&
+                    !readbackFence)
                 {
                     device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&readbackFence));
                 }
@@ -169,6 +186,7 @@ uint64_t Dispatch(uint64_t command, uint32_t x, uint32_t y, uint32_t z, uint64_t
                 activeRowPitch = footprint.Footprint.RowPitch;
                 activeGi = giArray;
                 latestFrame = frame;
+                recordedAt = GetTickCount64();
                 acquisitionInFlight = true;
             }
         }
@@ -217,8 +235,21 @@ void Poll()
     }
     if(sampleSources)sdf::acquire::Poll();
     std::lock_guard<std::mutex> lock(acquireMutex);
+    if (acquisitionInFlight && activeList && GetTickCount64() - recordedAt > SubmissionTimeoutMs)
+    {
+        abandonedBuffers[abandonedCopies++] = readbackBuffer.Detach();
+        activeList = nullptr;
+        acquisitionInFlight = false;
+        if (abandonedCopies == MaximumAbandonedCopies)
+        {
+            // Stop re-arming for this process instead of retaining more buffers.
+            sampleAmbient = false;
+            sky::PublishVisibility(0.0, sky::Visibility::Unavailable, 0, 0);
+        }
+        return;
+    }
     if (!acquisitionInFlight || !readbackFence || !readbackBuffer || activeList) return;
-    
+
     if (readbackFence->GetCompletedValue() >= fenceValue)
     {
         void* mappedData = nullptr;
