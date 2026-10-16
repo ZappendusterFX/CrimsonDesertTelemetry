@@ -1,4 +1,36 @@
-# Current checkpoint — 2026-10-16, Hue cursor drift candidate
+# Current checkpoint — 2026-10-16, simplified Hue lighting controls
+
+Normal Hue tabs are now Lighting / Room / Setup / Advanced. Lighting provides
+Overall brightness, Local light effects, Background light and Quick/Balanced/Calm
+response. Recommended and preserved Custom settings have explicit transitions;
+Custom hides inactive Recommended values. Detailed mixer controls, presets and
+raw CDT data remain under Advanced. Normal views show a plain-language assessment
+and calculated lamp output; dim nonzero levels remain visibly nonzero. Segment
+identification has its own status. The controller owns profiles and persistence;
+CDT remains the single renderer. Older controller snapshots retain the old HUD.
+
+Final pair: **CDT 2.2.5-huepanel.8 + Hue 0.4.0-asi.18**, production/research OFF,
+native build 25477059. Exact paired hidden D3D12 WARP checks pass for Lighting,
+Custom, Advanced, Setup, Room and raw input; all screenshots reviewed. **13/13**
+focused input/overlay checks pass. Maintained source copies match their manifest,
+and packaging retains the exact tested shared renderer library. Expanded/ZIP
+validators pass. Details: [HUE_LIGHTING_UI.md](HUE_LIGHTING_UI.md).
+
+Immutable CDT ZIP:
+artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.5-huepanel.8-ModManagers.zip
+ZIP SHA256 7CF3B41B43C48CE75058BEF88AF5F975EC55D65A79D84BE9C066F73F8FCB75F0
+ASI SHA256 92B93E9D6D495AB05155FCD891F29B4DE95BFA3988A64BB8D24806632B6772B8
+Paired Hue ZIP SHA256
+022FB7504C5BF53AB336D0E1F3B602918AD89C8C630BB3F0B08AA86B149DDE06.
+
+Not installed or game-tested. Previous packages, original main/research, real
+settings, foreground input and physical lamps remain untouched. The .7 cursor
+correction is included, with physical acceptance still pending. Next: install
+BOTH matching packages with the game closed, then assess normal controls, cursor
+release/stability and physical lighting. This UI validation does not establish a
+fix for Ambient appearance or repeated streaming stops.
+
+# Previous checkpoint — 2026-10-16, Hue cursor drift candidate
 
 Owner reports slow upper-left pointer drift with Hue HUD open. The adapter used
 the game's OS cursor position every frame and discarded raw mouse payloads.

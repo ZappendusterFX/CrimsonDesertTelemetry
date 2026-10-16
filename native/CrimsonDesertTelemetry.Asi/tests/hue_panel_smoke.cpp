@@ -20,7 +20,11 @@ void Check(HRESULT hr) { Require(SUCCEEDED(hr), "D3D12 smoke operation failed");
 int wmain(int argc, wchar_t** argv) {
     if (argc != 3 && argc != 4) return 1;
     const bool setupPreview = argc == 4 && wcscmp(argv[3], L"--setup") == 0;
-    if (argc == 4 && !setupPreview) return 1;
+    const bool lightingPreview = argc == 4 && wcscmp(argv[3], L"--lighting") == 0;
+    const bool advancedPreview = argc == 4 && wcscmp(argv[3], L"--advanced") == 0;
+    const bool customPreview = argc == 4 && wcscmp(argv[3], L"--custom") == 0;
+    const bool rawPreview = argc == 4 && wcscmp(argv[3], L"--raw") == 0;
+    if (argc == 4 && !setupPreview && !lightingPreview && !advancedPreview && !customPreview && !rawPreview) return 1;
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
     try {
         const auto asi = std::filesystem::absolute(argv[1]);
@@ -50,7 +54,15 @@ int wmain(int argc, wchar_t** argv) {
         auto State = [&] { std::vector<char> bytes(256 * 1024); const int size = read(bytes.data(), static_cast<int>(bytes.size()));
             Require(size > 0, "No UI snapshot"); return Json::parse(bytes.data(), bytes.data() + size); };
         auto Command = [&](Json command) { const auto text = command.dump(); Require(send(text.data(), static_cast<int>(text.size())) == 1, "Command not accepted"); };
+        auto Value = [](const Json& snapshot, const char* key) {
+            for (const auto& control : snapshot.at("controls")) if (control.at("key") == key) return control.at("value").get<double>();
+            throw std::runtime_error("Missing effective mapping control");
+        };
         auto state = State();
+        Require(state.at("lighting").at("recommended") == true && state.at("lighting").at("hasCustom") == true &&
+            state.at("lighting").at("response") == "Balanced", "New controller did not start with Recommended lighting");
+        Require(state.at("assessment").at("code") == "demo" && !state.at("assessment").at("summary").get<std::string>().empty() &&
+            state.at("assessment").at("warning").is_boolean(), "Missing user-facing lighting assessment");
         Require(state.value("bridgeConnected", false) && state.value("bridgePhase", std::string{}) == "connected" &&
             !state.at("areas").empty() && !state.at("areas")[0].at("name").get<std::string>().empty(),
             "Connected status or named Entertainment areas missing from controller snapshot");
@@ -68,6 +80,23 @@ int wmain(int argc, wchar_t** argv) {
         for (const auto& value : state.at("controls")) if (value.at("key") == "SourceDiscRadiusDegrees")
             sphereDefault = value.at("value") == 60.0 && value.at("min") == 1.0 && value.at("max") == 180.0 && value.at("group") == "Space";
         Require(sphereDefault, "Spherical radius default or range missing from controller snapshot");
+        Command({{"action", "lighting"}, {"key", "Brightness"}, {"value", .73}});
+        Command({{"action", "lighting"}, {"key", "LocalAmount"}, {"value", 1.25}});
+        Command({{"action", "lighting"}, {"key", "BackgroundAmount"}, {"value", .35}});
+        Command({{"action", "lighting"}, {"key", "Response"}, {"value", 2}});
+        Sleep(150); state = State();
+        Require(state.at("lighting").at("brightness") == .73 && state.at("lighting").at("localAmount") == 1.25 &&
+            state.at("lighting").at("backgroundAmount") == .35 && state.at("lighting").at("response") == "Calm",
+            "Simple lighting commands did not update their preferences");
+        Require(Value(state, "Brightness") == 73 && Value(state, "LocalStrength") == 125 && Value(state, "AmbientOutput") == 35 &&
+            Value(state, "SmoothingMs") == 500 && Value(state, "AmbientSmoothingMs") == 1000,
+            "Simple controls did not resolve to the effective mapping");
+        const auto validLighting = state.at("lighting");
+        Command({{"action", "lighting"}, {"key", "Brightness"}, {"value", 1.1}});
+        Command({{"action", "lighting"}, {"key", "LocalAmount"}, {"value", 2.1}});
+        Command({{"action", "lighting"}, {"key", "BackgroundAmount"}, {"value", 1.1}});
+        Command({{"action", "lighting"}, {"key", "Response"}, {"value", .5}});
+        Sleep(100); Require(State().at("lighting") == validLighting, "Invalid simple controls changed lighting preferences");
         Command({{"action", "set"}, {"key", "Brightness"}, {"value", 23.0}});
         Command({{"action", "set"}, {"key", "SourceDiscRadiusDegrees"}, {"value", 130.0}});
         Sleep(150); state = State();
@@ -75,6 +104,17 @@ int wmain(int argc, wchar_t** argv) {
         for (const auto& value : state.at("controls")) if (value.at("key") == "Brightness") brightness = value.at("value") == 23.0;
         for (const auto& value : state.at("controls")) if (value.at("key") == "SourceDiscRadiusDegrees") sphere = value.at("value") == 130.0;
         Require(brightness && sphere, "Overlay command did not reach live mapping");
+        Require(state.at("lighting").at("recommended") == false, "Legacy detailed set command did not select Custom");
+        const auto customControls = state.at("controls");
+        Command({{"action", "profile"}, {"recommended", true}}); Sleep(100); state = State();
+        Require(state.at("lighting").at("recommended") == true && Value(state, "Brightness") == 23 &&
+            Value(state, "SourceDiscRadiusDegrees") == 60 && Value(state, "LocalStrength") == 125,
+            "Recommended retained custom spatial tuning or changed the current brightness limit");
+        Command({{"action", "profile"}, {"recommended", false}}); Sleep(100); state = State();
+        Require(state.at("lighting").at("recommended") == false && state.at("controls") == customControls,
+            "Returning to Custom discarded preserved detailed settings");
+        Command({{"action", "lighting"}, {"key", "Brightness"}, {"value", .9}}); Sleep(100);
+        Require(State().at("controls") == customControls, "Disabled simple controls changed Custom settings");
         Command({{"action", "set"}, {"key", "Brightness"}, {"value", 200.0}}); Sleep(100);
         state = State(); for (const auto& value : state.at("controls")) if (value.at("key") == "Brightness") Require(value.at("value") == 23.0, "Out-of-range command changed mapping");
         Command({{"action", "set"}, {"key", "SourceDiscRadiusDegrees"}, {"value", 181.0}}); Sleep(100);
@@ -135,7 +175,7 @@ int wmain(int argc, wchar_t** argv) {
         for (const auto& channel : state.at("channels")) if (channel.at("id").get<int>() < 3)
             Require(channel.at("rgb").at("x") == 0, "Right preview source leaked to left washer");
         Command({{"action", "wallPreview"}, {"key", "yaw"}, {"value", -75}});
-        std::cout << "PASS segment summary, Point/Wall placement preservation, spherical direction preview and physical-output isolation.\n";
+        std::cout << "PASS Recommended controls/ranges, exact Custom restoration, assessment, segment summary, Point/Wall placement, spherical preview and physical-output isolation.\n";
 
         const auto protocol = reinterpret_cast<Status>(GetProcAddress(module, "CrimsonHueUiProtocol"));
         Require(protocol && protocol() == 1, "Incompatible Hue UI protocol");
@@ -154,6 +194,14 @@ int wmain(int argc, wchar_t** argv) {
         crimson::overlay::RefreshBridge(); Sleep(150); state = State();
         for (const auto& value : state.at("controls")) if (value.at("key") == "Brightness")
             Require(value.at("value") == 62.0, "Bounded queue or cleanup priority failed");
+        if (!customPreview) {
+            Command({{"action", "profile"}, {"recommended", true}}); Sleep(100); state = State();
+            Require(state.at("lighting").at("recommended") == true, "Recommended did not resume before product UI preview");
+        }
+        if (lightingPreview || customPreview) crimson::overlay::SelectTabForTest("Lighting");
+        else if (advancedPreview) crimson::overlay::SelectTabForTest("Advanced");
+        else if (rawPreview) crimson::overlay::SelectTabForTest("CDT raw input");
+        else if (!setupPreview) crimson::overlay::SelectTabForTest("Room");
         cdt::overlay::Config config; config.enabled = true; config.visible = true;
         if (setupPreview) {
             Command({{"action", "setup"}, {"bridge", "192.168.2.139"}, {"telemetry", "ws://127.0.0.1:27311/v1/stream"}});
@@ -253,7 +301,7 @@ int wmain(int argc, wchar_t** argv) {
         crimson::overlay::RequestPanelStop(); crimson::overlay::RefreshBridge();
         stop(); const auto stopStart = GetTickCount64(); while (status() == 1 && GetTickCount64() - stopStart < 5000) { Pump(); Sleep(20); }
         Require(status() == 2, "Engine shutdown failed");
-        std::cout << "PASS CDT single renderer + actual headless Hue ASI: bounded command queue, all 28 controls, spherical radius commands, wall preview, D3D12 pixel readback, independent HUD/hide, Hue-only reopen, resize and shutdown; " << lit << " visible pixels.\n";
+        std::cout << "PASS CDT single renderer + actual headless Hue ASI: simple lighting/assessment and preserved Custom, bounded command queue, 28 advanced controls, wall preview, D3D12 pixel readback, independent HUD/hide, Hue-only reopen, resize and shutdown; " << lit << " visible pixels.\n";
         return 0;
     } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 2; }
 }

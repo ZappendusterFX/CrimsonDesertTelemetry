@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <vector>
 
 namespace crimson::overlay {
 namespace {
@@ -195,6 +196,115 @@ void Controls(const Json& view, const char* group) {
     if (Button("Reset this tab")) Command({{"action", "reset"}, {"group", group}});
     ImGui::SameLine(); if (Button("Save settings")) Action("save");
 }
+bool HasLightingProfile(const Json& view) {
+    const auto lighting = view.find("lighting");
+    return lighting != view.end() && lighting->is_object();
+}
+void Assessment(const Json& view) {
+    if (view.value("identifying", false)) {
+        ImGui::TextColored({.98f, .74f, .36f, 1}, "Lamp segment test in progress");
+        Wrap("The selected segment is white at 10% for two seconds. Its previous state is restored afterward.");
+        return;
+    }
+    const auto assessment = view.find("assessment");
+    if (assessment == view.end() || !assessment->is_object()) return;
+    const auto summary = Text(*assessment, "summary");
+    if (!summary.empty()) {
+        ImGui::PushStyleColor(ImGuiCol_Text, assessment->value("warning", false) ?
+            ImVec4(.98f, .74f, .36f, 1) : ImVec4(.19f, .87f, .82f, 1));
+        Wrap(summary);
+        ImGui::PopStyleColor();
+    }
+    Wrap(Text(*assessment, "detail"));
+}
+void Lighting(const Json& view) {
+    const auto& lighting = view.at("lighting");
+    const bool recommended = lighting.value("recommended", true);
+    ImGui::SeparatorText(recommended ? "Recommended lighting" : "Current custom settings");
+    if (recommended) Wrap("Adjust the feel of your lighting here. Room placement stays in Room.");
+    else {
+        Wrap("Your custom settings are active. Open Advanced to edit them, or use Recommended for simple lighting controls.");
+        if (Button("Use Recommended")) Command({{"action", "profile"}, {"recommended", true}});
+        if (lighting.value("hasCustom", false)) Wrap("Your custom settings are kept for later.");
+        ImGui::Spacing();
+        if (Button("Save custom settings")) Action("save");
+        return;
+    }
+    const auto amount = [&](const char* label, const char* property, const char* key,
+        double initial, double maximum, const char* description) {
+        double percent = std::clamp(lighting.value(property, initial) * 100.0, 0.0, maximum);
+        const double minimum = 0;
+        ImGui::TextUnformatted(label);
+        ImGui::SetNextItemWidth(-1);
+        ImGui::PushID(key);
+        if (ImGui::SliderScalar("##amount", ImGuiDataType_Double, &percent, &minimum, &maximum, "%.0f%%"))
+            Command({{"action", "lighting"}, {"key", key}, {"value", percent / 100.0}});
+        Wrap(description);
+        ImGui::PopID(); ImGui::Spacing();
+    };
+    amount("Overall brightness", "brightness", "Brightness", 1.0, 100.0, "Overall brightness of your lamps.");
+    amount("Local light effects", "localAmount", "LocalAmount", 1.0, 200.0, "Nearby lights, fire and other light sources.");
+    amount("Background light", "backgroundAmount", "BackgroundAmount", .4, 100.0, "Ambient light from the game across your room.");
+    const char* responses[]{"Quick", "Balanced", "Calm"};
+    const auto response = Text(lighting, "response");
+    int selected = response == "Quick" ? 0 : response == "Calm" ? 2 : 1;
+    ImGui::TextUnformatted("Response"); ImGui::SetNextItemWidth(-1);
+    if (ImGui::Combo("##response", &selected, responses, 3))
+        Command({{"action", "lighting"}, {"key", "Response"}, {"value", selected}});
+    Wrap("Quick follows changes closely. Calm makes transitions gentler.");
+    ImGui::Spacing();
+    if (Button("Save lighting settings")) Action("save");
+}
+void OutputSummary(const Json& view) {
+    ImGui::SeparatorText("Calculated light output");
+    const auto channels = view.value("channels", Json::array());
+    if (channels.empty()) { Wrap("Connect your bridge and select an Entertainment area in Setup."); return; }
+    std::vector<int> shown;
+    const auto drawOutput = [](const std::string& label, const std::vector<const Json*>& members) {
+        if (members.empty()) return;
+        double level = 0; ImVec4 color{0, 0, 0, 1};
+        for (const auto* channel : members) {
+            const auto& rgb = channel->at("rgb");
+            const double red = std::clamp(rgb.value("x", 0.0), 0.0, 1.0);
+            const double green = std::clamp(rgb.value("y", 0.0), 0.0, 1.0);
+            const double blue = std::clamp(rgb.value("z", 0.0), 0.0, 1.0);
+            level += std::max({red, green, blue});
+            color.x += static_cast<float>(red); color.y += static_cast<float>(green); color.z += static_cast<float>(blue);
+        }
+        const float count = static_cast<float>(members.size());
+        level /= count; color.x /= count; color.y /= count; color.z /= count;
+        ImGui::ColorButton("##outputColor", color, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop, {14, 14});
+        ImGui::SameLine();
+        if (level > 0 && level < .01) ImGui::Text("%s  <1%%", label.c_str());
+        else ImGui::Text("%s  %.1f%%", label.c_str(), level * 100);
+        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(.19f, .87f, .82f, 1));
+        ImGui::ProgressBar(static_cast<float>(level), {-1, 6}, "");
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+    };
+    for (const auto& washer : view.value("wallWashers", Json::array())) {
+        std::vector<const Json*> members;
+        std::vector<int> ids;
+        for (const auto& segment : washer.value("segments", Json::array()))
+            for (const auto& reference : segment.value("channels", Json::array())) {
+                const int id = reference.value("id", -1);
+                if (std::find(ids.begin(), ids.end(), id) != ids.end()) continue;
+                ids.push_back(id);
+                for (const auto& channel : channels) if (channel.value("id", -2) == id) {
+                    members.push_back(&channel); shown.push_back(id); break;
+                }
+            }
+        ImGui::PushID(Text(washer, "serviceId").c_str());
+        drawOutput(Text(washer, "label"), members);
+        ImGui::PopID();
+    }
+    for (const auto& channel : channels) {
+        const int id = channel.value("id", -2);
+        if (std::find(shown.begin(), shown.end(), id) != shown.end()) continue;
+        ImGui::PushID(id); drawOutput(Text(channel, "label"), {&channel}); ImGui::PopID();
+    }
+    Wrap("Levels are calculated for your lamps; segmented lights show their average.");
+}
 void Setup(const Json& view) {
     static Shortcut chosen;
     static bool shortcutSeeded = false;
@@ -306,6 +416,57 @@ void Presets(const Json& view) {
         ImGui::SameLine(); if (Button("Cancel import")) Action("cancelImport");
     }
 }
+void RawInput(const Json& view) {
+    bool frozen = view.value("frozen", false);
+    if (ImGui::Checkbox("Freeze readout", &frozen)) Command({{"action", "freeze"}, {"value", frozen}});
+    Wrap(Text(view, "telemetry")); Wrap(Text(view, "capture")); Wrap(Text(view, "ambient"));
+    ImGui::Separator();
+    Wrap(Text(view, "rawAmbient")); Wrap(Text(view, "rawSummary"));
+    const auto lights = view.value("rawLights", Json::array());
+    if (lights.is_array()) for (const auto& light : lights) {
+        ImGui::Text("%s gu  R %s  G %s  B %s", Text(light, "distance").c_str(), Text(light, "red").c_str(),
+            Text(light, "green").c_str(), Text(light, "blue").c_str());
+        Wrap(Text(light, "position"));
+    }
+}
+bool AdvancedTab(const std::string& name) {
+    return name == "Output" || name == "Ambient" || name == "Color" || name == "Space" ||
+        name == "Presets" || name == "CDT raw input" || name == "Raw";
+}
+void Advanced(const Json& view) {
+    const auto& lighting = view.at("lighting");
+    const bool recommended = lighting.value("recommended", true);
+    if (recommended) {
+        Wrap("Recommended is active. These are its current settings.");
+        if (Button("Use Custom settings")) Command({{"action", "profile"}, {"recommended", false}});
+        Wrap(lighting.value("hasCustom", false) ? "Restores your saved custom settings for editing." :
+            "Switch to Custom to edit the detailed controls.");
+    } else {
+        Wrap("Custom settings are active. Changes here affect your lights immediately.");
+        if (Button("Use Recommended")) Command({{"action", "profile"}, {"recommended", true}});
+        Wrap("Your custom settings are kept when you switch to Recommended.");
+    }
+    ImGui::Spacing();
+    if (ImGui::BeginTabBar("AdvancedTabs", ImGuiTabBarFlags_FittingPolicyScroll)) {
+        for (const auto* group : {"Output", "Ambient", "Color", "Space", "Presets", "CDT raw input"}) {
+            const bool requested = testTab == group || (testTab == "Raw" && strcmp(group, "CDT raw input") == 0);
+            if (ImGui::BeginTabItem(group, nullptr, requested ? ImGuiTabItemFlags_SetSelected : 0)) {
+                if (requested) testTab.clear();
+                if (strcmp(group, "Presets") == 0) {
+                    Wrap("Applying a preset switches to Custom settings.");
+                    Presets(view);
+                } else if (strcmp(group, "CDT raw input") == 0) RawInput(view);
+                else {
+                    ImGui::BeginDisabled(recommended);
+                    Controls(view, group);
+                    ImGui::EndDisabled();
+                }
+                ImGui::EndTabItem();
+            }
+        }
+        ImGui::EndTabBar();
+    }
+}
 }
 void SelectTabForTest(const char* name) { testTab = name ? name : ""; }
 void DrawUi(const Json& view, bool& visible, float scale) {
@@ -318,20 +479,28 @@ void DrawUi(const Json& view, bool& visible, float scale) {
         const bool bridgeConnected = view.value("bridgeConnected", false);
         ImGui::TextColored(bridgeConnected ? ImVec4(.19f, .87f, .82f, 1) : ImVec4(.98f, .74f, .36f, 1),
             "%s", bridgeConnected ? "HUE BRIDGE: CONNECTED" : "HUE BRIDGE: NOT CONNECTED - open Setup");
-        Wrap(Text(view, "telemetry")); Wrap(Text(view, "capture")); Wrap(Text(view, "ambient"));
+        const bool simple = HasLightingProfile(view);
+        if (simple) Assessment(view);
+        else { Wrap(Text(view, "telemetry")); Wrap(Text(view, "capture")); Wrap(Text(view, "ambient")); }
         if (!view.value("ready", false)) { Wrap("Starting CrimsonHue. Requires .NET 8 Desktop Runtime x64."); Wrap(GraphicsStatus()); }
         else {
             const float left = std::max(350 * scale, ImGui::GetContentRegionAvail().x * .47f);
+            bool advanced = !simple;
             ImGui::BeginChild("Mixer", {left, -110 * scale}, ImGuiChildFlags_Borders);
             if (ImGui::BeginTabBar("MixerTabs")) {
                 static bool previousWallPreview = false;
-                const bool selectRoom = view.value("wallPreview", false) && !previousWallPreview;
+                const bool selectRoom = view.value("wallPreview", false) && !previousWallPreview && testTab.empty();
                 previousWallPreview = view.value("wallPreview", false);
-                for (const auto* group : {"Output", "Ambient", "Color", "Space", "Room", "Setup", "Presets"}) {
-                    const bool choose = (selectRoom && strcmp(group, "Room") == 0) || testTab == group;
+                const std::vector<const char*> tabs = simple ? std::vector<const char*>{"Lighting", "Room", "Setup", "Advanced"} :
+                    std::vector<const char*>{"Output", "Ambient", "Color", "Space", "Room", "Setup", "Presets"};
+                for (const auto* group : tabs) {
+                    const bool choose = (selectRoom && strcmp(group, "Room") == 0) || testTab == group ||
+                        (simple && strcmp(group, "Advanced") == 0 && AdvancedTab(testTab));
                     if (ImGui::BeginTabItem(group, nullptr, choose ? ImGuiTabItemFlags_SetSelected : 0)) {
                         if (testTab == group) testTab.clear();
-                        if (strcmp(group, "Setup") == 0) Setup(view);
+                        if (strcmp(group, "Lighting") == 0) Lighting(view);
+                        else if (strcmp(group, "Advanced") == 0) { advanced = true; Advanced(view); }
+                        else if (strcmp(group, "Setup") == 0) Setup(view);
                         else if (strcmp(group, "Room") == 0) WallWash(view);
                         else if (strcmp(group, "Presets") == 0) Presets(view);
                         else Controls(view, group);
@@ -346,7 +515,18 @@ void DrawUi(const Json& view, bool& visible, float scale) {
             ImGui::BeginDisabled(view.value("canStop", false) || view.value("smoke", false));
             if (ImGui::Checkbox("Demo preview only", &demo)) Command({{"action", "demo"}, {"value", demo}});
             ImGui::EndDisabled();
-            if (ImGui::BeginTabBar("MonitorTabs")) {
+            if (simple) {
+                Room(view);
+                OutputSummary(view);
+                if (advanced && ImGui::CollapsingHeader("Channel details")) {
+                    Wrap(Text(view, "boundary"));
+                    for (const auto& channel : view.value("channels", Json::array())) {
+                        const auto rgb = channel.at("rgb");
+                        ImGui::Text("%s  CH %d  Z %.2f", Text(channel, "label").c_str(), channel.value("id", 0), channel.value("z", 0.0));
+                        ImGui::Text("RGB %.4f / %.4f / %.4f", rgb.value("x", 0.0), rgb.value("y", 0.0), rgb.value("z", 0.0));
+                    }
+                }
+            } else if (ImGui::BeginTabBar("MonitorTabs")) {
                 if (ImGui::BeginTabItem("Room & output")) {
                     Room(view); Wrap(Text(view, "boundary"));
                     for (const auto& channel : view.value("channels", Json::array())) {
@@ -357,14 +537,7 @@ void DrawUi(const Json& view, bool& visible, float scale) {
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("CDT raw input")) {
-                    bool frozen = view.value("frozen", false);
-                    if (ImGui::Checkbox("Freeze readout", &frozen)) Command({{"action", "freeze"}, {"value", frozen}});
-                    Wrap(Text(view, "rawAmbient")); Wrap(Text(view, "rawSummary"));
-                    const auto lights = view.value("rawLights", Json::array());
-                    if (lights.is_array()) for (const auto& light : lights) {
-                        ImGui::Text("%s gu  R %s  G %s  B %s", Text(light, "distance").c_str(), Text(light, "red").c_str(), Text(light, "green").c_str(), Text(light, "blue").c_str());
-                        Wrap(Text(light, "position"));
-                    }
+                    RawInput(view);
                     ImGui::EndTabItem();
                 }
                 ImGui::EndTabBar();
