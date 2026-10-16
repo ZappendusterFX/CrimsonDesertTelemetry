@@ -1,4 +1,4 @@
-# Optional CrimsonHue panel — private 2.2.5-huepanel.2 preview
+# Optional CrimsonHue panel — private 2.2.5-huepanel.3 preview
 
 The owner authorized hosting the Hue mixer inside mandatory CDT after both
 independent overlays disappeared in the game. A deterministic two-DLL MinHook
@@ -40,7 +40,7 @@ DXGI/MinHook/device ownership or telemetry acquisition.
 Build with the maintained package builder:
 
 ```powershell
-pwsh -File scripts/Build-ModManagerPackage.ps1 -Version 2.2.5-huepanel.2 -NativeBuildId 25477059 -Research off
+pwsh -File scripts/Build-ModManagerPackage.ps1 -Version 2.2.5-huepanel.3 -NativeBuildId 25477059 -Research off
 build\native-package-release\Release\CrimsonHue.OverlaySmoke.exe C:\DEV\CrimsonHue\artifacts\asi\CrimsonHue.asi artifacts\hue-panel\ingame.png
 ```
 

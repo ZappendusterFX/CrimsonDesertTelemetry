@@ -31,4 +31,6 @@ unsigned long long RenderedFrames() noexcept;
 void SetVisibleForTest(bool visible) noexcept;
 void SetLightVisibleForTest(bool visible) noexcept;
 void SetHideOccludedForTest(bool hidden) noexcept;
+// Hidden GPU harnesses still exercise the interactive software-cursor path.
+void SetSoftwareCursorForTest(bool visible) noexcept;
 }

@@ -98,7 +98,14 @@ void SetVisibleForTest(bool value) noexcept { visible = value; if (!value) Relea
 void RequestPanelStop() noexcept { visible = false; ReleaseInput(); Command({{"action", "stop"}}); }
 void PreparePanelFrame(HWND window) {
     if (!PanelAvailable()) return;
-    ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_NoMouse | ImGuiConfigFlags_NoKeyboard);
+    auto& io = ImGui::GetIO();
+    if (!PanelVisible()) {
+        ReleaseInput();
+        io.ConfigFlags |= ImGuiConfigFlags_NoMouse | ImGuiConfigFlags_NoKeyboard;
+        FeedInput(window, false);
+        return;
+    }
+    io.ConfigFlags &= ~(ImGuiConfigFlags_NoMouse | ImGuiConfigFlags_NoKeyboard);
     ImGui::GetIO().BackendPlatformName = "cdt_win32_with_crimsonhue";
     SetInputWindow(window); FeedInput(window, PanelVisible());
 }

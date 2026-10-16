@@ -22,6 +22,7 @@ namespace cdt::overlay
 namespace
 {
 using Microsoft::WRL::ComPtr;
+std::atomic<bool> softwareCursorForTest{false};
 void Check(HRESULT hr) { if (FAILED(hr)) throw std::runtime_error("Graphics operation failed"); }
 bool SameObject(IUnknown* first, IUnknown* second)
 {
@@ -51,6 +52,9 @@ struct Renderer
     ComPtr<ID3D12Fence> fence;
     std::vector<ComPtr<ID3D12Resource>> buffers;
     std::vector<Frame> frames;
+    // Atlas sources and cursor rectangles remain valid for the context lifetime.
+    // ClearInputData() deletes the software-cursor rectangle as well as fonts.
+    std::vector<char> fontBytes;
     UINT rtvSize{}, width{}, height{};
     DXGI_FORMAT outputFormat = DXGI_FORMAT_UNKNOWN;
     hdr::OutputMode outputMode = hdr::OutputMode::Unsupported;
@@ -124,7 +128,6 @@ struct Renderer
         // Read the locally installed Windows UI font on this worker, not in Present.
         // No system font is redistributed; embedded ProggyClean is the fallback.
         std::array<wchar_t, MAX_PATH> windows{};
-        std::vector<char> fontBytes;
         if (GetWindowsDirectoryW(windows.data(), static_cast<UINT>(windows.size())))
         {
             std::ifstream file(std::filesystem::path(windows.data()) / L"Fonts" / L"segoeui.ttf", std::ios::binary | std::ios::ate);
@@ -160,8 +163,9 @@ struct Renderer
         info.SrvDescriptorFreeFn = [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE) { };
         backend = ImGui_ImplDX12_Init(&info);
         if (!backend || !ImGui_ImplDX12_CreateDeviceObjects()) throw std::runtime_error("ImGui initialization failed");
-        // The atlas has been uploaded; release its pointer to temporary input bytes.
-        io.Fonts->ClearInputData();
+        // Only CPU texture pixels can be discarded. Interactive Hue rendering
+        // still needs CustomRects/PackIdMouseCursors; fontBytes owns the TTF data.
+        io.Fonts->ClearTexData();
     }
     bool Idle() const
     {
@@ -208,6 +212,11 @@ struct Renderer
         previousFrame = now;
         ImGui_ImplDX12_NewFrame();
         if (config.huePanel) crimson::overlay::PreparePanelFrame(window);
+        if (softwareCursorForTest) {
+            io.MouseDrawCursor = true;
+            io.AddFocusEvent(true); // synthetic IO focus only; never changes User32 focus
+            io.AddMousePosEvent(120.0f, 100.0f);
+        }
         ImGui::NewFrame();
         // Both passes share this frame/backbuffer. Light markers are independent
         // of the corner HUD; draw that panel afterwards to preserve readability.
@@ -716,4 +725,5 @@ void SetHideOccludedForTest(bool hidden) noexcept
     std::lock_guard lock(state.mutex);
     state.hideOccluded=hidden;
 }
+void SetSoftwareCursorForTest(bool visible) noexcept { softwareCursorForTest = visible; }
 }

@@ -168,9 +168,13 @@ Created by ZappendusterFX, developed with Claude and Codex (OpenAI).
 See THIRD-PARTY-NOTICES.txt for dependency licenses.
 Unofficial community project; not affiliated with Pearl Abyss.
 
-Private 2.2.5-huepanel.2 preview: CDT hosts the optional CrimsonHue mixer using
+Private 2.2.5-huepanel.3 preview: CDT hosts the optional CrimsonHue mixer using
 its existing D3D12 renderer. Pair with CrimsonHue 0.4.0-asi.10 (headless).
 Ctrl+Shift+H opens/hides the mixer; configure the binding in Hue Setup.
 Install both matching packages with the game closed. Public CDT 2.2.4 does not
 host this panel. The neutral telemetry API and lamp-control ownership stay separate.
 [CrimsonHue] Enabled=0 disables the optional panel. No Hue controller is bundled.
+
+Fixed in huepanel.3: retain cursor atlas metadata to prevent a startup crash
+when the interactive Hue cursor is drawn. Hide/Close explicitly release input
+and restore game cursor clipping. Existing Hue 0.4.0-asi.10 stays installed.

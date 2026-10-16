@@ -19,6 +19,7 @@ void Require(bool condition, const char* message) { if (!condition) throw std::r
 void Check(HRESULT hr) { Require(SUCCEEDED(hr), "D3D12 smoke operation failed"); }
 int wmain(int argc, wchar_t** argv) {
     if (argc != 3) return 1;
+    SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
     try {
         const auto asi = std::filesystem::absolute(argv[1]);
         const auto png = std::filesystem::absolute(argv[2]);
@@ -127,6 +128,9 @@ int wmain(int argc, wchar_t** argv) {
         telemetry.sample.build = "synthetic"; telemetry.sample.sequence = 1;
         cdt::overlay::Publish(telemetry);
         Require(cdt::overlay::InstallGraphics(config), "CDT graphics hook install failed");
+        // The hidden window never owns foreground input. Force its software
+        // cursor anyway so cursor-atlas lifetime failures cannot escape this test.
+        cdt::overlay::SetSoftwareCursorForTest(true);
         WNDCLASSW windowClass{}; windowClass.lpfnWndProc = DefWindowProcW; windowClass.hInstance = GetModuleHandleW(nullptr); windowClass.lpszClassName = L"CrimsonHue.OverlaySmoke";
         Require(RegisterClassW(&windowClass) != 0, "Window class failed");
         const auto window = CreateWindowW(windowClass.lpszClassName, L"Synthetic D3D12 overlay test", WS_OVERLAPPEDWINDOW,
@@ -195,11 +199,13 @@ int wmain(int argc, wchar_t** argv) {
         }
         Check(image->WritePixels(description.Height, footprint.Footprint.RowPitch, static_cast<UINT>(bytes), bgra.data()));
         Check(image->Commit()); Check(encoder->Commit()); staging->Unmap(0, nullptr);
-                const auto count = frames(); toggle(); Pump(); Check(chain->Present(0, 0)); Wait();
+        const auto count = frames(); toggle(); cdt::overlay::SetSoftwareCursorForTest(false);
+        Pump(); Check(chain->Present(0, 0)); Wait();
         Require(frames() > count, "Hiding Hue also hid the independent CDT HUD");
         cdt::overlay::SetVisibleForTest(false); const auto hiddenCount = frames();
         Pump(); Check(chain->Present(0, 0)); Wait(); Require(frames() == hiddenCount, "Hidden views still submitted a draw");
-        toggle(); Pump(); Check(chain->Present(0, 0)); Wait(); Require(frames() > hiddenCount, "Hue-only reopen did not restore overlay draws");
+        toggle(); cdt::overlay::SetSoftwareCursorForTest(true);
+        Pump(); Check(chain->Present(0, 0)); Wait(); Require(frames() > hiddenCount, "Hue-only reopen did not restore overlay draws");
         // Release our references and check real ResizeBuffers / renderer rebuild.
         buffer.Reset(); Check(chain->ResizeBuffers(2, 1280, 800, DXGI_FORMAT_R8G8B8A8_UNORM, 0));
         const auto beforeResize = frames(); const auto resizeStart = GetTickCount64();

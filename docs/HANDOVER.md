@@ -1,4 +1,34 @@
-# Current checkpoint — 2026-10-16, optional Hue panel ready (private)
+# Current checkpoint — 2026-10-16, startup cursor crash fixed
+
+Owner's installed `huepanel.2` + Hue `.asi.10` hung at startup, PID 8240.
+Exact native stacks/map prove the exception was ImFontAtlasGetMouseCursorTexData
+RVA 0xbc306; Streamline then hung in MiniDumpWriteDump with 113 threads suspended.
+ClearInputData deleted cursor rectangles before Hue's first software-cursor draw.
+The old hidden-window smoke never drew that cursor. No live game file/hook was patched.
+Details and preserved evidence: [HUE_CURSOR_HANG.md](HUE_CURSOR_HANG.md).
+
+Fix retains font sources/metadata for context lifetime and uses ClearTexData.
+Forced cursor smoke fails before with 0xC0000005, passes after including resize.
+Input release clears capture/queued text/wheel, restores cursor clipping without
+holding the WndProc mutex, disables hidden-panel ImGui input/focus and passes game
+keyboard/mouse/raw input through. Mocked User32 checks verify release, clipping
+reentrancy, reopen and focus loss without disturbing the owner's actual input.
+13/13 focused overlay/input/HDR regressions passed. Packaged code matches tested objects.
+
+New immutable production/research-OFF/build-25477059 ZIP **2.2.5-huepanel.3**:
+`artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.5-huepanel.3-ModManagers.zip`,
+SHA-256 `A401EA8E0AE8C12136E2816AB774ED9AAF66B9B4A86C90CCD67AB3F18447D1F1`;
+ASI `51EDA7502E5E2384112084C8C25A2A2A9A9564FF8E7027D15ADBD8C3DDD860B8`.
+Keep already installed **CrimsonHue 0.4.0-asi.10**; only CDT needs replacing.
+Builder/validator passed, not installed/game-tested. Old packages preserved.
+
+**Next:** owner ends hung/crashed game, replace CDT while closed, verify hash and
+check startup plus Hue hide -> gameplay input. Do not resume preexisting suspension
+or modify live hooks; no repeated declined A/B starts. Shared worktree remains
+`C:\DEV\CrimsonHue\artifacts\cdt-shared-overlay`, branch `codex/hue-shared-overlay`.
+Original main/research untouched. Real foreground input and physical lamps pending.
+
+# Previous checkpoint — 2026-10-16, optional Hue panel ready (private)
 
 Owner authorized moving CrimsonHue's HUD into mandatory CDT while playing.
 CDT now hosts the optional protocol-1 Hue panel in its existing ImGui/D3D12

@@ -38,11 +38,18 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
 bool HasInputFocus() noexcept { return capture.load(); }
 void ReleaseInput() noexcept {
     capture = false;
-    std::lock_guard lock(inputMutex);
-    if (clipReleased && GetForegroundWindow() == GetAncestor(activeWindow.load(), GA_ROOT)) ClipCursor(&previousClip);
-    clipReleased = false;
+    RECT clip{}; bool restore = false; HWND window{};
+    {
+        std::lock_guard lock(inputMutex);
+        restore = clipReleased; clip = previousClip; window = activeWindow;
+        clipReleased = false;
+        characters.clear(); wheel = horizontalWheel = 0;
+    }
+    // User32 calls can dispatch messages. Never hold our WndProc's mutex here.
+    if (restore && GetForegroundWindow() == GetAncestor(window, GA_ROOT)) ClipCursor(&clip);
 }
 void SetInputWindow(HWND window) noexcept {
+    if (activeWindow != window) ReleaseInput();
     std::lock_guard lock(inputMutex);
     capture = false; activeWindow = window;
     if (originals.contains(window)) return;
@@ -57,7 +64,7 @@ void FeedInput(HWND window, bool visible) {
     capture = owns;
     auto& io = ImGui::GetIO();
     io.MouseDrawCursor = owns;
-    io.AddFocusEvent(foreground);
+    io.AddFocusEvent(owns);
     POINT mouse{};
     if (owns && GetCursorPos(&mouse) && ScreenToClient(window, &mouse)) {
         { std::lock_guard lock(inputMutex); if (!clipReleased) { GetClipCursor(&previousClip); clipReleased = true; } }
