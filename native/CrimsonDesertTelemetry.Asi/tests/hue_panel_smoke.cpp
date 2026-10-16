@@ -18,7 +18,9 @@ using Json = nlohmann::json;
 void Require(bool condition, const char* message) { if (!condition) throw std::runtime_error(message); }
 void Check(HRESULT hr) { Require(SUCCEEDED(hr), "D3D12 smoke operation failed"); }
 int wmain(int argc, wchar_t** argv) {
-    if (argc != 3) return 1;
+    if (argc != 3 && argc != 4) return 1;
+    const bool setupPreview = argc == 4 && wcscmp(argv[3], L"--setup") == 0;
+    if (argc == 4 && !setupPreview) return 1;
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
     try {
         const auto asi = std::filesystem::absolute(argv[1]);
@@ -49,6 +51,9 @@ int wmain(int argc, wchar_t** argv) {
             Require(size > 0, "No UI snapshot"); return Json::parse(bytes.data(), bytes.data() + size); };
         auto Command = [&](Json command) { const auto text = command.dump(); Require(send(text.data(), static_cast<int>(text.size())) == 1, "Command not accepted"); };
         auto state = State();
+        Require(state.value("bridgeConnected", false) && state.value("bridgePhase", std::string{}) == "connected" &&
+            !state.at("areas").empty() && !state.at("areas")[0].at("name").get<std::string>().empty(),
+            "Connected status or named Entertainment areas missing from controller snapshot");
         Require(state.at("shortcut").at("key") == 'H', "Default shortcut must use H instead of a function key");
         Command({{"action", "shortcut"}, {"key", 'H'}, {"control", false}, {"shift", false}, {"alt", true}});
         Sleep(150); state = State();
@@ -123,6 +128,12 @@ int wmain(int argc, wchar_t** argv) {
         for (const auto& value : state.at("controls")) if (value.at("key") == "Brightness")
             Require(value.at("value") == 62.0, "Bounded queue or cleanup priority failed");
         cdt::overlay::Config config; config.enabled = true; config.visible = true;
+        if (setupPreview) {
+            Command({{"action", "setup"}, {"bridge", "192.168.2.139"}, {"telemetry", "ws://127.0.0.1:27311/v1/stream"}});
+            Sleep(150); state = State();
+            Require(!state.value("bridgeConnected", true) && state.at("areas").empty(), "Unconnected setup advertised selectable areas");
+            crimson::overlay::SelectTabForTest("Setup");
+        }
         cdt::overlay::View telemetry; telemetry.connected = true; telemetry.hasSample = true;
         telemetry.received = cdt::overlay::Clock::now(); telemetry.sample.state = "playing";
         telemetry.sample.build = "synthetic"; telemetry.sample.sequence = 1;

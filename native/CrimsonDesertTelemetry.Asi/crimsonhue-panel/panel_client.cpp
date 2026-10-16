@@ -109,17 +109,34 @@ void PreparePanelFrame(HWND window) {
     ImGui::GetIO().BackendPlatformName = "cdt_win32_with_crimsonhue";
     SetInputWindow(window); FeedInput(window, PanelVisible());
 }
-void DrawPanel() {
+void DrawPanel(ImFont* font, float scale) {
     if (!PanelVisible()) return;
-    Json view; if (!TryRead(view)) return;
+    // A snapshot update must not erase the panel for one frame. Keep the last
+    // complete view if the worker currently owns the snapshot mutex.
+    static Json view = Json::object();
+    TryRead(view);
     bool open = visible;
     // The current context/device/backend belongs entirely to CDT.
-    ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(.35f, .12f, .20f, 1));
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(.38f, .15f, .24f, 1));
-    ImGui::PushStyleColor(ImGuiCol_TabSelected, ImVec4(.45f, .20f, .29f, 1));
-    ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(.90f, .34f, .48f, 1));
-    DrawUi(view, open);
-    ImGui::PopStyleColor(4);
+    const auto savedStyle = ImGui::GetStyle();
+    auto& style = ImGui::GetStyle();
+    style.ScaleAllSizes(scale);
+    style.WindowRounding = 12 * scale;
+    style.WindowPadding = {14 * scale, 12 * scale};
+    style.Colors[ImGuiCol_Text] = {228.f/255, 239.f/255, 244.f/255, 1};
+    style.Colors[ImGuiCol_TextDisabled] = {174.f/255, 194.f/255, 207.f/255, .7f};
+    style.Colors[ImGuiCol_WindowBg] = {9.f/255, 20.f/255, 30.f/255, .94f};
+    style.Colors[ImGuiCol_Border] = {47.f/255, 74.f/255, 90.f/255, .92f};
+    style.Colors[ImGuiCol_TitleBgActive] = {20.f/255, 47.f/255, 59.f/255, 1};
+    style.Colors[ImGuiCol_Button] = {31.f/255, 69.f/255, 82.f/255, 1};
+    style.Colors[ImGuiCol_ButtonHovered] = {40.f/255, 100.f/255, 111.f/255, 1};
+    style.Colors[ImGuiCol_TabSelected] = {23.f/255, 75.f/255, 86.f/255, 1};
+    style.Colors[ImGuiCol_SliderGrab] = {49.f/255, 221.f/255, 208.f/255, 1};
+    const float savedFontScale = font ? font->Scale : 1;
+    if (font) { font->Scale = 16.0f * scale / font->FontSize; ImGui::PushFont(font); }
+    try { DrawUi(view, open, scale); }
+    catch (...) { if (font) { ImGui::PopFont(); font->Scale = savedFontScale; } style = savedStyle; throw; }
+    if (font) { ImGui::PopFont(); font->Scale = savedFontScale; }
+    style = savedStyle;
     // A worker shortcut can hide the panel during this frame. Publishing an
     // unchanged local 'open' would resurrect it and lose the shortcut edge.
     if (!open) visible = false;

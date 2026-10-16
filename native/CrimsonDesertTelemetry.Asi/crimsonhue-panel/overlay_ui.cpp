@@ -9,6 +9,7 @@
 
 namespace crimson::overlay {
 namespace {
+std::string testTab;
 std::string Text(const Json& value, const char* key) { return value.value(key, std::string{}); }
 void Wrap(const std::string& text) { ImGui::TextWrapped("%s", text.c_str()); }
 void Action(const char* name) { Command({{"action", name}}); }
@@ -177,25 +178,16 @@ void Setup(const Json& view) {
     static Shortcut chosen;
     static bool shortcutSeeded = false;
     if (!shortcutSeeded && view.value("ready", false)) { chosen = CurrentShortcut(); shortcutSeeded = true; }
-    ImGui::SeparatorText("Overlay shortcut");
-    const auto& keys = ShortcutKeys();
-    std::string keyName;
-    for (const auto& [key, label] : keys) if (key == chosen.key) keyName = label;
-    if (ImGui::BeginCombo("Key", keyName.c_str())) {
-        for (const auto& [key, label] : keys) {
-            if (ImGui::Selectable(label.c_str(), chosen.key == key)) chosen.key = key;
-            if (chosen.key == key) ImGui::SetItemDefaultFocus();
-        }
-        ImGui::EndCombo();
-    }
-    ImGui::Checkbox("Ctrl", &chosen.control); ImGui::SameLine();
-    ImGui::Checkbox("Shift", &chosen.shift); ImGui::SameLine(); ImGui::Checkbox("Alt", &chosen.alt);
-    Wrap("Current: " + ShortcutLabel(CurrentShortcut()));
-    if (Button("Save shortcut")) Command({{"action", "shortcut"}, {"key", chosen.key},
-        {"control", chosen.control}, {"shift", chosen.shift}, {"alt", chosen.alt}});
-    ImGui::SameLine(); if (Button("Default shortcut")) chosen = Shortcut{};
-    Wrap("CDT uses F8-F11 even with modifiers. Choose another key to avoid triggering both mods.");
     ImGui::SeparatorText("Connection");
+    const bool connected = view.value("bridgeConnected", false);
+    ImGui::TextColored(connected ? ImVec4(.19f, .87f, .82f, 1) : ImVec4(.98f, .74f, .36f, 1),
+        "%s", connected ? "CONNECTED" : "NOT CONNECTED");
+    Wrap(Text(view, "bridgeStatus"));
+    if (!connected) {
+        Wrap("1. Find your Hue Bridge at its local IP address.");
+        Wrap("2. When found, press the round link button ON the bridge, then click Trust bridge & pair within 30 seconds.");
+        Wrap("3. Wait for CONNECTED, then select your Entertainment area.");
+    }
     static std::array<char, 2048> bridge{}, telemetry{};
     static bool seeded = false;
     if (!seeded && view.value("ready", false)) {
@@ -205,21 +197,31 @@ void Setup(const Json& view) {
     const bool enabled = view.value("canSetup", false);
     ImGui::BeginDisabled(!enabled);
     ImGui::InputText("Bridge IPv4", bridge.data(), bridge.size());
-    ImGui::InputText("Telemetry WebSocket", telemetry.data(), telemetry.size());
-    if (Button("Apply addresses")) Command({{"action", "setup"}, {"bridge", bridge.data()}, {"telemetry", telemetry.data()}});
     ImGui::EndDisabled();
-    if (Button("Find bridge", enabled)) Action("find"); ImGui::SameLine();
-    if (Button("Reconnect telemetry", enabled)) Action("reconnect");
-    Wrap(Text(view, "bridgeStatus"));
+    if (Button(connected ? "Reconnect bridge" : "Find bridge", enabled)) {
+        Command({{"action", "connect"}, {"bridge", bridge.data()}, {"telemetry", telemetry.data()}});
+    }
+
     if (view.value("pairing", false)) {
-        Wrap("Press the bridge link button, then pair within 30 seconds. Check the bridge identity and certificate first.");
-        Wrap(Text(view, "certificate"));
+        ImGui::TextColored({.98f, .74f, .36f, 1}, "PRESS THE BUTTON ON YOUR HUE BRIDGE NOW");
+        Wrap("Bridge found; pairing is still required. Press its round link button, then confirm below within 30 seconds.");
+        if (ImGui::TreeNode("Bridge identity & certificate")) { Wrap(Text(view, "certificate")); ImGui::TreePop(); }
         if (Button("Trust bridge & pair", enabled)) Action("pair");
     }
+    const auto connectionError = Text(view, "bridgeError");
+    if (!connectionError.empty()) {
+        ImGui::TextColored({.98f, .74f, .36f, 1}, "CONNECTION FAILED");
+        Wrap(connectionError);
+        if (ImGui::TreeNode("Connection details")) { Wrap(Text(view, "bridgeDiagnostic")); ImGui::TreePop(); }
+    }
     auto selectedName = Text(view, "selectedArea");
+    const auto areas = view.value("areas", Json::array());
     for (const auto& area : view.value("areas", Json::array())) if (Text(area, "id") == selectedName) { selectedName = Text(area, "name"); break; }
+    if (!connected) selectedName = "Connect the bridge first";
+    else if (areas.empty()) selectedName = "No Entertainment areas found";
+    ImGui::BeginDisabled(!connected || areas.empty() || !enabled);
     if (ImGui::BeginCombo("Entertainment area", selectedName.c_str())) {
-        for (const auto& area : view.value("areas", Json::array())) {
+        for (const auto& area : areas) {
             ImGui::BeginDisabled(!enabled);
             if (ImGui::Selectable(Text(area, "name").c_str(), Text(area, "id") == Text(view, "selectedArea")))
                 Command({{"action", "area"}, {"id", Text(area, "id")}});
@@ -227,8 +229,37 @@ void Setup(const Json& view) {
         }
         ImGui::EndCombo();
     }
+    ImGui::EndDisabled();
+    if (connected && areas.empty()) Wrap("Connected, but no Entertainment area exists. Create one in the Hue app, then Refresh areas.");
+    if (connected && !areas.empty()) ImGui::Text("%d Entertainment area(s) available", static_cast<int>(areas.size()));
     if (Button("Refresh areas", view.value("canRefresh", false) && enabled)) Action("refresh");
     Wrap(Text(view, "layout")); Wrap("Create and position channels in the Hue app. Imported positions are preserved.");
+    if (ImGui::CollapsingHeader("Telemetry connection")) {
+        ImGui::BeginDisabled(!enabled);
+        ImGui::InputText("Telemetry WebSocket", telemetry.data(), telemetry.size());
+        if (Button("Apply addresses")) Command({{"action", "setup"}, {"bridge", bridge.data()}, {"telemetry", telemetry.data()}});
+        ImGui::SameLine(); if (Button("Reconnect telemetry")) Action("reconnect");
+        ImGui::EndDisabled();
+    }
+    if (ImGui::CollapsingHeader("Overlay shortcut")) {
+        const auto& keys = ShortcutKeys();
+        std::string keyName;
+        for (const auto& [key, label] : keys) if (key == chosen.key) keyName = label;
+        if (ImGui::BeginCombo("Key", keyName.c_str())) {
+            for (const auto& [key, label] : keys) {
+                if (ImGui::Selectable(label.c_str(), chosen.key == key)) chosen.key = key;
+                if (chosen.key == key) ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::Checkbox("Ctrl", &chosen.control); ImGui::SameLine();
+        ImGui::Checkbox("Shift", &chosen.shift); ImGui::SameLine(); ImGui::Checkbox("Alt", &chosen.alt);
+        Wrap("Current: " + ShortcutLabel(CurrentShortcut()));
+        if (Button("Save shortcut")) Command({{"action", "shortcut"}, {"key", chosen.key},
+            {"control", chosen.control}, {"shift", chosen.shift}, {"alt", chosen.alt}});
+        ImGui::SameLine(); if (Button("Default shortcut")) chosen = Shortcut{};
+        Wrap("CDT uses F8-F11 even with modifiers. Choose another key to avoid triggering both mods.");
+    }
 }
 void Presets(const Json& view) {
     static std::array<char, 2048> path{};
@@ -255,24 +286,30 @@ void Presets(const Json& view) {
     }
 }
 }
-void DrawUi(const Json& view, bool& visible) {
-    ImGui::SetNextWindowSize({1120, 740}, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowPos({60, 40}, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSizeConstraints({720, 480}, ImGui::GetIO().DisplaySize);
+void SelectTabForTest(const char* name) { testTab = name ? name : ""; }
+void DrawUi(const Json& view, bool& visible, float scale) {
+    ImGui::SetNextWindowSize({1040 * scale, 690 * scale}, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos({60 * scale, 40 * scale}, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints({720 * scale, 480 * scale}, ImGui::GetIO().DisplaySize);
     bool open = true;
     if (ImGui::Begin("CrimsonHue - live lighting mixer", &open, ImGuiWindowFlags_NoCollapse)) {
-        ImGui::TextColored({.95f, .55f, .65f, 1}, "CDT OVERLAY  /  %s", ShortcutLabel(CurrentShortcut()).c_str());
+        ImGui::TextColored({49.f/255, 221.f/255, 208.f/255, 1}, "CRIMSONHUE  /  %s", ShortcutLabel(CurrentShortcut()).c_str());
+        const bool bridgeConnected = view.value("bridgeConnected", false);
+        ImGui::TextColored(bridgeConnected ? ImVec4(.19f, .87f, .82f, 1) : ImVec4(.98f, .74f, .36f, 1),
+            "%s", bridgeConnected ? "HUE BRIDGE: CONNECTED" : "HUE BRIDGE: NOT CONNECTED - open Setup");
         Wrap(Text(view, "telemetry")); Wrap(Text(view, "capture")); Wrap(Text(view, "ambient"));
         if (!view.value("ready", false)) { Wrap("Starting CrimsonHue. Requires .NET 8 Desktop Runtime x64."); Wrap(GraphicsStatus()); }
         else {
-            const float left = std::max(350.0f, ImGui::GetContentRegionAvail().x * .47f);
-            ImGui::BeginChild("Mixer", {left, -145}, ImGuiChildFlags_Borders);
+            const float left = std::max(350 * scale, ImGui::GetContentRegionAvail().x * .47f);
+            ImGui::BeginChild("Mixer", {left, -110 * scale}, ImGuiChildFlags_Borders);
             if (ImGui::BeginTabBar("MixerTabs")) {
                 static bool previousWallPreview = false;
                 const bool selectRoom = view.value("wallPreview", false) && !previousWallPreview;
                 previousWallPreview = view.value("wallPreview", false);
                 for (const auto* group : {"Output", "Ambient", "Color", "Space", "Room", "Setup", "Presets"}) {
-                    if (ImGui::BeginTabItem(group, nullptr, selectRoom && strcmp(group, "Room") == 0 ? ImGuiTabItemFlags_SetSelected : 0)) {
+                    const bool choose = (selectRoom && strcmp(group, "Room") == 0) || testTab == group;
+                    if (ImGui::BeginTabItem(group, nullptr, choose ? ImGuiTabItemFlags_SetSelected : 0)) {
+                        if (testTab == group) testTab.clear();
                         if (strcmp(group, "Setup") == 0) Setup(view);
                         else if (strcmp(group, "Room") == 0) WallWash(view);
                         else if (strcmp(group, "Presets") == 0) Presets(view);
@@ -283,7 +320,7 @@ void DrawUi(const Json& view, bool& visible) {
                 ImGui::EndTabBar();
             }
             ImGui::EndChild(); ImGui::SameLine();
-            ImGui::BeginChild("Monitor", {0, -145}, ImGuiChildFlags_Borders);
+            ImGui::BeginChild("Monitor", {0, -110 * scale}, ImGuiChildFlags_Borders);
             bool demo = view.value("demo", false);
             ImGui::BeginDisabled(view.value("canStop", false) || view.value("smoke", false));
             if (ImGui::Checkbox("Demo preview only", &demo)) Command({{"action", "demo"}, {"value", demo}});

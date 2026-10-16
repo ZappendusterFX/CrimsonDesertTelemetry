@@ -1,4 +1,35 @@
-# Current checkpoint — 2026-10-16, startup cursor crash fixed
+# Current checkpoint — 2026-10-16, compact Hue setup preview ready
+
+Owner is now in-game with huepanel.3 + Hue .asi.10; startup succeeds. Exact
+installed hashes matched and PID 30092 responded. Remember transient cursor
+pull upper-left (no longer occurring) and intermittent Hue flicker; both remain
+open observations. Owner says CDT's font/style is perfect and requests matching
+Hue typography plus explicit bridge-button/connected feedback.
+
+Final new pair: **CDT 2.2.5-huepanel.5 + Hue 0.4.0-asi.12**, production,
+research OFF/build 25477059. CDT 16px body text/scale and blue/cyan style, bridge
+setup first, secondary options collapsed. Controller atomic Find/connect,
+link-button prompt, saved pairing reuse, actual connected/error/area states.
+Hue draws the last complete snapshot on mutex contention instead of skipping
+its panel (one possible flicker cause). Retained cursor atlas fix remains intact.
+86/86 Hue and 13/13 focused CDT checks passed; final Room/Setup GPU smoke passes.
+Built/validated, not installed/game-tested. Full evidence and all hashes:
+`C:\DEV\CrimsonHue\docs\GUIDED-SETUP-VALIDATION.md`.
+CDT ZIP SHA-256 `031A6B837CA5A4A2A906320AF487E8652B030020CCA1D91093A08B7323D33AB2`.
+
+Owner's old game UI reports generic HTTPS failure/no areas. External read-only
+probe + authenticated GET succeed with the saved real credentials (same pin,
+Spieltisch, 6 channels, inactive). In-game transport failure is **not proven fixed**.
+New safe connection details are needed if it recurs. No live hooks/files, firewall,
+credentials or lamps changed. Original main/research and old ZIPs preserved.
+
+**Next:** install both final packages when game is closed, verify hashes, then
+confirm in-game CONNECTED/Spieltisch. Read Connection details on failure before
+speculative network fixes. Continue Room calibration afterwards; no automatic
+lamp output or repeated declined A/B starts. Work stays on codex/hue-shared-overlay
+at C:\DEV\CrimsonHue\artifacts\cdt-shared-overlay.
+
+# Previous checkpoint — 2026-10-16, startup cursor crash fixed
 
 Owner's installed `huepanel.2` + Hue `.asi.10` hung at startup, PID 8240.
 Exact native stacks/map prove the exception was ImFontAtlasGetMouseCursorTexData

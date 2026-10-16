@@ -61,6 +61,7 @@ struct Renderer
     std::unique_ptr<hdr::Compositor> compositor;
     UINT64 signalValue{}, draws{};
     ImGuiContext* context{};
+    ImFont* hueFont{};
     HWND window{};
     bool backend{}, fault{};
     Clock::time_point previousFrame = Clock::now();
@@ -147,6 +148,12 @@ struct Renderer
             io.Fonts->AddFontFromMemoryTTF(fontBytes.data(), static_cast<int>(fontBytes.size()), fontPixels, &font);
         }
         else io.Fonts->AddFontDefault(&font);
+        // Match the 16-pixel body text used by CDT's HUD, in the same screen scale.
+        ImFontConfig hueFontConfig = font;
+        hueFontConfig.SizePixels = 16.0f * HudScale(static_cast<float>(width), static_cast<float>(height), config, config.details);
+        if (!fontBytes.empty())
+            hueFont = io.Fonts->AddFontFromMemoryTTF(fontBytes.data(), static_cast<int>(fontBytes.size()), hueFontConfig.SizePixels, &hueFontConfig);
+        else hueFont = io.Fonts->AddFontDefault(&hueFontConfig);
         ImGui_ImplDX12_InitInfo info{};
         info.Device = device.Get();
         info.CommandQueue = queue.Get();
@@ -230,7 +237,8 @@ struct Renderer
         }
         if (hudVisible) DrawHud(latest, config, details);
         if (notice) DrawNotice(*notice, config, hudVisible, details);
-        if (config.huePanel) crimson::overlay::DrawPanel();
+        if (config.huePanel) crimson::overlay::DrawPanel(hueFont,
+            HudScale(static_cast<float>(width), static_cast<float>(height), config, details));
         ImGui::Render();
         Check(frame.allocator->Reset());
         Check(frame.commands->Reset(frame.allocator.Get(), nullptr));
