@@ -76,6 +76,10 @@ int wmain(int argc, wchar_t** argv) {
 
         state = State(); Require(state.at("wallWashers").size() == 2, "Missing per-lamp wall calibration");
         for (const auto& washer : state.at("wallWashers")) {
+            Require(washer.at("segmentCount") == 3 && washer.at("segments").size() == 3 &&
+                washer.at("removedSegmentCount") == 0, "Imported Hue segment summary is incorrect");
+            for (const auto& segment : washer.at("segments"))
+                Require(segment.at("needsReview") == false, "Unchanged Hue segment unexpectedly needs review");
             const auto id = washer.at("serviceId");
             Command({{"action", "wallWash"}, {"serviceId", id}, {"key", "enabled"}, {"value", true}});
             Command({{"action", "wallWash"}, {"serviceId", id}, {"key", "yaw"}, {"value", id == "synthetic-left" ? -60 : 60}});
@@ -88,6 +92,19 @@ int wmain(int argc, wchar_t** argv) {
         Require(state.value("wallPreview", false) && !state.value("canIdentify", true), "Synthetic preview enabled physical testing");
         Require(state.at("wallWashers")[0].at("yaw") == -60 && state.at("wallWashers")[0].at("segments")[0].at("elevation") == -30,
             "Lamp or segment calibration command did not apply");
+        const auto calibratedLeft = state.at("wallWashers")[0];
+        Command({{"action", "wallWash"}, {"serviceId", "synthetic-left"}, {"key", "enabled"}, {"value", false}});
+        Sleep(100); state = State();
+        const auto pointLeft = state.at("wallWashers")[0];
+        Require(pointLeft.at("enabled") == false && pointLeft.at("yaw") == calibratedLeft.at("yaw") &&
+            pointLeft.at("horizontalSpan") == calibratedLeft.at("horizontalSpan") &&
+            pointLeft.at("segments") == calibratedLeft.at("segments"), "Point mode discarded saved wall placement");
+        Command({{"action", "wallWash"}, {"serviceId", "synthetic-left"}, {"key", "enabled"}, {"value", true}});
+        Sleep(100); state = State();
+        const auto restoredLeft = state.at("wallWashers")[0];
+        Require(restoredLeft.at("enabled") == true && restoredLeft.at("yaw") == calibratedLeft.at("yaw") &&
+            restoredLeft.at("horizontalSpan") == calibratedLeft.at("horizontalSpan") &&
+            restoredLeft.at("segments") == calibratedLeft.at("segments"), "Wall mode did not restore saved placement");
         bool leftLit = false;
         for (const auto& channel : state.at("channels")) {
             const auto rgb = channel.at("rgb");
@@ -108,7 +125,7 @@ int wmain(int argc, wchar_t** argv) {
         for (const auto& channel : state.at("channels")) if (channel.at("id").get<int>() < 3)
             Require(channel.at("rgb").at("x") == 0, "Right preview source leaked to left washer");
         Command({{"action", "wallPreview"}, {"key", "yaw"}, {"value", -75}});
-        std::cout << "PASS wall area/segment commands, direction preview, strict separation and physical-output isolation.\n";
+        std::cout << "PASS segment summary, Point/Wall placement preservation, direction preview, strict separation and physical-output isolation.\n";
 
         const auto protocol = reinterpret_cast<Status>(GetProcAddress(module, "CrimsonHueUiProtocol"));
         Require(protocol && protocol() == 1, "Incompatible Hue UI protocol");

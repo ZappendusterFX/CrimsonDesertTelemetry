@@ -1,4 +1,32 @@
-# Current checkpoint — 2026-10-16, optional smoothed-feed metadata fix
+# Current checkpoint — 2026-10-16, Point/Wall Hue setup candidate
+
+Owner asked to implement ordinary-light/ColorCast wall-washer setup without
+requiring room measurements first. Synchronized maintained CrimsonHue panel:
+explicit Point / Wall area per light, segment count, hidden irrelevant controls,
+new-segment review/confirmation and removed-segment notice. Controller retains
+the room model; CDT continues to host the single renderer. No telemetry schema,
+game instrumentation or input-capture change. Original main/research untouched.
+
+Final pair: **CDT 2.2.5-huepanel.6 + Hue 0.4.0-asi.15**, built/validated, not
+installed/game-tested. Production/research OFF/native build 25477059. CDT ZIP:
+artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.5-huepanel.6-ModManagers.zip
+SHA256 204C5BD2B50008F71428BFAA2C1FF5E8A2929D8F4217F4BF12030141242F481C
+ASI D151F6BC66C8F87AEBFCE42E45AD31FB32C21228409654709A343E34828A9FFE
+Hue ZIP SHA256 CBD03CA5F901811370DFF0F9D359738DB8F8E614FF94BBAF6371D8F1CB8F6107.
+
+98/98 Hue nonphysical tests, exact final controller smoke and shared production
+GPU smoke pass. Smoke checks segment metadata and Point/Wall placement retention,
+software cursor, readback (748580 pixels), independent hide/reopen, resize/cleanup.
+Screenshot C:\DEV\CrimsonHue\artifacts\room-modes-final\room.png visually checked.
+Maintained package validators passed; existing packages immutable. Includes the
+previous optional-smoothed-feed metadata fix and its eight passing focused groups.
+
+Next: install BOTH matching packages only with game closed. Room calibration
+needs later owner observations of actual illuminated regions/segments; no bridge
+settings, lamps, real saved calibration or installed modules changed in this turn.
+Physical Ambient appearance and movement remain pending acceptance.
+
+# Previous checkpoint — 2026-10-16, optional smoothed-feed metadata fix
 
 Owner requested a short cross-project review of CDT and CrimsonHue, particularly
 ordinary lamps, wall washers and Hue Entertainment segments. No native/game,

@@ -37,6 +37,7 @@ void Room(const Json& view) {
     for (const auto& washer : view.value("wallWashers", Json::array())) {
         if (!washer.value("enabled", false)) continue;
         for (const auto& segment : washer.at("segments")) {
+            if (segment.value("needsReview", false)) continue;
             ImVec4 output{0, 0, 0, 1}; int count = 0;
             for (const auto& reference : segment.at("channels")) for (const auto& channel : view.value("channels", Json::array()))
                 if (channel.at("id") == reference.at("id")) {
@@ -75,8 +76,8 @@ void Room(const Json& view) {
     if (view.value("demo", false)) draw->AddText({at.x + 12, at.y + size.y - 25}, IM_COL32(239, 150, 170, 255), "SIMULATED DATA - NO LAMP OUTPUT");
 }
 void WallWash(const Json& view) {
-    Wrap("Map the illuminated wall as seen from your seat. Dots show Hue positions; blue traces show calibrated wall areas.");
-    Wrap("Direction: 0 = screen, -90 = left, +90 = right, +/-180 = behind. Width is the visible wall span, not the lamp's beam angle.");
+    Wrap("Choose how each light fills your room: Point uses its Hue position; Wall area uses the region it illuminates, as seen from your seat.");
+    Wrap("Use Wall area for a ColorCast wall washer or any light washing a wall. Dots show Hue positions; blue traces show calibrated wall areas.");
     Wrap("Demo previews your selected area without lamp output. Segment tests are separate: one channel, white at 10%, two seconds, then restore.");
     if (view.value("demo", false)) Wrap("Turn off Demo preview only before a physical segment test.");
     ImGui::BeginDisabled(view.value("canStop", false));
@@ -98,10 +99,17 @@ void WallWash(const Json& view) {
     for (const auto& washer : washers) {
         const auto service = Text(washer, "serviceId");
         ImGui::PushID(service.c_str());
+        const auto& segments = washer.at("segments");
         std::string title = Text(washer, "label") + "  / CH";
-        for (const auto& segment : washer.at("segments")) for (const auto& channel : segment.at("channels"))
+        for (const auto& segment : segments) for (const auto& channel : segment.at("channels"))
             title += " " + std::to_string(channel.value("id", 0));
         ImGui::SeparatorText(title.c_str());
+        const int segmentCount = static_cast<int>(segments.size());
+        ImGui::Text("%d Hue segment%s", segmentCount, segmentCount == 1 ? "" : "s");
+        const int removed = washer.value("removedSegmentCount", 0);
+        if (removed > 0)
+            ImGui::TextWrapped("Hue configuration changed: %d previous segment%s no longer present. Review this light's wall setup.",
+                removed, removed == 1 ? " is" : "s are");
         const auto set = [&](const char* key, const Json& value, int index = -1) {
             Command({{"action", "wallWash"}, {"serviceId", service}, {"key", key}, {"value", value}, {"index", index}});
         };
@@ -111,27 +119,40 @@ void WallWash(const Json& view) {
         };
         ImGui::BeginDisabled(!editing);
         bool enabled = washer.value("enabled", false);
-        if (ImGui::Checkbox("Use wall area", &enabled)) set("enabled", enabled);
-        if (Button("Start left")) { set("yaw", -60); set("span", 60); set("enabled", true); }
-        ImGui::SameLine(); if (Button("Start right")) { set("yaw", 60); set("span", 60); set("enabled", true); }
-        Wrap("Starting points only: adjust to the light actually visible on your walls.");
-        angle("Direction", "yaw", washer.value("yaw", 0.0), -180, 180);
-        angle("Wall width", "span", washer.value("horizontalSpan", 60.0), 0, 180);
-        for (const auto& segment : washer.at("segments")) {
-            const int index = segment.value("index", 0);
-            ImGui::PushID(index);
-            if (ImGui::TreeNode("Segment", "Segment %d", index)) {
-                angle("Side offset", "offset", segment.value("yawOffset", 0.0), -180, 180, index);
-                angle("Height angle", "elevation", segment.value("elevation", 0.0), -89, 89, index);
-                angle("Height span", "verticalSpan", segment.value("verticalSpan", 0.0), 0, 90, index);
-                Wrap("Height starts from Hue's coordinates. Use a segment test to check which wall patch it illuminates.");
-                ImGui::TreePop();
+        if (ImGui::RadioButton("Point (Hue position)", !enabled)) { enabled = false; set("enabled", false); }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Wall area", enabled)) { enabled = true; set("enabled", true); }
+        if (enabled) {
+            Wrap("Direction: 0 = screen, -90 = left, +90 = right, +/-180 = behind. Width is the visible wall span.");
+            if (Button("Start left")) { set("yaw", -60); set("span", 60); }
+            ImGui::SameLine(); if (Button("Start right")) { set("yaw", 60); set("span", 60); }
+            Wrap("Starting points only: adjust to the light actually visible on your walls.");
+            angle("Direction", "yaw", washer.value("yaw", 0.0), -180, 180);
+            angle("Wall width", "span", washer.value("horizontalSpan", 60.0), 0, 180);
+            for (const auto& segment : segments) {
+                const int index = segment.value("index", 0);
+                ImGui::PushID(index);
+                const bool needsReview = segment.value("needsReview", false);
+                if (needsReview) {
+                    ImGui::Text("Segment %d", index);
+                    Wrap("New Hue segment: review wall placement. Local light is off until confirmed.");
+                }
+                if (needsReview) ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+                if (ImGui::TreeNode("Segment", "Segment %d placement", index)) {
+                    angle("Side offset", "offset", segment.value("yawOffset", 0.0), -180, 180, index);
+                    angle("Height angle", "elevation", segment.value("elevation", 0.0), -89, 89, index);
+                    angle("Height span", "verticalSpan", segment.value("verticalSpan", 0.0), 0, 90, index);
+                    Wrap("Height starts from Hue's coordinates. Use a segment test to check which wall patch it illuminates.");
+                    ImGui::TreePop();
+                }
+                if (needsReview && Button("Confirm segment placement")) set("confirmSegment", nullptr, index);
+                ImGui::PopID();
             }
-            ImGui::PopID();
+            if (Button("Reset to imported Hue positions")) set("reset", nullptr);
         }
-        if (Button("Use imported Hue positions")) set("reset", nullptr);
+        else Wrap("Each segment follows its imported Hue position. Select Wall area if this light illuminates a wider region.");
         ImGui::EndDisabled();
-        for (const auto& segment : washer.at("segments")) for (const auto& channel : segment.at("channels")) {
+        for (const auto& segment : segments) for (const auto& channel : segment.at("channels")) {
             const int id = channel.value("id", 0);
             const auto label = "Test CH " + std::to_string(id) + " (2 s, 10%)";
             if (Button(label.c_str(), view.value("canIdentify", false) && channel.value("canIdentify", false)))
