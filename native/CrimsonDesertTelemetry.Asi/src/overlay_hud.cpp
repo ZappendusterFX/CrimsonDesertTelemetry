@@ -1,4 +1,5 @@
 #include "overlay.h"
+#include "../crimsonhue-panel/overlay.h"
 #include <imgui.h>
 #include <algorithm>
 #include <array>
@@ -19,6 +20,10 @@ constexpr ImU32 Cyan = IM_COL32(49, 221, 208, 255);
 constexpr ImU32 Amber = IM_COL32(251, 188, 91, 255);
 constexpr ImU32 Panel = IM_COL32(9, 20, 30, 240);
 constexpr ImU32 Grid = IM_COL32(42, 67, 82, 190);
+ImDrawList* HudDrawList() {
+    // Interactive settings must remain above the passive HUD and world markers.
+    return crimson::overlay::PanelVisible() ? ImGui::GetBackgroundDrawList() : ImGui::GetForegroundDrawList();
+}
 
 struct Rect
 {
@@ -289,7 +294,7 @@ void DrawHud(const View& view, const Config& config, const bool details)
     const float margin = 20 * scale;
     const ImVec2 origin((config.corner & 1) ? io.DisplaySize.x - width - margin : margin,
         (config.corner & 2) ? io.DisplaySize.y - height - margin : margin);
-    auto* draw = ImGui::GetForegroundDrawList();
+    auto* draw = HudDrawList();
     const auto point = [&](float x, float y) { return ImVec2(origin.x + x * scale, origin.y + y * scale); };
     const auto text = [&](float x, float y, ImU32 color, const std::string& value, float size = 16)
     {
@@ -421,7 +426,7 @@ void DrawLightOverlay(const View& view, const Config& config)
     const auto display = ImGui::GetIO().DisplaySize;
     const float scale = std::min(std::max(1.f,display.y/1080.f),display.x/660.f);
     if (scale < .3f || display.y < 120*scale) return;
-    auto* draw = ImGui::GetForegroundDrawList();
+    auto* draw = HudDrawList();
     auto* font = ImGui::GetFont();
     const auto hud = HudBounds(config,display);
     const float margin = 20*scale;
@@ -725,7 +730,7 @@ void DrawNotice(const Notice& notice, const Config& config, bool hudVisible, boo
         else y = (HudNaturalHeight(config,details)+40) * hudScale;
     }
     y = std::min(y, std::max(margin, display.y - height - margin));
-    auto* draw = ImGui::GetForegroundDrawList();
+    auto* draw = HudDrawList();
     const ImVec2 start(x,y), end(x+width,y+height);
     const ImU32 accent = notice.error ? IM_COL32(255,157,111,255) : Cyan;
     draw->AddRectFilled(start, end, IM_COL32(9,20,30,240), 8 * scale);

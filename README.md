@@ -4,6 +4,12 @@
 
 Inspect positions, colors and brightness of current light contributions from fires, candles, lanterns and glass/crystal lamps, alongside the player and render camera. Use the data in your own overlays, tools and lighting integrations.
 
+**Private 2.2.5-huepanel.2 preview:** the optional CrimsonHue mixer now uses CDT's
+existing renderer and ImGui context. Pair with **CrimsonHue 0.4.0-asi.10**, which
+hosts the lamp controller without graphics hooks. Ctrl+Shift+H shows/hides Hue;
+CDT's HUD remains independent. See [shared panel integration](docs/CRIMSONHUE_PANEL.md).
+This preview is separate from the published 2.2.4 release and requires game/input acceptance.
+
 **New in 2.2:**
 
 - **Lights all around you.** Telemetry now reads the game's light list *before* the renderer discards what the current view cannot see. Lights behind the camera and out of view stay in the API, radar and markers. A fire bowl arrives as one light instead of many flickering particles.

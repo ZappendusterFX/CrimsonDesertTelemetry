@@ -6,7 +6,7 @@
 namespace cdt::overlay
 {
 // HUD, world light markers and startup notices opt in independently.
-// All three off means no UI hooks/client.
+// With all three off, only a compatible optional CrimsonHue panel enables hooks/client.
 Config LoadConfig(const std::filesystem::path& ini);
 // Called only from a bootstrap worker, never from DllMain itself.
 void Start(HMODULE module, HANDLE stopEvent, const std::filesystem::path& directory) noexcept;

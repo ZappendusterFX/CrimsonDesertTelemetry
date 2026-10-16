@@ -779,6 +779,8 @@ int main(int argc, char** argv)
         Require(argc == 1, "Usage: overlay-tests [--snapshot recorded.jsonl]");
         Config config;
         Require(!config.enabled, "HUD must default to disabled");
+        Require(config.huePanel, "Optional Hue panel discovery must default on");
+        Require(!ReadTestConfig("[CrimsonHue]\nEnabled=0\n").huePanel, "Explicit Hue panel opt-out ignored");
         Require(!ReadTestConfig(nullptr).enabled, "Missing INI must disable HUD");
         Require(!ReadTestConfig("").enabled, "Empty INI must disable HUD");
         Require(!ReadTestConfig("[Server]\nEnabled=1\n").enabled, "Server enable must not enable HUD");

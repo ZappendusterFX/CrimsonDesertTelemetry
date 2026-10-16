@@ -34,6 +34,7 @@ function Get-ProfileRules([ValidateSet('production', 'research')][string]$Profil
     $rules = @{
         Server = @{ Enabled = 'bool'; Port = 'int:1024:65535'; SampleRateHz = 'int:1:240' }
         Notifications = @{ Enabled = 'bool'; DurationMilliseconds = 'int:5000:10000' }
+        CrimsonHue = @{ Enabled = 'bool' }
         Lights = @{ Enabled = 'bool'; NearbyRadius = 'int:1:100000'; ManyLights = 'bool'; ManyLightsSampleRateHz = 'int:1:60'; Upstream = 'bool' }
         Ambient = @{ Enabled = 'bool' }
         SourceVisibility = @{ Enabled = 'bool' }
@@ -118,6 +119,7 @@ function Assert-IniConfiguration([string]$Ini, [ValidateSet('production', 'resea
         }
     }
     foreach ($requiredSection in $rules.Keys) {
+        if ($requiredSection -eq 'CrimsonHue' -and -not $sections.ContainsKey($requiredSection)) { continue } # old INIs use optional discovery
         # New private opt-in; old research packages remain valid with default OFF.
         if ($requiredSection -eq 'Experimental' -and -not $sections.ContainsKey($requiredSection)) { continue }
         if (-not $sections.ContainsKey($requiredSection)) { throw "Missing INI section [$requiredSection]." }

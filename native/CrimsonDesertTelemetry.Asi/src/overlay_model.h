@@ -97,6 +97,7 @@ struct Config
 {
     bool enabled = false, visible = true, details = false, autoScale = true;
     bool notifications = false;
+    bool huePanel = true; // optional protocol-1 CrimsonHue controller; no second renderer
     bool lightsExpected = false, renderedExpected = false, upstreamExpected = false;
     bool lightOverlay = false, lightOverlayVisible = true, radar3D = true;
     bool showAmbient = true, occlusionTest = false, hideOccluded = false;

@@ -1,6 +1,7 @@
 #include "overlay.h"
 #include "overlay_hdr.h"
 #include "presentation_queue.h"
+#include "../crimsonhue-panel/overlay.h"
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <wrl/client.h>
@@ -56,6 +57,7 @@ struct Renderer
     std::unique_ptr<hdr::Compositor> compositor;
     UINT64 signalValue{}, draws{};
     ImGuiContext* context{};
+    HWND window{};
     bool backend{}, fault{};
     Clock::time_point previousFrame = Clock::now();
     View latest;
@@ -66,6 +68,7 @@ struct Renderer
         DXGI_COLOR_SPACE_TYPE colorSpace)
     {
         chain = swapchain;
+        Check(chain->GetHwnd(&window));
         queue = commandQueue;
         Check(chain->GetDevice(IID_PPV_ARGS(&device)));
         ComPtr<ID3D12Device> queueDevice;
@@ -196,7 +199,7 @@ struct Renderer
         if (backBuffer >= buffers.size()) return false;
         TryRead(latest);
         const auto notice = notices.Update(latest, config, Clock::now());
-        if (!hudVisible && !lightVisible && !notice) return false;
+        if (!hudVisible && !lightVisible && !notice && !(config.huePanel && crimson::overlay::PanelVisible())) return false;
         ContextScope scope(context);
         auto& io = ImGui::GetIO();
         io.DisplaySize = ImVec2(static_cast<float>(width), static_cast<float>(height));
@@ -204,6 +207,7 @@ struct Renderer
         io.DeltaTime = std::clamp(std::chrono::duration<float>(now - previousFrame).count(), 0.001f, 0.25f);
         previousFrame = now;
         ImGui_ImplDX12_NewFrame();
+        if (config.huePanel) crimson::overlay::PreparePanelFrame(window);
         ImGui::NewFrame();
         // Both passes share this frame/backbuffer. Light markers are independent
         // of the corner HUD; draw that panel afterwards to preserve readability.
@@ -217,6 +221,7 @@ struct Renderer
         }
         if (hudVisible) DrawHud(latest, config, details);
         if (notice) DrawNotice(*notice, config, hudVisible, details);
+        if (config.huePanel) crimson::overlay::DrawPanel();
         ImGui::Render();
         Check(frame.allocator->Reset());
         Check(frame.commands->Reset(frame.allocator.Get(), nullptr));
@@ -354,16 +359,19 @@ bool Draw(IDXGISwapChain* chain, UINT flags) noexcept
         UpdateShortcutToggle(state.hideOccluded,state.occlusionToggleDown,state.config.occlusionToggleKey,occlusionToggle,foreground);
         const bool hudVisible = state.config.enabled && state.visible;
         const bool lightVisible = state.config.lightOverlay && state.lightVisible;
-        if ((!hudVisible && !lightVisible && !state.config.notifications) || !state.renderer) return false;
+        if ((!hudVisible && !lightVisible && !state.config.notifications &&
+            !(state.config.huePanel && crimson::overlay::PanelVisible())) || !state.renderer) return false;
         // Color-space changes are rebuilt on the worker after our GPU fence, not
         // in Present. Never draw an SDR/PQ pipeline into the newly selected space.
         if (hdr::ResolveOutput(state.renderer->outputFormat, state.outputColorSpace) != state.renderer->outputMode) return false;
         auto drawingConfig=state.config;drawingConfig.hideOccluded=state.hideOccluded;
         if (state.renderer->Draw(drawingConfig, state.details, hudVisible, lightVisible)) { ++state.rendered; return true; }
+        if (state.renderer->fault && state.config.huePanel) crimson::overlay::RequestPanelStop();
     }
     catch (...)
     {
         if (state.renderer) state.renderer->fault = true;
+        if (state.config.huePanel) crimson::overlay::RequestPanelStop();
         state.status = "Overlay drawing disabled after a graphics error; telemetry continues.";
     }
     return false;
@@ -617,7 +625,8 @@ HRESULT STDMETHODCALLTYPE OnCreateHwnd(IDXGIFactory2* factory, IUnknown* device,
 }
 bool InstallGraphics(const Config& config) noexcept
 {
-    if (!config.enabled && !config.notifications && !config.lightOverlay) return false;
+    if (!config.enabled && !config.notifications && !config.lightOverlay &&
+        !(config.huePanel && crimson::overlay::PanelAvailable())) return false;
     try
     {
         auto& state = Data();
@@ -641,6 +650,10 @@ void MaintainGraphics() noexcept
     auto& state = Data();
     try
     {
+        if (state.config.huePanel) {
+            crimson::overlay::RefreshBridge();
+            crimson::overlay::PollPanelShortcut();
+        }
         ProcessPendingSwapchains();
         std::lock_guard lock(state.mutex);
         if (!state.candidate || state.resizing || state.changingColorSpace || state.failed) return;
@@ -651,6 +664,7 @@ void MaintainGraphics() noexcept
         {
             state.outputLabel = "D3D12 / unsupported color space";
             state.status = "Unsupported display format/color space; overlays paused, telemetry continues.";
+            if (state.config.huePanel) crimson::overlay::RequestPanelStop();
             return;
         }
         if (state.renderer)
@@ -675,6 +689,7 @@ void MaintainGraphics() noexcept
         catch (...)
         {
             state.failed = true;
+            if (state.config.huePanel) crimson::overlay::RequestPanelStop();
             state.status = "Overlay graphics initialization failed; see overlay log and D3D12 output settings. Telemetry continues.";
         }
     }

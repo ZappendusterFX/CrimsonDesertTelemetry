@@ -63,6 +63,8 @@ target_include_directories(cdt_imgui SYSTEM PUBLIC ${imgui_SOURCE_DIR} ${imgui_S
 target_link_libraries(cdt_imgui PUBLIC d3d12 dxgi d3dcompiler)
 
 add_library(cdt_overlay STATIC src/overlay_model.cpp src/overlay_client.cpp src/overlay_hud.cpp src/overlay_graphics.cpp src/overlay_hdr.cpp)
+target_sources(cdt_overlay PRIVATE crimsonhue-panel/panel_client.cpp crimsonhue-panel/overlay_ui.cpp
+    crimsonhue-panel/overlay_input.cpp crimsonhue-panel/overlay_shortcut.cpp)
 target_compile_features(cdt_overlay PUBLIC cxx_std_20)
 target_compile_definitions(cdt_overlay PUBLIC UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX CDT_RESEARCH=$<BOOL:${CDT_RESEARCH}>)
 target_compile_options(cdt_overlay PRIVATE /W4 /WX /permissive-)
@@ -136,6 +138,10 @@ target_compile_options(CrimsonDesertTelemetryBootstrapSmoke PRIVATE /W4 /WX /per
 target_link_libraries(CrimsonDesertTelemetryBootstrapSmoke PRIVATE ws2_32)
 
 enable_testing()
+add_executable(CrimsonHue.OverlaySmoke tests/hue_panel_smoke.cpp)
+target_compile_features(CrimsonHue.OverlaySmoke PRIVATE cxx_std_20)
+target_compile_options(CrimsonHue.OverlaySmoke PRIVATE /W4 /WX /permissive-)
+target_link_libraries(CrimsonHue.OverlaySmoke PRIVATE cdt_overlay windowscodecs ole32)
 add_executable(CrimsonDesertTelemetryPhysicsProbeTests tests/physics_probe_tests.cpp)
 target_compile_features(CrimsonDesertTelemetryPhysicsProbeTests PRIVATE cxx_std_20)
 target_compile_options(CrimsonDesertTelemetryPhysicsProbeTests PRIVATE /W4 /WX /permissive-)

@@ -1,4 +1,5 @@
 #include "overlay.h"
+#include "../crimsonhue-panel/overlay.h"
 #include <winhttp.h>
 #include <nlohmann/json.hpp>
 #include <algorithm>
@@ -235,6 +236,14 @@ DWORD WINAPI Worker(void* parameter)
     auto* args = static_cast<WorkerArgs*>(parameter);
     try
     {
+        // The optional ASI can be loaded later in the loader's initial module list.
+        // With every CDT view off, wait without hooks or HTTP/WebSocket clients.
+        if (args->config.huePanel) crimson::overlay::RefreshBridge();
+        while (!args->config.enabled && !args->config.notifications && !args->config.lightOverlay &&
+            args->config.huePanel && !crimson::overlay::PanelAvailable()) {
+            if (WaitForSingleObject(args->stop, 50) != WAIT_TIMEOUT) return 0;
+            crimson::overlay::RefreshBridge();
+        }
         const bool installed = InstallGraphics(args->config);
         std::ofstream log(args->directory / L"CrimsonDesertTelemetry.overlay.log", std::ios::app);
         log << "Overlay: " << (installed ? "graphics hooks installed" : "graphics hooks unavailable") << '\n';
@@ -286,6 +295,10 @@ DWORD WINAPI Worker(void* parameter)
                 log << "Status: " << noticeText << '\n'; log.flush();
             }
             lastNotice = noticeText;
+        }
+        if (args->config.huePanel) {
+            crimson::overlay::RequestPanelStop();
+            crimson::overlay::RefreshBridge();
         }
     }
     catch (...) { return 2; }
@@ -359,12 +372,13 @@ Config LoadConfig(const std::filesystem::path& ini)
     config.radar3D = integer(L"Radar3D", 1) != 0;
     config.showAmbient = integer(L"ShowAmbient", 1) != 0;
     config.notifications = GetPrivateProfileIntW(L"Notifications", L"Enabled", 0, ini.c_str()) != 0;
+    config.huePanel = GetPrivateProfileIntW(L"CrimsonHue", L"Enabled", 1, ini.c_str()) != 0;
     config.lightsExpected = GetPrivateProfileIntW(L"Lights", L"Enabled", 0, ini.c_str()) != 0;
     config.renderedExpected = config.lightsExpected && GetPrivateProfileIntW(L"Lights", L"ManyLights", 1, ini.c_str()) != 0;
     config.upstreamExpected = config.renderedExpected && GetPrivateProfileIntW(L"Lights", L"Upstream", 1, ini.c_str()) != 0;
     config.notificationDurationMs = static_cast<int>(std::clamp(
         GetPrivateProfileIntW(L"Notifications", L"DurationMilliseconds", 6000, ini.c_str()), 5000u, 10000u));
-    if (!config.enabled && !config.notifications && !config.lightOverlay) return config;
+    if (!config.enabled && !config.notifications && !config.lightOverlay && !config.huePanel) return config;
     config.visible = integer(L"InitiallyVisible", 1) != 0;
     config.details = integer(L"ShowDetails", 0) != 0;
     config.autoScale = integer(L"AutoScale", 1) != 0;
@@ -388,7 +402,7 @@ void Start(const HMODULE module, HANDLE stopEvent, const std::filesystem::path& 
             _wcsicmp(std::filesystem::path(executable.data()).filename().c_str(), L"CrimsonDesert.exe") != 0) return;
         const auto config = LoadConfig(directory / L"CrimsonDesertTelemetry.ini");
         // Return before pinning the module, creating HUD workers, hooks or a client.
-        if (!config.enabled && !config.notifications && !config.lightOverlay) return;
+        if (!config.enabled && !config.notifications && !config.lightOverlay && !config.huePanel) return;
         const auto name = std::format(L"Local\\CrimsonDesertTelemetry.Overlay.{}", GetCurrentProcessId());
         HANDLE singleton = CreateMutexW(nullptr, FALSE, name.c_str());
         if (!singleton) return;

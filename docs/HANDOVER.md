@@ -1,4 +1,33 @@
-# Current checkpoint — 2026-09-29, 2.2.4 published on GitHub
+# Current checkpoint — 2026-10-16, optional Hue panel ready (private)
+
+Owner authorized moving CrimsonHue's HUD into mandatory CDT while playing.
+CDT now hosts the optional protocol-1 Hue panel in its existing ImGui/D3D12
+renderer and handles its focus-gated shortcut/input. The compatible headless
+CrimsonHue ASI retains Hue networking, DPAPI, mixer/washer mapping and lifecycle.
+No telemetry schema/acquisition changes. Old independent-renderer Hue ASIs are rejected.
+See [CRIMSONHUE_PANEL.md](CRIMSONHUE_PANEL.md).
+
+Final package pair: **CDT 2.2.5-huepanel.2**, production/research OFF, build 25477059,
+and **CrimsonHue 0.4.0-asi.10**. CDT ZIP under artifacts/mod-manager has SHA-256
+`7FE26932D54D1478C94F803D0E53FA913B0BA7F8751545FB6C34ADFAFBA213F7`;
+ASI `DFA7F32CE03CE3AE3BFE0435EA5C038349BD3FA9EBEC85AC8292C5B99EB6F3C4`.
+Both maintained package validators passed. Native 39/39 and managed 79 passed;
+shared production renderer harness with exact Hue package passed pixel readback,
+washer controls, bounded commands/cleanup, independent hide, Hue-only reopen and resize.
+Full pair hashes/evidence: `C:\DEV\CrimsonHue\docs\SHARED-OVERLAY-VALIDATION.md`.
+
+Work is isolated on `codex/hue-shared-overlay` from `3284601`, checkout
+`C:\DEV\CrimsonHue\artifacts\cdt-shared-overlay`. Original main/research/untracked
+work untouched. Shared panel sources are maintained in CrimsonHue and copied
+with Sync-CdtPanel.ps1 (SOURCE-SHA256.txt). No running-game file/hook/process or
+physical lamp changed. The game EXE was preserved via Backup-GameExecutable.ps1.
+
+**Next:** after owner closes the game, install both final packages and verify
+hashes for a single combined HUD/panel/input check without ReShade. Not installed,
+published or game-tested; physical output/DMM acceptance remain pending. Do not
+repeat the declined manual A/B restarts. Published 2.2.4 remains untouched.
+
+# Previous checkpoint — 2026-09-29, 2.2.4 published on GitHub
 
 [GitHub release v2.2.4](https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/tag/v2.2.4)
 is public and latest. Its asset is the exact local ZIP (SHA-256
