@@ -1,4 +1,34 @@
-# Current checkpoint — 2026-10-16, Point/Wall Hue setup candidate
+# Current checkpoint — 2026-10-16, Hue cursor drift candidate
+
+Owner reports slow upper-left pointer drift with Hue HUD open. The adapter used
+the game's OS cursor position every frame and discarded raw mouse payloads.
+Now the first valid delivered mouse packet enables a local HUD cursor; relative
+and absolute input, signed virtual desktop and client/render scaling are handled.
+No device registration or OS cursor write. Missing raw packets retain legacy
+fallback, avoiding a frozen pointer on buffered input routes. Same-window frames
+also retain capture instead of briefly releasing it. Maintained source remains
+in CrimsonHue/native/CrimsonHue.Panel and is hash-verified against this copy.
+Game-side warping is plausible, not traced; physical drift acceptance is pending.
+
+**13/13 focused input/overlay tests pass**. Both hidden Room/Setup shared D3D12
+WARP smokes pass against exact Hue .asi.16, including software cursor, 28 controls,
+spherical radius commands, hide/reopen, resize and shutdown; screenshots reviewed.
+New input regression mocks User32; no real mouse, keyboard, game or lamp action.
+Details, limits, hashes and evidence: [HUE_CURSOR_DRIFT.md](HUE_CURSOR_DRIFT.md).
+
+New immutable **CDT 2.2.5-huepanel.7**, production/research OFF/build25477059:
+artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.5-huepanel.7-ModManagers.zip
+ZIP SHA256 E58A052C2AACF733C97D0D46071246B62C21B6D450533FA08D6025701C7FF2A8
+ASI SHA256 079648F6B23699C838A9FDF603125BF660E56422114ABA5E0F6587DC7D80DD34
+Maintained builder/expanded/ZIP validators pass; package uses the exact tested
+shared renderer library. Not installed or game-tested. Keep Hue .asi.16 for this
+input correction. Original main/research, old packages and installed game untouched.
+
+Next input-specific step: install this CDT candidate after game exit and confirm
+cursor stability plus closing-HUD gameplay input. Ambient/stream-stop diagnosis
+continues separately in CrimsonHue; this change makes no lighting claim.
+
+# Previous checkpoint — 2026-10-16, Point/Wall Hue setup candidate
 
 Owner asked to implement ordinary-light/ColorCast wall-washer setup without
 requiring room measurements first. Synchronized maintained CrimsonHue panel:

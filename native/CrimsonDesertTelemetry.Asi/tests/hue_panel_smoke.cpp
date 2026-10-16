@@ -62,17 +62,27 @@ int wmain(int argc, wchar_t** argv) {
         Sleep(100); Require(State().at("shortcut").at("key") == 'H', "Invalid shortcut overwrote saved binding");
         Command({{"action", "shortcut"}, {"key", 'H'}, {"control", true}, {"shift", true}, {"alt", false}});
         Require(state.value("smoke", false) && state.value("demo", false) && !state.value("windowVisible", true), "Engine showed a WPF window or enabled live mode");
-        Require(state.at("controls").size() == 28 && state.at("switches").size() == 2 && state.at("channels").size() == 6, "Missing mixer/layout controls");
+        Require(state.at("controls").size() == 28 && state.at("switches").empty() && state.at("channels").size() == 6,
+            "Missing mixer/layout controls or obsolete axis switches remain");
+        bool sphereDefault = false;
+        for (const auto& value : state.at("controls")) if (value.at("key") == "SourceDiscRadiusDegrees")
+            sphereDefault = value.at("value") == 60.0 && value.at("min") == 1.0 && value.at("max") == 180.0 && value.at("group") == "Space";
+        Require(sphereDefault, "Spherical radius default or range missing from controller snapshot");
         Command({{"action", "set"}, {"key", "Brightness"}, {"value", 23.0}});
-        Command({{"action", "switch"}, {"key", "SeparateFrontRear"}, {"value", false}});
+        Command({{"action", "set"}, {"key", "SourceDiscRadiusDegrees"}, {"value", 130.0}});
         Sleep(150); state = State();
-        bool brightness = false, boundary = false;
+        bool brightness = false, sphere = false;
         for (const auto& value : state.at("controls")) if (value.at("key") == "Brightness") brightness = value.at("value") == 23.0;
-        for (const auto& value : state.at("switches")) if (value.at("key") == "SeparateFrontRear") boundary = !value.at("value").get<bool>();
-        Require(brightness && boundary, "Overlay command did not reach live mapping");
+        for (const auto& value : state.at("controls")) if (value.at("key") == "SourceDiscRadiusDegrees") sphere = value.at("value") == 130.0;
+        Require(brightness && sphere, "Overlay command did not reach live mapping");
         Command({{"action", "set"}, {"key", "Brightness"}, {"value", 200.0}}); Sleep(100);
         state = State(); for (const auto& value : state.at("controls")) if (value.at("key") == "Brightness") Require(value.at("value") == 23.0, "Out-of-range command changed mapping");
+        Command({{"action", "set"}, {"key", "SourceDiscRadiusDegrees"}, {"value", 181.0}}); Sleep(100);
+        state = State(); for (const auto& value : state.at("controls")) if (value.at("key") == "SourceDiscRadiusDegrees")
+            Require(value.at("value") == 130.0, "Out-of-range spherical radius changed mapping");
         Command({{"action", "reset"}, {"group", "Output"}}); Command({{"action", "reset"}, {"group", "Space"}}); Sleep(100);
+        state = State(); for (const auto& value : state.at("controls")) if (value.at("key") == "SourceDiscRadiusDegrees")
+            Require(value.at("value") == 60.0, "Space reset did not restore spherical radius default");
 
         state = State(); Require(state.at("wallWashers").size() == 2, "Missing per-lamp wall calibration");
         for (const auto& washer : state.at("wallWashers")) {
@@ -109,7 +119,7 @@ int wmain(int argc, wchar_t** argv) {
         for (const auto& channel : state.at("channels")) {
             const auto rgb = channel.at("rgb");
             if (channel.at("id").get<int>() < 3) leftLit |= rgb.at("x").get<double>() > 0;
-            else Require(rgb.at("x") == 0 && rgb.at("y") == 0 && rgb.at("z") == 0, "Calibrated preview crossed the left/right boundary");
+            else Require(rgb.at("x") == 0 && rgb.at("y") == 0 && rgb.at("z") == 0, "Calibrated preview reached beyond its spherical radius");
         }
         Require(leftLit, "Outward wall preview received no light");
         Command({{"action", "wallWash"}, {"serviceId", "synthetic-left"}, {"key", "yaw"}, {"value", 400}});
@@ -125,7 +135,7 @@ int wmain(int argc, wchar_t** argv) {
         for (const auto& channel : state.at("channels")) if (channel.at("id").get<int>() < 3)
             Require(channel.at("rgb").at("x") == 0, "Right preview source leaked to left washer");
         Command({{"action", "wallPreview"}, {"key", "yaw"}, {"value", -75}});
-        std::cout << "PASS segment summary, Point/Wall placement preservation, direction preview, strict separation and physical-output isolation.\n";
+        std::cout << "PASS segment summary, Point/Wall placement preservation, spherical direction preview and physical-output isolation.\n";
 
         const auto protocol = reinterpret_cast<Status>(GetProcAddress(module, "CrimsonHueUiProtocol"));
         Require(protocol && protocol() == 1, "Incompatible Hue UI protocol");
@@ -243,7 +253,7 @@ int wmain(int argc, wchar_t** argv) {
         crimson::overlay::RequestPanelStop(); crimson::overlay::RefreshBridge();
         stop(); const auto stopStart = GetTickCount64(); while (status() == 1 && GetTickCount64() - stopStart < 5000) { Pump(); Sleep(20); }
         Require(status() == 2, "Engine shutdown failed");
-        std::cout << "PASS CDT single renderer + actual headless Hue ASI: bounded command queue, all 30 controls, wall preview, D3D12 pixel readback, independent HUD/hide, Hue-only reopen, resize and shutdown; " << lit << " visible pixels.\n";
+        std::cout << "PASS CDT single renderer + actual headless Hue ASI: bounded command queue, all 28 controls, spherical radius commands, wall preview, D3D12 pixel readback, independent HUD/hide, Hue-only reopen, resize and shutdown; " << lit << " visible pixels.\n";
         return 0;
     } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 2; }
 }
