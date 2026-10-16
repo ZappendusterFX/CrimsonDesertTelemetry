@@ -97,7 +97,21 @@ public sealed class SmoothedLightProcessor
         {
             // HTTP polls/60Hz host ticks must not smooth a repeated 20Hz sample
             // again. A radius-filter change on that same sample is not fresh GPU data.
-            if (!_previousInput.SequenceEqual(ordered)) return Unavailable("repeated-source-changed", now);
+            if (!_previousInput.SequenceEqual(ordered))
+            {
+                // Physics verdicts/ages advance independently of GPU captures.
+                // Refresh that metadata without rejecting valid light data or
+                // applying the RGB EMA again at the host publication rate.
+                if (_previousInput.Length != ordered.Length ||
+                    _previousInput.Where((before, index) => !SameLightPayload(before, ordered[index])).Any())
+                    return Unavailable("repeated-source-changed", now);
+                var current = ordered.ToDictionary(light => light.SampleIndex);
+                _previous = _previous.Select(group => group with
+                {
+                    Contributions = group.Contributions.Select(light => current[light.SampleIndex]).ToArray()
+                }).ToArray();
+                _previousInput = ordered;
+            }
             return Envelope(now, _sequence, input.FrameNumber, _sourceTime,
                 Math.Max(age, (long)(now - _sourceTime).TotalMilliseconds), _previous);
         }
@@ -170,6 +184,11 @@ public sealed class SmoothedLightProcessor
         DateTimeOffset? captured, long? age, IReadOnlyList<SmoothedLightGroup>? groups, string? reason = null) =>
         new("1.0", reason is null ? "available" : "unavailable", Source, Coverage,
             now, _options, sequence, frame, captured, age, groups, reason);
+    private static bool SameLightPayload(RenderedLightSnapshot a, RenderedLightSnapshot b) =>
+        a.SampleIndex == b.SampleIndex && a.Position == b.Position && a.ColorLinear == b.ColorLinear &&
+        a.LuminanceLinear == b.LuminanceLinear && a.Kind == b.Kind && a.Direction == b.Direction &&
+        a.ConeHalfAngleDegrees == b.ConeHalfAngleDegrees;
+
     private static bool Valid(RenderedLightSnapshot light) => light.SampleIndex is >= 0 and < RenderLightReader.RawCount &&
         Finite(light.Position) && Finite(light.ColorLinear) && light.ColorLinear.X >= 0 && light.ColorLinear.Y >= 0 &&
         light.ColorLinear.Z >= 0 && float.IsFinite(light.LuminanceLinear) && light.LuminanceLinear >= 0 &&

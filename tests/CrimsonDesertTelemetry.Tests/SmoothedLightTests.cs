@@ -55,6 +55,54 @@ internal static class SmoothedLightTests
         var sparse = new SmoothedLightProcessor(new(200)); Step(sparse,1,0,Light(0,0));
         var sparseResult=Step(sparse,2,200,Light(4,0,3));
         Check(Near(frequentResult.Sources![0].ColorLinear.X,sparseResult.Sources![0].ColorLinear.X), "rate-dependent smoothing");
+        IndependentVisibilityMetadata();
+    }
+
+    private static void IndependentVisibilityMetadata()
+    {
+        foreach (var upstream in new[] { false, true })
+        {
+            SmoothedLightsSnapshot Process(SmoothedLightProcessor processor, RenderLightsSnapshot input, double now)
+            {
+                if (!upstream) return processor.Process(input, Start.AddMilliseconds(now));
+                var converted = new UpstreamLightsSnapshot("available", UpstreamLightDecoder.SourceName,
+                    input.CaptureSequence, input.FrameNumber, input.CapturedAt, input.AgeMilliseconds,
+                    (uint)input.Sources!.Count, input.Sources.Select(light => new UpstreamLightSnapshot(
+                        light.SampleIndex, "standalone", null, light.Position, light.ColorLinear,
+                        light.LuminanceLinear, light.Kind, light.Direction, light.ConeHalfAngleDegrees,
+                        false, null, light.SourceVisibility)).ToArray(), new(0,0,1,0,0,0,0,0,0,1,0,0));
+                return processor.ProcessUpstream(converted, Start.AddMilliseconds(now));
+            }
+            var visibility = new SourceVisibilitySnapshot("clear", 1, null, new(0,0,0), 1,
+                null, 1, 0, null, "physics-ray-fan", 9, 9, 1, 1000);
+            var p = new SmoothedLightProcessor(new(200));
+            Process(p, Input(1, 0, Light(0,0) with { SourceVisibility = visibility }), 0);
+            var light = Light(0,0,5) with { SourceVisibility = visibility };
+            var input = Input(2, 100, light);
+            var smoothed = Process(p, input, 100);
+            var aged = visibility with { VolumeAgeMillisecondsAtCapture = 30 };
+            var agedInput = input with { Sources = [light with { SourceVisibility = aged }] };
+            var repeated = Process(p, agedInput, 130);
+            Check(repeated.Status == "available" && repeated.Sources![0].ColorLinear == smoothed.Sources![0].ColorLinear &&
+                repeated.Sources[0].TrackingId == smoothed.Sources[0].TrackingId && repeated.AgeMilliseconds == 30 &&
+                repeated.Sources[0].Contributions[0].SourceVisibility == aged,
+                "independent physics age rejected a repeated GPU capture or reapplied its EMA");
+            var blocked = aged with { Status = "blocked", AttenuationFactor = 0, ClearSampleCount = 0,
+                MeasurementSequence = 2, MeasuredAtTickMilliseconds = 1040, VolumeAgeMillisecondsAtCapture = 0 };
+            var blockedInput = input with { Sources = [light with { SourceVisibility = blocked }] };
+            var changed = Process(p, blockedInput, 140);
+            Check(changed.Status == "available" && changed.Sources![0].ColorLinear == smoothed.Sources![0].ColorLinear &&
+                changed.Sources[0].Contributions[0].SourceVisibility == blocked &&
+                smoothed.Sources[0].Contributions[0].SourceVisibility == visibility,
+                "new physics verdict lost metadata, mutated a prior snapshot or changed unfiltered RGB");
+            var next = Process(p, Input(3, 200, light with { SourceVisibility = blocked }), 200);
+            Check(next.Sources![0].TrackingId == smoothed.Sources![0].TrackingId &&
+                Near(next.Sources[0].ColorLinear.X, 1 + (1 - Math.Exp(-1)) * 4),
+                "metadata-only update reset the smoothing history");
+            var mutated = Input(3, 200, light with { ColorLinear = new(6,0,0), SourceVisibility = blocked });
+            Check(Process(p, mutated, 210).UnavailableReason == "repeated-source-changed",
+                "metadata exception allowed changed same-capture RGB");
+        }
     }
     public static void Freshness()
     {

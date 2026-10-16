@@ -1,4 +1,39 @@
-# Current checkpoint — 2026-10-16, compact Hue setup preview ready
+# Current checkpoint — 2026-10-16, optional smoothed-feed metadata fix
+
+Owner requested a short cross-project review of CDT and CrimsonHue, particularly
+ordinary lamps, wall washers and Hue Entertainment segments. No native/game,
+bridge, installed ASI or package changes. Original main/research remain untouched.
+
+Confirmed via in-memory replay: the same GPU capture with unchanged light data
+but physics visibility age 100 -> 110 ms produced available -> unavailable
+(repeated-source-changed) -> available. SmoothedLightProcessor compared complete
+records although physics metadata is refreshed independently at host ticks.
+Fixed repeated-capture handling to compare immutable light payload and refresh
+contribution visibility metadata while preserving group identity/RGB EMA.
+Changed RGB/positions or membership on the same capture are still rejected.
+This affects the optional smoothed feed; CrimsonHue uses raw /v1/stream, so it
+does not establish the cause of the owner's reported physical motion flicker.
+
+Managed Release build: zero warnings/errors. Eight focused test groups passed:
+six SmoothedLightTests groups (including VisibleTransport), UpstreamLightTests
+Smoothing and RenderLightReaderTests VisibilityMappingAndSmoothing. Regression
+covers rendered/upstream metadata refresh, clear -> blocked, prior-snapshot
+immutability, unchanged repeated-capture EMA and subsequent-capture continuity.
+No package built; existing huepanel.5 is immutable and lacks this source fix.
+
+Review candidates only: avoid serializing unobserved derived streams every host
+tick (TelemetryServerState.Publish); investigate cached Ambient independent
+visibility age if publication stalls (LatestSky). Neither performance impact nor
+a physical Ambient failure was proven. Visible selection changes intentionally
+reset smoothing and missing groups vanish immediately. Device geometry and
+final per-channel output smoothing remain CrimsonHue responsibilities.
+
+Companion Hue fix includes the light capture's age when expiring physics verdicts;
+95/95 nonphysical Hue tests pass, including a mixed ordinary-lamp/washer setup.
+Next: integrate these source fixes into fresh versioned candidates when packaging
+is requested, retaining the prior pending physical motion/Ambient acceptance.
+
+# Previous checkpoint — 2026-10-16, compact Hue setup preview ready
 
 Owner is now in-game with huepanel.3 + Hue .asi.10; startup succeeds. Exact
 installed hashes matched and PID 30092 responded. Remember transient cursor
