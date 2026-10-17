@@ -476,6 +476,7 @@ void DrawUi(const Json& view, bool& visible, float scale) {
     bool open = true;
     if (ImGui::Begin("CrimsonHue - live lighting mixer", &open, ImGuiWindowFlags_NoCollapse)) {
         ImGui::TextColored({49.f/255, 221.f/255, 208.f/255, 1}, "CRIMSONHUE  /  %s", ShortcutLabel(CurrentShortcut()).c_str());
+        if (InputHandoffPending()) Wrap("Release held keys and mouse buttons to use this panel.");
         const bool bridgeConnected = view.value("bridgeConnected", false);
         ImGui::TextColored(bridgeConnected ? ImVec4(.19f, .87f, .82f, 1) : ImVec4(.98f, .74f, .36f, 1),
             "%s", bridgeConnected ? "HUE BRIDGE: CONNECTED" : "HUE BRIDGE: NOT CONNECTED - open Setup");

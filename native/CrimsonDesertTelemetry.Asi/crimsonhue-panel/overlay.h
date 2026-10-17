@@ -29,4 +29,6 @@ void SetInputWindow(HWND window) noexcept;
 void FeedInput(HWND window, bool visible);
 void ReleaseInput() noexcept;
 bool HasInputFocus() noexcept;
+bool InputHandoffPending() noexcept;
+void MaintainInputHandoff() noexcept;
 }

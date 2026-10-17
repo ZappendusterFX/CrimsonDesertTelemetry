@@ -84,6 +84,7 @@ void RefreshBridge() noexcept {
 }
 void PollPanelShortcut() noexcept {
     if (!PanelAvailable()) return;
+    MaintainInputHandoff(); // also progresses releases when no overlay is drawing
     DWORD process{}; GetWindowThreadProcessId(GetForegroundWindow(), &process);
     const auto shortcut = CurrentShortcut();
     const auto down = [](int key) { return (GetAsyncKeyState(key) & 0x8000) != 0; };

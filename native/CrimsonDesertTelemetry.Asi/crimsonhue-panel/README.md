@@ -19,3 +19,11 @@ binding changes remain in CrimsonHue's protected user settings.
 The title-bar X hides the panel and queues `close` to save controller settings;
 it keeps lighting sync running, like the shortcut and Hide settings button.
 Only explicit `stop`, host shutdown or a stream failure stops lighting sync.
+
+Input ownership changes only after pre-existing game presses have released.
+Legacy and delivered raw mouse/keyboard messages are tracked independently so
+one route cannot swallow the other's queued release. Closing drops HUD focus and
+restores clipping immediately, while finishing any HUD-owned press/release pairs
+before forwarding new game presses. The worker progresses this handoff even when
+all panels are hidden. ImGui input is reset on the render thread before reuse.
+No synthetic input, raw-device registration or buffered-queue reads are used.

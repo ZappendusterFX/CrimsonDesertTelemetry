@@ -1,4 +1,29 @@
-# Current checkpoint — 2026-10-17, Hue HUD X keeps sync running
+# Current checkpoint — 2026-10-17, held-input handoff candidate
+
+Owner reports endless sword attacks after a possible HUD close, resolved by
+another open/close. Exact in-game input route/order is unrecorded. Confirmed
+adapter defect: it swallowed releases for pre-existing game presses when HUD
+capture began. Maintained Hue panel now tracks delivered legacy/raw presses
+independently, waits for game-owned releases, finishes HUD-owned pairs on Hide,
+and resets ImGui on its render thread. The worker progresses releases even with
+all HUDs hidden. Prompt asks for held keys/buttons to be released before UI use.
+No artificial input, cursor warp, registration or buffered raw-queue reads.
+
+Actual-adapter mocked regressions pass for held attack/queued up/both raw-legacy
+orders/raw-only/mixed packet/keyboard/right modifiers/close clicked/no-frame and
+worker completion/focus/ImGui reset; old cursor cases retained. A targeted mutant
+fails the queued-release assertion. **12/12** focused native tests and exact Hue.20
+hidden shared D3D12 WARP/pixel/hide/resize smoke pass. Screenshot reviewed.
+
+New immutable **CDT2.2.5-huepanel.10**, production/researchOFF/build25477059; keep
+existing **Hue0.4.0-asi.20** unchanged. Package validators and source hashes pass;
+packaged README now names this pair. Evidence/hashes: [HUE_INPUT_HANDOFF.md](HUE_INPUT_HANDOFF.md).
+No real input, game/process writes, installation, settings or lamp output changed.
+Next: owner installs CDT.10 after game exit and checks sword/HUD transitions.
+Synthetic Win32 reproduction is separate from game acceptance and does not prove
+suppression of independently polled/buffered game input routes.
+
+# Previous checkpoint — 2026-10-17, Hue HUD X keeps sync running
 
 Owner reports mouse X stops Hue sync, whereas Ctrl+Shift+H keeps it running.
 The Hue controller's close handler explicitly stopped sync before saving; it now

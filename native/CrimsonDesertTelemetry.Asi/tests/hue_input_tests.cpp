@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <imgui.h>
 #include <cmath>
+#include <array>
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
@@ -18,7 +19,19 @@ RECT clientRect{0, 0, 800, 600};
 RAWINPUT rawPacket{};
 UINT rawReadBytes = sizeof(RAWINPUT);
 int cursorReads{}, rawReads{}, registrationWrites{};
-LRESULT CALLBACK Original(HWND, UINT, WPARAM, LPARAM) { ++forwarded; return 701; }
+std::array<bool, 256> physicalKeys{};
+bool gameAttackLegacy{}, gameAttackRaw{};
+LRESULT CALLBACK Original(HWND, UINT message, WPARAM, LPARAM) {
+    ++forwarded;
+    if (message == WM_LBUTTONDOWN) gameAttackLegacy = true;
+    if (message == WM_LBUTTONUP) gameAttackLegacy = false;
+    if (message == WM_INPUT && rawPacket.header.dwType == RIM_TYPEMOUSE) {
+        if (rawPacket.data.mouse.usButtonFlags & RI_MOUSE_LEFT_BUTTON_DOWN) gameAttackRaw = true;
+        if (rawPacket.data.mouse.usButtonFlags & RI_MOUSE_LEFT_BUTTON_UP) gameAttackRaw = false;
+    }
+    if (message == WM_KILLFOCUS) gameAttackLegacy = gameAttackRaw = false;
+    return 701;
+}
 HWND TestForeground() { return testForegroundWindow; }
 HWND TestAncestor(HWND window, UINT) { return window; }
 BOOL TestClip(const RECT* value) {
@@ -50,7 +63,12 @@ UINT TestRawData(HRAWINPUT handle, UINT command, LPVOID data, PUINT size, UINT h
     std::memcpy(data, &rawPacket, sizeof(rawPacket)); *size = sizeof(rawPacket); return rawReadBytes;
 }
 [[maybe_unused]] BOOL TestRegister(PCRAWINPUTDEVICE, UINT, UINT) { ++registrationWrites; return FALSE; }
-SHORT TestKey(int) { return 0; }
+SHORT TestKey(int key) {
+    if (key == VK_CONTROL) return physicalKeys[VK_LCONTROL] || physicalKeys[VK_RCONTROL] ? static_cast<SHORT>(0x8000) : 0;
+    if (key == VK_SHIFT) return physicalKeys[VK_LSHIFT] || physicalKeys[VK_RSHIFT] ? static_cast<SHORT>(0x8000) : 0;
+    if (key == VK_MENU) return physicalKeys[VK_LMENU] || physicalKeys[VK_RMENU] ? static_cast<SHORT>(0x8000) : 0;
+    return key > 0 && key < 256 && physicalKeys[key] ? static_cast<SHORT>(0x8000) : 0;
+}
 LONG_PTR TestSubclass(HWND, int, LONG_PTR next) {
     const auto previous = installed ? installed : Original;
     installed = reinterpret_cast<WNDPROC>(next); return reinterpret_cast<LONG_PTR>(previous);
@@ -70,6 +88,16 @@ void SendRaw(LONG x, LONG y, USHORT flags = MOUSE_MOVE_RELATIVE) {
     rawPacket.data.mouse.usFlags = flags; rawPacket.data.mouse.lLastX = x; rawPacket.data.mouse.lLastY = y;
     Require(installed(reinterpret_cast<HWND>(1), WM_INPUT, 0, reinterpret_cast<LPARAM>(reinterpret_cast<HRAWINPUT>(0x123))) == 902,
         "Captured raw packet was not cleaned up through DefWindowProc");
+}
+LRESULT RawButtons(USHORT flags, LONG x = 0, LONG y = 0) {
+    rawPacket = {}; rawPacket.header.dwType = RIM_TYPEMOUSE; rawPacket.header.dwSize = sizeof(rawPacket);
+    rawPacket.data.mouse.usButtonFlags = flags; rawPacket.data.mouse.lLastX = x; rawPacket.data.mouse.lLastY = y;
+    return installed(reinterpret_cast<HWND>(1), WM_INPUT, 0, 0x123);
+}
+LRESULT RawKey(USHORT key, USHORT flags, USHORT scan = 0) {
+    rawPacket = {}; rawPacket.header.dwType = RIM_TYPEKEYBOARD; rawPacket.header.dwSize = sizeof(rawPacket);
+    rawPacket.data.keyboard.VKey = key; rawPacket.data.keyboard.Flags = flags; rawPacket.data.keyboard.MakeCode = scan;
+    return installed(reinterpret_cast<HWND>(1), WM_INPUT, 0, 0x123);
 }
 }
 #define GetForegroundWindow TestForeground
@@ -119,6 +147,7 @@ int main() {
         FrameAt(175, 225, "Legacy cursor stopped following OS position without raw registration");
         Require(HasInputFocus() && io.MouseDrawCursor, "Visible foreground panel did not own input");
         Require(installed(window, WM_KEYDOWN, 'W', 0) == 0 && forwarded == 0, "Open panel leaked keyboard input");
+        Require(installed(window, WM_KEYUP, 'W', 0) == 0 && forwarded == 0, "Open panel leaked its key release");
         Require(installed(window, WM_MOUSEMOVE, 0, 0) == 0 && forwarded == 0, "Open panel leaked mouse input");
         Require(installed(window, WM_INPUT, 0, 0) == 902, "Captured raw input was not cleaned up");
         installed(window, WM_CHAR, 'x', 0);
@@ -223,9 +252,106 @@ int main() {
         rawReadBytes = sizeof(RAWINPUT);
         SendRaw(0, 0); osPosition = {0, 0}; FeedInput(window, true);
         FrameAt(70, 80, "First valid mouse packet failed to latch the last legacy position");
+        ReleaseInput();
+
+        // Reproduce a game attack already down when the HUD opens. Physical up
+        // alone is insufficient: its queued game release still has to arrive.
+        physicalKeys[VK_LBUTTON] = true;
+        Require(installed(window, WM_LBUTTONDOWN, MK_LBUTTON, 0) == 701 && gameAttackLegacy,
+            "Game did not receive its initial attack press");
+        FeedInput(window, true);
+        Require(!HasInputFocus() && InputHandoffPending(), "HUD took over a held game attack");
+        physicalKeys[VK_LBUTTON] = false; FeedInput(window, true);
+        Require(!HasInputFocus(), "HUD trusted physical-up before the queued release reached the game");
+        Require(installed(window, WM_LBUTTONUP, 0, 0) == 701 && !gameAttackLegacy,
+            "HUD swallowed the game's attack release and left it attacking");
+        FeedInput(window, true); Require(HasInputFocus(), "HUD did not acquire input after the game released it");
+        ReleaseInput();
+
+        // Legacy and raw are distinct routes; either release may arrive first.
+        for (const bool rawFirst : {false, true}) {
+            physicalKeys[VK_LBUTTON] = true;
+            Require(installed(window, WM_LBUTTONDOWN, MK_LBUTTON, 0) == 701, "Legacy game press lost");
+            Require(RawButtons(RI_MOUSE_LEFT_BUTTON_DOWN) == 701 && gameAttackRaw, "Raw game press lost");
+            FeedInput(window, true); Require(!HasInputFocus(), "HUD captured a dual-route attack");
+            physicalKeys[VK_LBUTTON] = false;
+            if (rawFirst) Require(RawButtons(RI_MOUSE_LEFT_BUTTON_UP, 3, 2) == 701, "Raw game release lost");
+            else Require(installed(window, WM_LBUTTONUP, 0, 0) == 701, "Legacy game release lost");
+            FeedInput(window, true); Require(!HasInputFocus(), "One route released input on behalf of the other");
+            if (rawFirst) Require(installed(window, WM_LBUTTONUP, 0, 0) == 701, "Late legacy release lost");
+            else Require(RawButtons(RI_MOUSE_LEFT_BUTTON_UP, 3, 2) == 701, "Late raw release lost");
+            Require(!gameAttackLegacy && !gameAttackRaw, "Game remained attacking after both releases");
+            FeedInput(window, true); Require(HasInputFocus(), "Dual-route handoff never completed");
+            ReleaseInput();
+        }
+
+        physicalKeys[VK_LBUTTON] = true;
+        Require(RawButtons(RI_MOUSE_LEFT_BUTTON_DOWN) == 701, "Raw-only attack press lost");
+        FeedInput(window, true); Require(!HasInputFocus(), "HUD captured a raw-only attack");
+        physicalKeys[VK_LBUTTON] = false; physicalKeys[VK_RBUTTON] = true;
+        Require(RawButtons(RI_MOUSE_LEFT_BUTTON_UP | RI_MOUSE_RIGHT_BUTTON_DOWN, 4, -3) == 701 && !gameAttackRaw,
+            "Mixed release/new-press packet was split or swallowed");
+        FeedInput(window, true); Require(!HasInputFocus(), "Mixed raw packet lost the continuing right-button press");
+        physicalKeys[VK_RBUTTON] = false;
+        Require(RawButtons(RI_MOUSE_RIGHT_BUTTON_UP) == 701, "Raw right-button release lost");
+        FeedInput(window, true); Require(HasInputFocus(), "Mixed raw handoff did not finish");
+        ReleaseInput();
+
+        // Closing while an HUD click is down must consume that same click's up,
+        // then resume without any further visible frame or an extra HUD toggle.
+        FeedInput(window, true);
+        physicalKeys[VK_LBUTTON] = true;
+        Require(installed(window, WM_LBUTTONDOWN, MK_LBUTTON, 0) == 0 &&
+            RawButtons(RI_MOUSE_LEFT_BUTTON_DOWN) == 902, "HUD click reached the game");
+        ReleaseInput(); ReleaseInput();
+        Require(!HasInputFocus(), "HUD hide retained active input capture");
+        physicalKeys[VK_LBUTTON] = false;
+        Require(installed(window, WM_LBUTTONUP, 0, 0) == 0 && RawButtons(RI_MOUSE_LEFT_BUTTON_UP) == 902,
+            "Hidden HUD leaked its unmatched click release");
+        Require(!gameAttackLegacy && !gameAttackRaw, "Closing the HUD initiated a game attack");
+        Require(installed(window, WM_LBUTTONDOWN, MK_LBUTTON, 0) == 701 && gameAttackLegacy,
+            "Game input failed to resume without a new frame or HUD toggle");
+        installed(window, WM_LBUTTONUP, 0, 0);
+
+        // Raw keyboard and classic key-up must also remain paired, including
+        // left/right modifier normalization used by the overlay shortcut.
+        physicalKeys['W'] = true;
+        Require(installed(window, WM_KEYDOWN, 'W', 0) == 701 && RawKey('W', 0) == 701, "Game movement press lost");
+        FeedInput(window, true); Require(!HasInputFocus(), "HUD swallowed a held movement key");
+        physicalKeys['W'] = false;
+        Require(installed(window, WM_KEYUP, 'W', 0) == 701, "Movement key-up lost");
+        FeedInput(window, true); Require(!HasInputFocus(), "Raw movement release was not awaited");
+        Require(RawKey('W', RI_KEY_BREAK) == 701, "Raw movement release lost");
+        FeedInput(window, true); Require(HasInputFocus(), "Keyboard handoff failed");
+        physicalKeys[VK_RCONTROL] = true;
+        Require(installed(window, WM_KEYDOWN, VK_CONTROL, static_cast<LPARAM>(1) << 24) == 0 &&
+            RawKey(VK_CONTROL, RI_KEY_E0) == 902, "Panel modifier escaped capture");
+        ReleaseInput(); physicalKeys[VK_RCONTROL] = false;
+        Require(installed(window, WM_KEYUP, VK_CONTROL, static_cast<LPARAM>(1) << 24) == 0 &&
+            RawKey(VK_CONTROL, RI_KEY_E0 | RI_KEY_BREAK) == 902, "Modifier release did not drain both routes");
+        Require(installed(window, WM_KEYDOWN, 'A', 0) == 701, "Modifier drain blocked later gameplay");
+        installed(window, WM_KEYUP, 'A', 0);
+
+        // A polled-only UI press can finish on the worker while every HUD is
+        // hidden. No raw registration, queue draining or fake key-up is needed.
+        FeedInput(window, true);
+        physicalKeys[VK_LBUTTON] = true; FeedInput(window, true); ImGui::NewFrame(); ImGui::EndFrame();
+        Require(io.MouseDown[0], "Test did not seed a polled HUD button");
+        ReleaseInput(); physicalKeys[VK_LBUTTON] = false; MaintainInputHandoff();
+        Require(installed(window, WM_KEYDOWN, 'A', 0) == 701, "Hidden worker could not finish a polled-only release");
+        installed(window, WM_KEYUP, 'A', 0);
+        FeedInput(window, true); ImGui::NewFrame(); ImGui::EndFrame();
+        Require(!io.MouseDown[0], "Reopen retained a stale ImGui mouse-down");
+
+        physicalKeys[VK_LBUTTON] = true;
+        installed(window, WM_LBUTTONDOWN, MK_LBUTTON, 0);
+        ReleaseInput(); testForegroundWindow = reinterpret_cast<HWND>(2);
+        Require(installed(window, WM_KILLFOCUS, 0, 0) == 701, "Focus loss did not reach the game");
+        physicalKeys.fill(false); MaintainInputHandoff(); testForegroundWindow = window;
+        FeedInput(window, true); Require(HasInputFocus(), "Focus return retained a stale held-button barrier");
         ReleaseInput(); Require(registrationWrites == 0, "Panel changed the game's raw input registration");
         ImGui::DestroyContext();
-        std::cout << "PASS raw virtual cursor survives OS warps; relative/absolute movement, signed desktop, DPI scaling, clamp, cancellation, idempotent window, safe legacy fallback; input release/reopen/focus/wheel and zero registration writes; mocked User32 only.\n";
+        std::cout << "PASS game/HUD press-release ownership (legacy + raw mouse/keyboard), queued releases, hidden drain, modifiers, focus and ImGui reset; raw cursor/warp/fallback/DPI/wheel regressions; mocked User32 only.\n";
         return 0;
     } catch (const std::exception& error) {
         ReleaseInput(); ImGui::DestroyContext(); std::cerr << error.what() << '\n'; return 1;
