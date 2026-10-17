@@ -15,3 +15,7 @@ calls the controller; the render pass reads the last snapshot and queues actions
 Discovery pins compatible modules for process lifetime. Old independent-renderer
 ASI versions are deliberately rejected. Ctrl+Shift+H is the default shortcut;
 binding changes remain in CrimsonHue's protected user settings.
+
+The title-bar X hides the panel and queues `close` to save controller settings;
+it keeps lighting sync running, like the shortcut and Hide settings button.
+Only explicit `stop`, host shutdown or a stream failure stops lighting sync.

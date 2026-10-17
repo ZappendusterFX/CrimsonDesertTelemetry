@@ -549,10 +549,10 @@ void DrawUi(const Json& view, bool& visible, float scale) {
             ImGui::SameLine(); if (Button("Hide settings")) visible = false;
             Wrap(Text(view, "tuning"));
         }
-        Wrap("Stop and wait for stopped status before leaving the game. Close stops sync; Hide keeps it running.");
+        Wrap("Closing or hiding this panel keeps lighting sync running. Use Stop and wait for stopped status before leaving the game.");
     }
     ImGui::End();
-    // Window close means stop + save; the explicit Hide button keeps sync armed.
+    // Window close saves settings and hides the panel while sync keeps running.
     if (!open) { visible = false; Action("close"); }
 }
 }

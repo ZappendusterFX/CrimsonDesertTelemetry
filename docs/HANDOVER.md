@@ -1,4 +1,22 @@
-# Current checkpoint — 2026-10-16, simplified Hue lighting controls
+# Current checkpoint — 2026-10-17, Hue HUD X keeps sync running
+
+Owner reports mouse X stops Hue sync, whereas Ctrl+Shift+H keeps it running.
+The Hue controller's close handler explicitly stopped sync before saving; it now
+saves without cancelling/detaching the session. CDT keeps the hide/close command
+path and updates its footer. Maintained sources are synchronized from CrimsonHue;
+protocol1, input release, explicit Stop and host/error cleanup stay intact.
+
+Final immutable pair: **CDT2.2.5-huepanel.9 + Hue0.4.0-asi.19**, production,
+researchOFF/build25477059. Package validators,12/12focused input/overlay checks
+and one exact-Hue hidden shared D3D12 WARP/pixel/hide/resize smoke pass. Screenshot
+reviewed. The exact Hue controller also checks close retains a synthetic session
+and Stop cancels it; Hue core110/110. Paths/hashes: [HUE_HUD_CLOSE.md](HUE_HUD_CLOSE.md).
+No game input, installation, real settings or lamp output changed. Old packages
+remain immutable. Next: owner installs with game closed, then checks mouse X,
+shortcut reopening and continuing physical output. This does not claim all
+independent bridge/telemetry stream-stop causes are resolved.
+
+# Previous checkpoint — 2026-10-16, simplified Hue lighting controls
 
 Normal Hue tabs are now Lighting / Room / Setup / Advanced. Lighting provides
 Overall brightness, Local light effects, Background light and Quick/Balanced/Calm
