@@ -6,7 +6,7 @@ saves without cancelling/detaching the session. CDT keeps the hide/close command
 path and updates its footer. Maintained sources are synchronized from CrimsonHue;
 protocol1, input release, explicit Stop and host/error cleanup stay intact.
 
-Final immutable pair: **CDT2.2.5-huepanel.9 + Hue0.4.0-asi.19**, production,
+Latest immutable pair: **CDT2.2.5-huepanel.9 + Hue0.4.0-asi.20**, production,
 researchOFF/build25477059. Package validators,12/12focused input/overlay checks
 and one exact-Hue hidden shared D3D12 WARP/pixel/hide/resize smoke pass. Screenshot
 reviewed. The exact Hue controller also checks close retains a synthetic session
@@ -15,6 +15,12 @@ No game input, installation, real settings or lamp output changed. Old packages
 remain immutable. Next: owner installs with game closed, then checks mouse X,
 shortcut reopening and continuing physical output. This does not claim all
 independent bridge/telemetry stream-stop causes are resolved.
+
+Hue.20 follow-up: the owner moved washers in Hue, but channel positions stayed
+fixed while separate service_locations.positions held different placement.
+Hue now retains/checks both, without guessing segment coordinates. Core115/115
+and a new exact-Hue.20 shared WARP/pixel/hide/resize run pass. CDT.9 source/package
+is unchanged. See [HUE_HUD_CLOSE.md](HUE_HUD_CLOSE.md), controller follow-up.
 
 # Previous checkpoint — 2026-10-16, simplified Hue lighting controls
 

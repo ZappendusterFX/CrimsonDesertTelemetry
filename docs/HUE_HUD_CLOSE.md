@@ -39,3 +39,21 @@ The existing Hue core suite passes110/110. No real input, game state, installed
 ASI, saved settings or physical output was changed. Old packages remain immutable.
 Next: owner installs with the game closed and checks X/shortcut reopen with
 continuing physical output. Other stream-stop causes remain independent.
+
+## Controller follow-up: Hue .asi.20
+
+Keep this same CDT.9 package with the newer Hue .asi.20 controller. It includes
+the X fix and also recognizes edits to separate Hue service-placement positions
+when the bridge leaves channel coordinates unchanged. Geometry representations
+remain separate; the controller does not invent segment coordinates from the
+service positions. The five new Hue test groups bring its core suite to115/115.
+Exact packaged-controller smoke and one further hidden shared D3D12 WARP run pass,
+including748,434 visible pixels, hide/reopen, resize and shutdown. Log:
+`artifacts/service-layout-shared-smoke.log`. No CDT source or binary rebuild was
+needed after the .9 validation above.
+
+Hue.20 ZIP SHA256:
+`02DAE64D672E64E4BA79AAE0E586C3F0E6A3D9B1AA177B0DAA13D0E7AC241665`.
+Hue.20 ASI SHA256:
+`D858B78136D5F7926017E261796A96951D6C58899BDCADAB97EE6A86715C3511`.
+No installation, game input or physical lamp output was performed.
