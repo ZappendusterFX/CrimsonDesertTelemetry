@@ -7,8 +7,12 @@ Nexus upload remains manual; GitHub NEXUS_AUTO_PUBLISH is explicitly false.
 Cage/glass false blocks are documented; renderer-derived visibility is not shipped.
 No new game/input action or live package acceptance is required for this release.
 
-Managed79/79 and API smoke pass. Final production package, native and exact-Hue
-shared-renderer validation/publication are in progress. Release notes:
+Final production package passes: managed79/79, API, full native40/40, both package
+validators and exact Hue1.0.0 shared hidden WARP smoke (748434 visible pixels,
+hide/reopen/resize/shutdown); screenshot inspected, source manifest matches.
+CDT ZIP SHA256 C43FAF8A49E9C138184DE6D2ACDE2F660ABCB910CC407509AAC591FB5A33A711.
+ASI/renderer match preserved huepanel.14. No final-ZIP install/input/output action.
+Evidence: [v2.2.5-validation.md](releases/v2.2.5-validation.md). Merge/publication is next. Release notes:
 [v2.2.5.md](releases/v2.2.5.md); copy: [NEXUS-2.2.5.md](NEXUS-2.2.5.md).
 
 # Previous checkpoint — 2026-10-18, short renderer feasibility check complete
