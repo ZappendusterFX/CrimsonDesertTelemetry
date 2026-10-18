@@ -74,8 +74,20 @@ int wmain(int argc, wchar_t** argv) {
         Sleep(100); Require(State().at("shortcut").at("key") == 'H', "Invalid shortcut overwrote saved binding");
         Command({{"action", "shortcut"}, {"key", 'H'}, {"control", true}, {"shift", true}, {"alt", false}});
         Require(state.value("smoke", false) && state.value("demo", false) && !state.value("windowVisible", true), "Engine showed a WPF window or enabled live mode");
-        Require(state.at("controls").size() == 28 && state.at("switches").empty() && state.at("channels").size() == 6,
+        Require(state.at("controls").size() == 31 && state.at("switches").empty() && state.at("channels").size() == 6,
             "Missing mixer/layout controls or obsolete axis switches remain");
+        Require(state.at("lighting").at("pointLightStrength") == 1 && state.at("lighting").at("spotLightStrength") == 1 &&
+            state.at("lighting").at("playerLanternStrength") == .1 && state.at("lighting").at("lanternMatches") == 0,
+            "Source weights or synthetic match count is invalid");
+        Command({{"action", "lighting"}, {"key", "PointLightStrength"}, {"value", .4}});
+        Command({{"action", "lighting"}, {"key", "SpotLightStrength"}, {"value", 1.7}});
+        Command({{"action", "lighting"}, {"key", "PlayerLanternStrength"}, {"value", .05}});
+        Sleep(150); state=State();
+        Require(Value(state,"PointLightStrength")==40 && Value(state,"SpotLightStrength")==170 && Value(state,"PlayerLanternStrength")==5,
+            "Source weights did not reach the effective mapping");
+        Command({{"action", "lighting"}, {"key", "PointLightStrength"}, {"value", 1}});
+        Command({{"action", "lighting"}, {"key", "SpotLightStrength"}, {"value", 1}});
+        Command({{"action", "lighting"}, {"key", "PlayerLanternStrength"}, {"value", .1}});
         bool sphereDefault = false;
         for (const auto& value : state.at("controls")) if (value.at("key") == "SourceDiscRadiusDegrees")
             sphereDefault = value.at("value") == 30.0 && value.at("initial") == 30.0 && value.at("min") == 1.0 && value.at("max") == 180.0 && value.at("group") == "Space";
@@ -304,7 +316,7 @@ int wmain(int argc, wchar_t** argv) {
         crimson::overlay::RequestPanelStop(); crimson::overlay::RefreshBridge();
         stop(); const auto stopStart = GetTickCount64(); while (status() == 1 && GetTickCount64() - stopStart < 5000) { Pump(); Sleep(20); }
         Require(status() == 2, "Engine shutdown failed");
-        std::cout << "PASS CDT single renderer + actual headless Hue ASI: simple lighting/assessment and preserved Custom, bounded command queue, 28 advanced controls, wall preview, D3D12 pixel readback, independent HUD/hide, Hue-only reopen, resize and shutdown; " << lit << " visible pixels.\n";
+        std::cout << "PASS CDT single renderer + actual headless Hue ASI: simple lighting/assessment and preserved Custom, bounded command queue, 31 advanced controls, wall preview, D3D12 pixel readback, independent HUD/hide, Hue-only reopen, resize and shutdown; " << lit << " visible pixels.\n";
         return 0;
     } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 2; }
 }

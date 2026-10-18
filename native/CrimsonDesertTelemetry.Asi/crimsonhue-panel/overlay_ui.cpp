@@ -129,7 +129,8 @@ void WallWash(const Json& view) {
             ImGui::SameLine(); if (Button("Start right")) { set("yaw", 60); set("span", 60); }
             Wrap("Starting points only: adjust to the light actually visible on your walls.");
             angle("Direction", "yaw", washer.value("yaw", 0.0), -180, 180);
-            angle("Wall width", "span", washer.value("horizontalSpan", 60.0), 0, 180);
+            angle(segmentCount > 1 ? "Segment width" : "Wall width", "span", washer.value("horizontalSpan", 60.0), 0, 180);
+            if (segmentCount > 1) Wrap("For horizontal zones, use different Side offsets and matching Height angles. Width applies to each segment.");
             for (const auto& segment : segments) {
                 const int index = segment.value("index", 0);
                 ImGui::PushID(index);
@@ -220,16 +221,6 @@ void Assessment(const Json& view) {
 void Lighting(const Json& view) {
     const auto& lighting = view.at("lighting");
     const bool recommended = lighting.value("recommended", true);
-    ImGui::SeparatorText(recommended ? "Recommended lighting" : "Current custom settings");
-    if (recommended) Wrap("Adjust the feel of your lighting here. Room placement stays in Room.");
-    else {
-        Wrap("Your custom settings are active. Open Advanced to edit them, or use Recommended for simple lighting controls.");
-        if (Button("Use Recommended")) Command({{"action", "profile"}, {"recommended", true}});
-        if (lighting.value("hasCustom", false)) Wrap("Your custom settings are kept for later.");
-        ImGui::Spacing();
-        if (Button("Save custom settings")) Action("save");
-        return;
-    }
     const auto amount = [&](const char* label, const char* property, const char* key,
         double initial, double maximum, const char* description) {
         double percent = std::clamp(lighting.value(property, initial) * 100.0, 0.0, maximum);
@@ -242,6 +233,27 @@ void Lighting(const Json& view) {
         Wrap(description);
         ImGui::PopID(); ImGui::Spacing();
     };
+    ImGui::SeparatorText("Light balance");
+    amount("Point lights", "pointLightStrength", "PointLightStrength", 1.0, 200.0,
+        "All point lights. 100% keeps their normal strength.");
+    amount("Spotlights", "spotLightStrength", "SpotLightStrength", 1.0, 200.0,
+        "All spotlights, including lanterns. 100% keeps their normal strength.");
+    amount("Own lantern", "playerLanternStrength", "PlayerLanternStrength", .1, 100.0,
+        "Additional strength for your equipped lantern. 0% off; 100% follows the spotlight weight.");
+    ImGui::Text("Own lantern sources matched: %d", lighting.value("lanternMatches", 0));
+    if (lighting.value("untypedSources", 0) > 0)
+        Wrap("Sources without a reported light type keep their normal strength.");
+    ImGui::Spacing();
+    ImGui::SeparatorText(recommended ? "Recommended lighting" : "Current custom settings");
+    if (recommended) Wrap("Adjust the feel of your lighting here. Room placement stays in Room.");
+    else {
+        Wrap("Light balance affects your current Custom settings. Open Advanced for the other controls.");
+        if (Button("Use Recommended")) Command({{"action", "profile"}, {"recommended", true}});
+        if (lighting.value("hasCustom", false)) Wrap("Your custom settings are kept for later.");
+        ImGui::Spacing();
+        if (Button("Save custom settings")) Action("save");
+        return;
+    }
     amount("Overall brightness", "brightness", "Brightness", 1.0, 100.0, "Overall brightness of your lamps.");
     amount("Local light effects", "localAmount", "LocalAmount", 1.0, 200.0, "Nearby lights, fire and other light sources.");
     amount("Background light", "backgroundAmount", "BackgroundAmount", .4, 100.0, "Ambient light from the game across your room.");

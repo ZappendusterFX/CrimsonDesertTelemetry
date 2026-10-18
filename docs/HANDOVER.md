@@ -1,4 +1,23 @@
-# Current checkpoint — 2026-10-18, single Hue cursor and sharper defaults
+# Current checkpoint — 2026-10-18, Hue light-kind and own-lantern weights
+
+Maintained Hue panel adds Point lights/Spotlights (0–200%, initially100%) and
+Own lantern (additional0–100%, Recommended10%) in both Recommended and Custom.
+Hue handles numeric weights, v1/v2 presets and the conservative exact-build pair
+recognition. No engine ownership ID is claimed; missing/partial/ambiguous/unknown
+matches keep ordinary type weight. Neutral API/acquisition and raw values stay
+unchanged. Room clarifies horizontal zones and per-segment width; no calibration
+or channel identity changed. Checkbox candidate sources/packages are preserved.
+
+HueCore123/123, exact packaged controller, both package validators, CDT12/12
+focused native checks and exact-Hue hidden shared WARP/pixel/hide/reopen/resize
+smoke pass in Recommended/Custom; screenshots reviewed. Source/manifest match.
+Fresh immutable CDT.huepanel.13 + Hue.asi.23, production/researchOFF/build25477059.
+Results/paths/hashes/limits: [HUE_SOURCE_WEIGHTS.md](HUE_SOURCE_WEIGHTS.md), parent
+Hue docs/SOURCE-WEIGHTS-VALIDATION.md. No install, real settings/input/process write
+or physical output. Next: owner exits game, installs the matching pair and assesses
+the three controls plus horizontal washer calibration. Game acceptance is pending.
+
+# Previous checkpoint — 2026-10-18, single Hue cursor and sharper defaults
 
 Owner reports two HUD cursors, only one functional. Maintained Hue panel now
 hides the native Windows shape during foreground/client HUD ownership, handles
