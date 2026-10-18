@@ -1,4 +1,18 @@
-# Current checkpoint — 2026-10-18, Hue Spotlight range to1000%
+# Current checkpoint — 2026-10-18, Scholastone caged lamps excluded
+
+Five visible blue wall fixtures are position-associated with fresh standalone
+point lights in upstream and renderer-selected data. Two progressing captures
+(2895/4018) report all five blocked, 0/9 clear. Hue drops them before weighting;
+an offline five-source counterfactual lights both Play Bars strongly cool-white.
+Owner confirms enclosing cages, but the actual hit bodies are not yet established.
+Evidence, limits and bounded next step: [SCHOLASTONE-LAMP-VISIBILITY.md](SCHOLASTONE-LAMP-VISIBILITY.md).
+
+Next: retain a bounded diagnostic of the existing native per-ray contacts before
+choosing fixture handling. No blanket endpoint exemption: a preserved wall control
+hit only 0.38–0.49gu before its source. No production/settings/package change or
+physical acceptance; previous Hue.asi.24/CDT.huepanel.14 remains the package pair.
+
+# Previous checkpoint — 2026-10-18, Hue Spotlight range to1000%
 
 Owner prefers extending Spotlight strength above200% instead of reducing Point
 lights or changing mixing behavior. Maintained panel limit is now1000%; matching

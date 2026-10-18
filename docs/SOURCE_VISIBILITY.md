@@ -1,5 +1,12 @@
 # Per-light source visibility
 
+**Observed limitation, 2026-10-18:** five visibly lit Scholastone cage fixtures
+are present as standalone point lights but repeatedly report fresh 0/9 clear
+rays. The earlier cage control's clear neighbors do not generalize to every
+fixture. Hit bodies at this location remain unproven; do not equate collision
+blocking with optical extinction. Evidence and next diagnostic:
+[SCHOLASTONE-LAMP-VISIBILITY.md](SCHOLASTONE-LAMP-VISIBILITY.md).
+
 **Current development, 2026-09-28:** with `HideOccluded=1`, the HUD/radar now
 show only fresh `clear` results. Pending `unknown`, missing and stale results
 are hidden along with `blocked`. The new `/v1/lights/visible` HTTP/WebSocket feed
