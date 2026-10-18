@@ -1,4 +1,4 @@
-# Current checkpoint — 2026-10-18, public 2.2.5 release preparation
+# Current checkpoint — 2026-10-18, public 2.2.5 published on main
 
 Owner declines fresh GPU capture and authorizes publishing current behavior to
 GitHub, refreshing descriptions/Nexus copy, and merging both products to main.
@@ -12,7 +12,16 @@ validators and exact Hue1.0.0 shared hidden WARP smoke (748434 visible pixels,
 hide/reopen/resize/shutdown); screenshot inspected, source manifest matches.
 CDT ZIP SHA256 C43FAF8A49E9C138184DE6D2ACDE2F660ABCB910CC407509AAC591FB5A33A711.
 ASI/renderer match preserved huepanel.14. No final-ZIP install/input/output action.
-Evidence: [v2.2.5-validation.md](releases/v2.2.5-validation.md). Merge/publication is next. Release notes:
+Evidence: [v2.2.5-validation.md](releases/v2.2.5-validation.md).
+The feature branch is fast-forward merged into the original main checkout;
+all44 untracked diagnostic files are preserved. GitHub
+[v2.2.5](https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/tag/v2.2.5)
+is latest/non-prerelease (release416451760,13:00:40UTC). Public page200, GitHub
+digest and downloaded ZIP bytes match the tested local package. Hue1.0.0 is also
+published. Nexus release workflow39129679843 completed skipped; no Nexus upload.
+Additional GitHub CI/release runs were still active at publication check (local
+checks pass). Next: owner handles manual Nexus uploads with the counted prepared text.
+Release notes:
 [v2.2.5.md](releases/v2.2.5.md); copy: [NEXUS-2.2.5.md](NEXUS-2.2.5.md).
 
 # Previous checkpoint — 2026-10-18, short renderer feasibility check complete
