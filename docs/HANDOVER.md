@@ -1,4 +1,19 @@
-# Current checkpoint — 2026-10-18, Scholastone caged lamps excluded
+# Current checkpoint — 2026-10-18, short renderer feasibility check complete
+
+Owner asked only whether renderer-derived light contribution looks promising.
+Verdict: yes, with limits. Exact saved GPU shaders/bindings show light-indexed
+hit data (resource17495) and stride48 light buffer217 consumed by actual ManyLights
+integration. SampleManyLights' inspected hit store is class-conditional; complete
+producer/order and transparency behavior remain open. RaytracingVisibilityCS is
+instance preparation, not lamp visibility. Fresh neutral captures30076/30818 at
+Scholastone progress; cage points remain selected but blocked0/9. No current GPU
+texture read, game/input/output change, code/package change or optical acceptance.
+
+Evidence and one bounded next step: [RENDERER-LIGHT-CONTRIBUTION-FEASIBILITY.md](RENDERER-LIGHT-CONTRIBUTION-FEASIBILITY.md).
+Stop here for the requested scope. Any continuation should pair current hit data
+with the exact same-pass light buffer/camera/receivers before claiming a signal.
+
+# Previous checkpoint — 2026-10-18, Scholastone caged lamps excluded
 
 Five visible blue wall fixtures are position-associated with fresh standalone
 point lights in upstream and renderer-selected data. Two progressing captures
