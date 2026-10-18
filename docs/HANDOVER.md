@@ -1,4 +1,20 @@
-# Current checkpoint — 2026-10-18, Hue light-kind and own-lantern weights
+# Current checkpoint — 2026-10-18, Hue Spotlight range to1000%
+
+Owner prefers extending Spotlight strength above200% instead of reducing Point
+lights or changing mixing behavior. Maintained panel limit is now1000%; matching
+Hue.asi.24 extends Core/Recommended/Advanced bounds. Defaults, Point/Own ranges,
+neutral API/acquisition and input/cursor behavior stay unchanged. Point/spot and
+standalone/group are independent; both single and grouped spots are amplified.
+
+HueCore124/124, exact packaged controller, both package validators and exact-Hue
+hidden shared WARP/pixel/hide/reopen/resize smoke pass; image reviewed. Source/
+manifest match. Fresh immutable CDT.huepanel.14 + Hue.asi.24, production/researchOFF/
+build25477059. Results/paths/hashes/limits: [HUE_SPOTLIGHT_RANGE.md](HUE_SPOTLIGHT_RANGE.md), parent
+Hue docs/SPOTLIGHT-RANGE-VALIDATION.md. No install, real settings/input/process
+writes or physical output. Next: owner exits game, installs both matching ZIPs
+and tries the range. Game acceptance remains pending.
+
+# Previous checkpoint — 2026-10-18, Hue light-kind and own-lantern weights
 
 Maintained Hue panel adds Point lights/Spotlights (0–200%, initially100%) and
 Own lantern (additional0–100%, Recommended10%) in both Recommended and Custom.

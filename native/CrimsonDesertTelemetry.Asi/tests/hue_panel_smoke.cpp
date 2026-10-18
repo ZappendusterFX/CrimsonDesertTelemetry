@@ -80,11 +80,13 @@ int wmain(int argc, wchar_t** argv) {
             state.at("lighting").at("playerLanternStrength") == .1 && state.at("lighting").at("lanternMatches") == 0,
             "Source weights or synthetic match count is invalid");
         Command({{"action", "lighting"}, {"key", "PointLightStrength"}, {"value", .4}});
-        Command({{"action", "lighting"}, {"key", "SpotLightStrength"}, {"value", 1.7}});
+        Command({{"action", "lighting"}, {"key", "SpotLightStrength"}, {"value", 10}});
         Command({{"action", "lighting"}, {"key", "PlayerLanternStrength"}, {"value", .05}});
         Sleep(150); state=State();
-        Require(Value(state,"PointLightStrength")==40 && Value(state,"SpotLightStrength")==170 && Value(state,"PlayerLanternStrength")==5,
+        Require(Value(state,"PointLightStrength")==40 && Value(state,"SpotLightStrength")==1000 && Value(state,"PlayerLanternStrength")==5,
             "Source weights did not reach the effective mapping");
+        for(const auto& control: state.at("controls")) if(control.at("key")=="SpotLightStrength")
+            Require(control.at("max")==1000,"Spotlight range not exposed by controller");
         Command({{"action", "lighting"}, {"key", "PointLightStrength"}, {"value", 1}});
         Command({{"action", "lighting"}, {"key", "SpotLightStrength"}, {"value", 1}});
         Command({{"action", "lighting"}, {"key", "PlayerLanternStrength"}, {"value", .1}});

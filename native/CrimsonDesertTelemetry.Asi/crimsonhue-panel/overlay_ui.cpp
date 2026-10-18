@@ -236,7 +236,7 @@ void Lighting(const Json& view) {
     ImGui::SeparatorText("Light balance");
     amount("Point lights", "pointLightStrength", "PointLightStrength", 1.0, 200.0,
         "All point lights. 100% keeps their normal strength.");
-    amount("Spotlights", "spotLightStrength", "SpotLightStrength", 1.0, 200.0,
+    amount("Spotlights", "spotLightStrength", "SpotLightStrength", 1.0, 1000.0,
         "All spotlights, including lanterns. 100% keeps their normal strength.");
     amount("Own lantern", "playerLanternStrength", "PlayerLanternStrength", .1, 100.0,
         "Additional strength for your equipped lantern. 0% off; 100% follows the spotlight weight.");

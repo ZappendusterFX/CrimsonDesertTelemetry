@@ -168,11 +168,12 @@ Created by ZappendusterFX, developed with Claude and Codex (OpenAI).
 See THIRD-PARTY-NOTICES.txt for dependency licenses.
 Unofficial community project; not affiliated with Pearl Abyss.
 
-Private 2.2.5-huepanel.13 preview: CDT hosts the optional CrimsonHue mixer using
-its existing D3D12 renderer. Pair with CrimsonHue 0.4.0-asi.23 (headless).
-New in huepanel.13: Lighting exposes separate point-light/spotlight weights
-(0-200%, initially 100%) and own-lantern strength (0-100%, Recommended starts 10%).
-Hue .asi.23 recognizes the complete build-25477059 lantern pair for that additional
+Private 2.2.5-huepanel.14 preview: CDT hosts the optional CrimsonHue mixer using
+its existing D3D12 renderer. Pair with CrimsonHue 0.4.0-asi.24 (headless).
+Lighting exposes separate point-light (0-200%) and spotlight weights
+(0-1000%, expanded in huepanel.14), initially 100% each, plus own-lantern strength
+(0-100%, Recommended starts 10%). Point/spot can each be standalone or grouped.
+Hue .asi.24 recognizes the complete build-25477059 lantern pair for that additional
 weight; raw telemetry remains unchanged. Room clarifies that Segment width applies to
 each segment. Horizontal washers use different Side offsets and equal Height angles.
 Ctrl+Shift+H opens/hides the mixer; configure the binding in Hue Setup.
@@ -191,5 +192,5 @@ and Ctrl+Shift+H hide the mixer while lighting sync continues; use Stop to end s
 Fixed in huepanel.11: hide the native Windows cursor inside the game client while
 the HUD owns input, leaving its software cursor visible. Restore the suppressed
 shape on Hide when appropriate, preserving newer game/foreign cursor choices.
-Hue .asi.23 sharpens the recommended spatial defaults (30 degrees, softness 20%,
+Hue .asi.24 sharpens the recommended spatial defaults (30 degrees, softness 20%,
 focus 4). Update both matching packages with the game closed.
