@@ -1,4 +1,17 @@
-# Current checkpoint — 2026-10-18, short renderer feasibility check complete
+# Current checkpoint — 2026-10-18, public 2.2.5 release preparation
+
+Owner declines fresh GPU capture and authorizes publishing current behavior to
+GitHub, refreshing descriptions/Nexus copy, and merging both products to main.
+Public pair: CDT2.2.5 + optional separate CrimsonHue1.0.0 (owner's version choice).
+Nexus upload remains manual; GitHub NEXUS_AUTO_PUBLISH is explicitly false.
+Cage/glass false blocks are documented; renderer-derived visibility is not shipped.
+No new game/input action or live package acceptance is required for this release.
+
+Managed79/79 and API smoke pass. Final production package, native and exact-Hue
+shared-renderer validation/publication are in progress. Release notes:
+[v2.2.5.md](releases/v2.2.5.md); copy: [NEXUS-2.2.5.md](NEXUS-2.2.5.md).
+
+# Previous checkpoint — 2026-10-18, short renderer feasibility check complete
 
 Owner asked only whether renderer-derived light contribution looks promising.
 Verdict: yes, with limits. Exact saved GPU shaders/bindings show light-indexed

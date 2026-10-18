@@ -4,15 +4,15 @@ Live light contributions, player/render-camera telemetry and local ambient data,
 with a corner HUD, 3D light radar, fullscreen markers and startup/error notices.
 Local HTTP/WebSocket APIs support other tools. This mod does not drive lamps.
 
-New in 2.2:
+Included telemetry features:
 - Lights all around you. Telemetry reads the game's light list before the
   renderer discards what the current view cannot see, so lights behind the
-  camera stay in the API, radar and markers. A fire bowl arrives as one light.
-- Which lights actually reach you. The game's own physics casts nine rays from
-  the camera to every nearby light. A wall blocks all nine; a lantern cage only
-  some, so the lantern stays visible. The HUD dims blocked lights (F11 shows
-  only fresh clear ones) and the API reports clear/blocked/unknown per light.
-  ON by default.
+  camera stay in the API, radar and markers. Particle groups become summed
+  contributions; one physical fire can still produce several contributions.
+- Physics collision checks. Nine rays sample camera-to-light paths, reporting
+  clear/blocked/unknown. ON by default. This is not optical visibility: dense
+  cages, closed collision hulls and colliding glass can exclude visibly shining
+  lamps; noncolliding geometry may fail to block. F11 shows only fresh clear ones.
 
 Fixed in 2.2.4:
 - Camera-local sky visibility and the local ambient estimate no longer stay
@@ -23,7 +23,7 @@ Fixed in 2.2.4:
   presentation queue when the HUD, markers or notices are enabled.
 
 Source and support: https://github.com/ZappendusterFX/CrimsonDesertTelemetry
-Validation: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/releases/v2.2.4-validation.md
+Validation: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/releases/v2.2.5-validation.md
 API: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/API.md
 
 Requirements and installation
@@ -100,8 +100,8 @@ Notifications show readiness briefly or persistent actionable errors. Readiness
 requires valid player and render-camera data. Native light/sky capture waits for
 that first playable-world signal, so initial menu/shader loading cannot consume a
 GPU transaction. Consult logs if graphics initialization fails.
-Set Enabled=0 in Overlay, LightOverlay AND Notifications to disable all UI owners
-and UI hooks/client. Native capture then locates its submission hook with its own
+Set Enabled=0 in Overlay, LightOverlay, Notifications AND optional CrimsonHue
+integration to disable all UI owners and UI hooks/client. Native capture then locates its submission hook with its own
 queue at world entry, the method used before 2.2.4. InitiallyVisible=0 only hides
 an enabled view. Server and native light capture are independently configured.
 
@@ -155,10 +155,12 @@ an earlier clean scan is not a verdict for this binary.
 
 Light visibility limits
 -----------------------
-Visibility is a sampled collision estimate, not how much light gets through.
+Visibility is a sampled collision estimate, not optical visibility or brightness.
 Nine rays go from the camera to fixed points around each light: any free ray
-counts as clear. Thin gaps can make a light behind a fence or cage clear, and
-geometry without collision (foliage, some decorations) does not block. It runs
+counts as clear. Dense cages, closed collision hulls and colliding glass can
+exclude visibly shining lamps. Thin gaps may be missed; geometry without suitable
+collision (foliage, some decorations) may not block. Renderer selection does not
+prove optical visibility. It runs
 only on the exact supported game build; otherwise every light stays unknown.
 SourceVisibility.Enabled=0 switches it off. The normal light, smoothed-light and
 ambient streams do not depend on this setting.
@@ -168,29 +170,41 @@ Created by ZappendusterFX, developed with Claude and Codex (OpenAI).
 See THIRD-PARTY-NOTICES.txt for dependency licenses.
 Unofficial community project; not affiliated with Pearl Abyss.
 
-Private 2.2.5-huepanel.14 preview: CDT hosts the optional CrimsonHue mixer using
-its existing D3D12 renderer. Pair with CrimsonHue 0.4.0-asi.24 (headless).
-Lighting exposes separate point-light (0-200%) and spotlight weights
-(0-1000%, expanded in huepanel.14), initially 100% each, plus own-lantern strength
-(0-100%, Recommended starts 10%). Point/spot can each be standalone or grouped.
-Hue .asi.24 recognizes the complete build-25477059 lantern pair for that additional
-weight; raw telemetry remains unchanged. Room clarifies that Segment width applies to
-each segment. Horizontal washers use different Side offsets and equal Height angles.
-Ctrl+Shift+H opens/hides the mixer; configure the binding in Hue Setup.
-Install both matching packages with the game closed. Public CDT 2.2.4 does not
-host this panel. The neutral telemetry API and lamp-control ownership stay separate.
-[CrimsonHue] Enabled=0 disables the optional panel. No Hue controller is bundled.
+New in 2.2.5: optional CrimsonHue 1.0.0 panel
+-------------------------------------------
+Install CrimsonHue 1.0.0 separately for Philips Hue Entertainment lighting.
+CDT remains independently usable; its ZIP does not contain the Hue controller.
+CDT hosts the mixer inside its existing D3D12/ImGui renderer. The separate Hue
+ASI owns the headless controller, protected settings and lamp communication;
+there is no second set of graphics hooks. Raw telemetry and the neutral API stay
+unchanged. Hue additionally requires .NET 8 Desktop Runtime (x64).
 
-Fixed in huepanel.3: retain cursor atlas metadata to prevent a startup crash
-when the interactive Hue cursor is drawn. Hide/Close explicitly release input
-and restore game cursor clipping. The matching Hue controller version is listed above.
+Lighting / Room / Setup / Advanced provide bridge/Entertainment setup, spatial
+calibration, Recommended and preserved Custom controls, presets and diagnostics.
+Weights: Point lights 0-200%, Spotlights 0-1000%, Own lantern 0-100%.
+Point/spot are independent of standalone/grouped. Recommended own lantern
+starts at 10%; matching uses a conservative complete pair on build 25477059.
+Unknown/partial/ambiguous lanterns retain ordinary type weighting.
+Room supports ordinary Point and segmented Wall areas. Horizontal washers use
+different Side offsets and equal Height angles; Segment width is per segment.
+Recommended spatial defaults: 30-degree radius, softness 20%, focus 4.
+Refresh changed Entertainment layouts before restarting lighting sync.
 
-Fixed in huepanel.10: complete held game mouse/keyboard releases before the HUD
-takes input, and complete HUD-owned releases when hiding it. Release held keys
-and mouse buttons if the panel displays the handoff reminder. The title-bar X
-and Ctrl+Shift+H hide the mixer while lighting sync continues; use Stop to end sync.
-Fixed in huepanel.11: hide the native Windows cursor inside the game client while
-the HUD owns input, leaving its software cursor visible. Restore the suppressed
-shape on Hide when appropriate, preserving newer game/foreign cursor choices.
-Hue .asi.24 sharpens the recommended spatial defaults (30 degrees, softness 20%,
-focus 4). Update both matching packages with the game closed.
+Ctrl+Shift+H opens/hides Hue; change its binding in Setup. Title-bar X and Hide
+settings also hide without stopping sync. Use Stop to end it, and wait for stopped
+status before game exit; process termination cannot guarantee bridge restoration.
+No physical stream starts just by loading either module. Demo preview sends none.
+[CrimsonHue] Enabled=0 disables optional discovery. Install/update both matching
+packages with the game closed. Old independent-renderer Hue ASIs are incompatible.
+
+Input/cursor corrections retain cursor-atlas metadata, use raw mouse motion with
+fallback, wait for observed held game presses to release, and finish HUD-owned
+releases when hiding. Release held keys/buttons if the handoff reminder appears.
+The native Windows pointer is suppressed inside the owned foreground client,
+leaving the panel's software cursor. Mocked-input tests do not prove coverage of
+every independently polled/buffered game-input route.
+
+Current Hue mapping requires fresh clear physics results. A visibly shining lamp
+classified blocked is excluded before type weighting; raising percentages cannot
+restore it. Renderer selection does not prove optical visibility. Renderer-derived
+light-contribution research remains unfinished and is not included as a feature.

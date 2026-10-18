@@ -4,16 +4,18 @@
 
 Inspect positions, colors and brightness of current light contributions from fires, candles, lanterns and glass/crystal lamps, alongside the player and render camera. Use the data in your own overlays, tools and lighting integrations.
 
-**Private 2.2.5-huepanel.5 preview:** the optional CrimsonHue mixer now uses CDT's
-existing renderer and ImGui context. Pair with **CrimsonHue 0.4.0-asi.12**, which
-hosts the lamp controller without graphics hooks. Ctrl+Shift+H shows/hides Hue;
-CDT's HUD remains independent. See [shared panel integration](docs/CRIMSONHUE_PANEL.md).
-This preview is separate from the published 2.2.4 release and requires game/input acceptance.
+**New in 2.2.5:** optional **[CrimsonHue 1.0.0](https://github.com/ZappendusterFX/CrimsonHue)**
+provides Philips Hue Entertainment lighting and an interactive in-game mixer.
+CDT hosts that panel in its existing renderer; CrimsonHue owns the lamp controller
+without a second set of graphics hooks. Install CrimsonHue separately; CDT's
+telemetry, radar and markers work independently. Ctrl+Shift+H shows/hides Hue.
+See [shared panel integration](docs/CRIMSONHUE_PANEL.md) and
+[2.2.5 release notes](docs/releases/v2.2.5.md).
 
 **New in 2.2:**
 
-- **Lights all around you.** Telemetry now reads the game's light list *before* the renderer discards what the current view cannot see. Lights behind the camera and out of view stay in the API, radar and markers. A fire bowl arrives as one light instead of many flickering particles.
-- **Which lights actually reach you.** The game's own physics casts nine rays from the camera to every nearby light. A wall blocks all nine; a lantern cage blocks only some, so the lantern stays visible. The HUD dims blocked lights (F11 shows only fresh `clear` ones) and the API reports `clear` / `blocked` / `unknown` per light.
+- **Lights all around you.** Telemetry reads the game's light list *before* view selection. Lights behind the camera and out of view stay in the API, radar and markers. Particle groups become summed contributions instead of many separate particle records; one physical fire can still produce several contributions.
+- **Per-light collision checks.** The game's physics casts nine rays from the camera toward nearby lights. Any free ray gives `clear`; all nine blocked gives `blocked`. The HUD dims blocked lights (F11 shows only fresh `clear` ones) and the API reports `clear` / `blocked` / `unknown` per light. This estimates collision along the sampled paths, not optical visibility: dense lamp cages and glass can exclude visibly lit fixtures.
 
 **Fixed in 2.2.4:** camera-local sky visibility and the local ambient estimate no
 longer stay unavailable for a whole session, and no extra Direct3D 12 queue is
@@ -64,6 +66,7 @@ Methods and limits are in [source visibility](docs/SOURCE_VISIBILITY.md).
 | **Local API** | HTTP snapshots and health, WebSocket streaming, JSON Schema and JSON Lines recordings |
 | **Ambient / sky** | Global sky RGB; optional camera-local sky visibility and derived working RGB when a valid spatial sample arrives (nullable fields). |
 | **Status notices** | Brief success when data becomes ready; actionable startup/build/capture errors |
+| **Optional Hue mixer** | With the separately installed CrimsonHue 1.0.0 controller: Hue Entertainment setup, spatial room calibration and lighting controls in CDT's shared renderer |
 
 Lighting, both HUD views and status notices are enabled in the supplied configuration. Each can be configured separately; the HUD is not required to consume the API.
 
@@ -85,6 +88,11 @@ Requirements:
 4. Import **and activate/deploy** the new package in Definitive Mod Manager (DMM) or JSON Mod Manager. Keep all included files together.
 5. Start the game and load a save. The local host starts automatically.
 
+For Philips Hue lighting, also install the separate **CrimsonHue 1.0.0** package
+and Microsoft **.NET 8 Desktop Runtime (x64)**. CrimsonHue is optional and is not
+bundled in the Telemetry ZIP. See its
+[installation instructions](https://github.com/ZappendusterFX/CrimsonHue).
+
 DMM 2.8.1 clean deployment was verified locally. Its upgrade/removal path, also
 in DMM 3.1.1, can leave both Telemetry DLLs and both lowercase CFG files behind. With the game
 closed, remove the old package, verify and delete only those four leftover
@@ -101,8 +109,13 @@ Do not merge old binaries or metadata into the new package. Preserve your INI pr
 | **F9** | Toggle additional diagnostics |
 | **F10** | Show/hide fullscreen light markers |
 | **F11** | Toggle `HideOccluded`: show only lights with a fresh `clear` result; blocked, unknown and stale lights stay hidden until a new `clear` measurement |
+| **Ctrl+Shift+H** | Show/hide the optional CrimsonHue mixer when its separate controller is installed; configurable in Hue Setup |
 
-The HUD does not capture mouse input. Hiding it does not stop telemetry.
+The passive telemetry HUD does not capture mouse input. The optional Hue mixer
+captures input while open; release held keys/buttons if it shows the handoff
+reminder. Hiding the telemetry HUD does not stop telemetry. Hiding Hue through
+the shortcut, Hide settings or title-bar X keeps lighting sync running; use its
+**Stop** button to end sync. Stop and wait for stopped status before game exit.
 These are defaults: all four shortcuts can be reassigned in the INI using decimal
 Windows virtual-key codes, or individually disabled with `0`.
 
@@ -157,7 +170,7 @@ DurationMilliseconds=6000
 - `[Lights] Upstream=1` (default) also captures the renderer's light **input** with every sample: all current engine lights, including behind the camera. HUD, radar, visibility and smoothing then use it; `0` keeps only the view-filtered output.
 - `[Ambient] Enabled=1` enables the separate sky/ambient path and requires native ManyLights capture.
 - `NearbyRadius` controls the API's player-centered light radius; `LightOverlay.Radius` controls both light views. Distances are **game units**, not a claimed metre conversion.
-- Disable **Overlay, LightOverlay and Notifications** to skip all UI hooks/client. The server and light capture have their own switches. Without any UI, native capture locates its submission hook with its own queue at world entry, as before 2.2.4.
+- Disable **Overlay, LightOverlay and Notifications**, plus optional **CrimsonHue** integration, to skip all UI hooks/client. Without a compatible Hue controller, disabling the three telemetry views is sufficient. The server and light capture have their own switches. Without any UI, native capture locates its submission hook with its own queue at world entry, as before 2.2.4.
 - `InitiallyVisible=0` hides an enabled view at launch; hotkeys cannot enable a view whose `Enabled=0`.
 - `HdrPaperWhiteNits` controls all HDR UI brightness, including markers and notices with the corner HUD disabled. The default is 200 nits, clamped to 80–500. It does not change the game's HDR settings or metadata.
 - Radar/marker swatches visualize measured HDR values; they do not reproduce the game's tone mapping. Nearby contributions share a detail box without merging, summing or smoothing their raw measurements.
@@ -261,7 +274,7 @@ Important boundaries:
 - A missing contribution is **not** a permanent physical OFF state. Stable lamp IDs, physical lumens and validated light ranges are not supplied.
 - Linear HDR RGB/luminance can vary with effects and exposure; they are not final screen pixels or exposure-normalized lamp colors.
 - With `Upstream=1` the radar shows all current engine lights around the player: filled dots are renderer-selected, hollow rings are current lights the renderer did not select in this view (not OFF). Without it, the radar only shows what the renderer selected.
-- Visibility rays sample fixed points on the camera-to-light path. Thin gaps can make a light behind a fence or cage `clear`, and geometry without collision (foliage, some decorations) does not block. Results can be up to 500 ms old; fast motion can expose capture/projection latency. Visibility does not establish correct candles, lamps or a complete list of all sources.
+- Visibility rays sample fixed points on the camera-to-light path. A dense cage or closed collision hull can make a visibly shining lamp `blocked`; glass is not reliably distinguished from opaque collision. Conversely, geometry without suitable collision (foliage, some decorations) may not block. More rays alone do not resolve those material/geometry differences. Results can be up to 500 ms old; fast motion can expose capture/projection latency. `rendererSelected` does not prove optical visibility. Renderer-derived light-contribution research is unfinished and is not a release feature.
 - HDR UI is composited in linear light, with configurable white brightness and unchanged pixels outside the UI. It does not tone-map the whole scene. Rendering HDR UI uses two extra full-resolution GPU textures plus a scene copy/composite; the SDR path has no extra compositor pass.
 - Unrecognized output format/color-space combinations remain unsupported. Automated HDR rendering tests do not establish live HDR game or display compatibility; frame generation, other upscalers and AMD/Intel game setups remain unvalidated.
 - Earlier versions sporadically hung the GPU at world entry in a setup with ReShade. 2.2.4 no longer creates a Direct3D 12 queue there while any UI is enabled. Six test starts with and without ReShade were clean; that does not prove the issue is gone. Please report a recurrence with the four logs listed above.
@@ -287,7 +300,7 @@ under the normal packaged filename. See [INI validation](docs/INI_VALIDATION.md)
 
 GitHub CI covers managed/API tests and native capture, guard and UI tests. Current acceptance and outstanding checks are recorded in [the handover](docs/HANDOVER.md); historical test totals are not a result for a new package.
 
-See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.4.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [current public description drafts](docs/PUBLIC_DESCRIPTIONS.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
+See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.5.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [current public description drafts](docs/PUBLIC_DESCRIPTIONS.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
 
 ## Credits and scope
 

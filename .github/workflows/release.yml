@@ -35,10 +35,17 @@ jobs:
           .\scripts\Build-ModManagerPackage.ps1 -Version ($env:GITHUB_REF_NAME -replace '^v', '')
       - name: Native regression tests
         run: ctest --test-dir build/native-package-release -C Release --output-on-failure
-      - name: Create draft GitHub release
+      - name: Create draft GitHub release if missing
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
           $package = ".\artifacts\mod-manager\CrimsonDesertTelemetry-$env:GITHUB_REF_NAME-ModManagers.zip"
+          # A locally verified package may already be attached to a draft for
+          # this tag. Keep that immutable asset; CI still builds/tests above.
+          $existingRelease = gh release view $env:GITHUB_REF_NAME --json tagName 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $env:GITHUB_REF_NAME already exists; preserving its assets."
+            exit 0
+          }
           gh release create $env:GITHUB_REF_NAME $package --draft --title "Crimson Desert Telemetry $env:GITHUB_REF_NAME" --notes-file ".\docs\releases\$env:GITHUB_REF_NAME.md" --verify-tag
