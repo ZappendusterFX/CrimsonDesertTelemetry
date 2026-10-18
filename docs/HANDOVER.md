@@ -1,4 +1,24 @@
-# Current checkpoint — 2026-10-17, held-input handoff candidate
+# Current checkpoint — 2026-10-18, single Hue cursor and sharper defaults
+
+Owner reports two HUD cursors, only one functional. Maintained Hue panel now
+hides the native Windows shape during foreground/client HUD ownership, handles
+client WM_SETCURSOR and restores suppressed shape on release when appropriate.
+Newer game/foreign shapes and outside-client pointers are preserved. No cursor
+position, ShowCursor counter, raw registration or input-release changes. Source
+copy/manifest match. Mocked actual-adapter cursor and held-input regressions pass;
+omitting frame suppression fails exactly at the duplicate-cursor assertion.
+
+Fresh immutable **CDT2.2.5-huepanel.11 + Hue0.4.0-asi.21**, production/researchOFF/
+build25477059. Hue.21 tightens Recommended/reset defaults to 30-degree radius,
+20% softness and focus4; Custom values and the mapping algorithm are preserved.
+Both packages validate; CDT12/12 focused native tests, Hue116/116 and exact-Hue
+hidden shared WARP/pixel/hide/reopen/resize smoke pass; image reviewed. Evidence,
+paths, hashes and limits: [HUE_SINGLE_CURSOR.md](HUE_SINGLE_CURSOR.md), parent Hue
+docs/FOCUSED-ZONES-VALIDATION.md. No installation or real input/output changed.
+Next: owner exits game, installs both packages, selects Recommended and checks
+zone separation, one HUD cursor and held-input return. Game acceptance is pending.
+
+# Previous checkpoint — 2026-10-17, held-input handoff candidate
 
 Owner reports endless sword attacks after a possible HUD close, resolved by
 another open/close. Exact in-game input route/order is unrecorded. Confirmed

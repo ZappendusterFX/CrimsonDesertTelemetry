@@ -19,6 +19,9 @@ RECT clientRect{0, 0, 800, 600};
 RAWINPUT rawPacket{};
 UINT rawReadBytes = sizeof(RAWINPUT);
 int cursorReads{}, rawReads{}, registrationWrites{};
+HCURSOR nativeCursor = reinterpret_cast<HCURSOR>(0x44);
+int cursorShapeWrites{};
+bool reenterCursor{};
 std::array<bool, 256> physicalKeys{};
 bool gameAttackLegacy{}, gameAttackRaw{};
 LRESULT CALLBACK Original(HWND, UINT message, WPARAM, LPARAM) {
@@ -41,6 +44,15 @@ BOOL TestClip(const RECT* value) {
 }
 BOOL TestGetClip(RECT* value) { *value = clipping; return TRUE; }
 BOOL TestPosition(POINT* value) { ++cursorReads; *value = osPosition; return TRUE; }
+BOOL TestCursorInfo(CURSORINFO* value) {
+    value->hCursor = nativeCursor; value->ptScreenPos = osPosition;
+    value->flags = nativeCursor ? CURSOR_SHOWING : 0; return TRUE;
+}
+HCURSOR TestSetCursor(HCURSOR value) {
+    ++cursorShapeWrites; const auto previous = nativeCursor; nativeCursor = value;
+    if (reenterCursor && installed) installed(reinterpret_cast<HWND>(1), WM_MOUSEMOVE, 0, 0);
+    return previous;
+}
 BOOL TestScreenToClient(HWND, POINT* value) { value->x -= clientOrigin.x; value->y -= clientOrigin.y; return TRUE; }
 BOOL TestClientRect(HWND, RECT* value) { *value = clientRect; return TRUE; }
 int TestMetrics(int index) {
@@ -105,6 +117,8 @@ LRESULT RawKey(USHORT key, USHORT flags, USHORT scan = 0) {
 #define ClipCursor TestClip
 #define GetClipCursor TestGetClip
 #define GetCursorPos TestPosition
+#define GetCursorInfo TestCursorInfo
+#define SetCursor TestSetCursor
 #define ScreenToClient TestScreenToClient
 #define GetClientRect TestClientRect
 #define GetSystemMetrics TestMetrics
@@ -120,6 +134,8 @@ LRESULT RawKey(USHORT key, USHORT flags, USHORT scan = 0) {
 #undef ClipCursor
 #undef GetClipCursor
 #undef GetCursorPos
+#undef GetCursorInfo
+#undef SetCursor
 #undef ScreenToClient
 #undef GetClientRect
 #undef GetSystemMetrics
@@ -141,7 +157,14 @@ int main() {
         io.IniFilename = nullptr; io.LogFilename = nullptr;
         unsigned char* pixels{}; int width{}, height{};
         io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-        SetInputWindow(window); FeedInput(window, true);
+        SetInputWindow(window); reenterCursor = true; FeedInput(window, true); reenterCursor = false;
+        Require(!nativeCursor && io.MouseDrawCursor, "Owned HUD left both the native and software cursors visible");
+        nativeCursor = reinterpret_cast<HCURSOR>(0x55);
+        Require(installed(window, WM_SETCURSOR, reinterpret_cast<WPARAM>(window), MAKELPARAM(HTCLIENT, WM_MOUSEMOVE)) == TRUE &&
+            !nativeCursor, "Client WM_SETCURSOR restored a duplicate native cursor");
+        Require(installed(window, WM_SETCURSOR, reinterpret_cast<WPARAM>(window), MAKELPARAM(HTCAPTION, WM_MOUSEMOVE)) == 701,
+            "HUD swallowed non-client cursor selection");
+        forwarded = 0;
         FrameAt(150, 150, "Legacy cursor did not use OS position");
         osPosition = {175, 225}; FeedInput(window, true);
         FrameAt(175, 225, "Legacy cursor stopped following OS position without raw registration");
@@ -152,11 +175,14 @@ int main() {
         Require(installed(window, WM_INPUT, 0, 0) == 902, "Captured raw input was not cleaned up");
         installed(window, WM_CHAR, 'x', 0);
         const int beforeRelease = clips;
-        reenterClip = true; // Reentrant User32 dispatch must not deadlock our input mutex.
+        reenterClip = reenterCursor = true; // Reentrant User32 dispatch must not deadlock our input mutex.
         ReleaseInput();
-        reenterClip = false;
+        reenterClip = reenterCursor = false;
         Require(!HasInputFocus() && SameRect(clipping, originalClip), "Hide did not release capture and restore game clipping");
         Require(clips == beforeRelease + 1, "Hide restored clipping more than once");
+        Require(nativeCursor == reinterpret_cast<HCURSOR>(0x55), "Hide did not restore the last suppressed cursor shape");
+        Require(installed(window, WM_SETCURSOR, reinterpret_cast<WPARAM>(window), MAKELPARAM(HTCLIENT, WM_MOUSEMOVE)) == 701,
+            "Hidden HUD swallowed native cursor selection");
         Require(installed(window, WM_KEYDOWN, 'W', 0) == 701, "Hidden panel swallowed keyboard input");
         Require(installed(window, WM_KEYUP, 'W', 0) == 701, "Hidden panel swallowed key release");
         Require(installed(window, WM_MOUSEMOVE, 0, 0) == 701, "Hidden panel swallowed mouse input");
@@ -168,17 +194,30 @@ int main() {
         ImGui::EndFrame();
         FeedInput(window, true); Require(HasInputFocus(), "Reopen failed to acquire input");
         testForegroundWindow = reinterpret_cast<HWND>(2);
+        nativeCursor = reinterpret_cast<HCURSOR>(0x99);
+        const int beforeForeignShape = cursorShapeWrites;
         const int beforeBackground = clips;
         FeedInput(window, true);
         Require(!HasInputFocus() && !io.MouseDrawCursor, "Background panel retained capture");
         Require(clips == beforeBackground, "Background release clipped another app's cursor");
+        Require(nativeCursor == reinterpret_cast<HCURSOR>(0x99) && cursorShapeWrites == beforeForeignShape,
+            "Background release changed another app's cursor shape");
         Require(installed(window, WM_KEYDOWN, 'A', 0) == 701, "Background panel swallowed input");
         testForegroundWindow = window; FeedInput(window, true); ReleaseInput(); ReleaseInput();
         Require(!HasInputFocus(), "Repeated Close/Stop retained capture");
 
+        FeedInput(window, true);
+        nativeCursor = reinterpret_cast<HCURSOR>(0x66); // Game chose a newer shape before Hide.
+        ReleaseInput();
+        Require(nativeCursor == reinterpret_cast<HCURSOR>(0x66), "Hide overwrote a newer visible game cursor");
+        osPosition = {900, 700};
+        FeedInput(window, true);
+        Require(nativeCursor == reinterpret_cast<HCURSOR>(0x66), "HUD hid a cursor outside its client area");
+        ReleaseInput(); osPosition = {150, 150};
+
         // A delivered raw mouse packet enables the virtual cursor. Registration
         // alone would not prove WM_INPUT reaches this window (buffered input).
-        // The panel must never change registration or write the system cursor.
+        // The panel must never change registration or write system cursor position.
         osPosition = {150, 150};
         const int readsBeforeOpen = cursorReads;
         FeedInput(window, true); FrameAt(150, 150, "Raw cursor was not seeded from OS position on open");
@@ -259,8 +298,12 @@ int main() {
         physicalKeys[VK_LBUTTON] = true;
         Require(installed(window, WM_LBUTTONDOWN, MK_LBUTTON, 0) == 701 && gameAttackLegacy,
             "Game did not receive its initial attack press");
+        const auto heldCursor = nativeCursor;
+        const int beforeHeldCursor = cursorShapeWrites;
         FeedInput(window, true);
         Require(!HasInputFocus() && InputHandoffPending(), "HUD took over a held game attack");
+        Require(nativeCursor == heldCursor && cursorShapeWrites == beforeHeldCursor,
+            "HUD hid the game cursor while still waiting for its held attack release");
         physicalKeys[VK_LBUTTON] = false; FeedInput(window, true);
         Require(!HasInputFocus(), "HUD trusted physical-up before the queued release reached the game");
         Require(installed(window, WM_LBUTTONUP, 0, 0) == 701 && !gameAttackLegacy,
@@ -351,7 +394,7 @@ int main() {
         FeedInput(window, true); Require(HasInputFocus(), "Focus return retained a stale held-button barrier");
         ReleaseInput(); Require(registrationWrites == 0, "Panel changed the game's raw input registration");
         ImGui::DestroyContext();
-        std::cout << "PASS game/HUD press-release ownership (legacy + raw mouse/keyboard), queued releases, hidden drain, modifiers, focus and ImGui reset; raw cursor/warp/fallback/DPI/wheel regressions; mocked User32 only.\n";
+        std::cout << "PASS single software cursor, native shape hide/restore/client/non-client/foreign ownership; game/HUD press-release ownership (legacy + raw mouse/keyboard), queued releases, hidden drain, modifiers, focus and ImGui reset; raw cursor/warp/fallback/DPI/wheel regressions; mocked User32 only.\n";
         return 0;
     } catch (const std::exception& error) {
         ReleaseInput(); ImGui::DestroyContext(); std::cerr << error.what() << '\n'; return 1;

@@ -78,7 +78,7 @@ int wmain(int argc, wchar_t** argv) {
             "Missing mixer/layout controls or obsolete axis switches remain");
         bool sphereDefault = false;
         for (const auto& value : state.at("controls")) if (value.at("key") == "SourceDiscRadiusDegrees")
-            sphereDefault = value.at("value") == 60.0 && value.at("min") == 1.0 && value.at("max") == 180.0 && value.at("group") == "Space";
+            sphereDefault = value.at("value") == 30.0 && value.at("initial") == 30.0 && value.at("min") == 1.0 && value.at("max") == 180.0 && value.at("group") == "Space";
         Require(sphereDefault, "Spherical radius default or range missing from controller snapshot");
         Command({{"action", "lighting"}, {"key", "Brightness"}, {"value", .73}});
         Command({{"action", "lighting"}, {"key", "LocalAmount"}, {"value", 1.25}});
@@ -108,7 +108,8 @@ int wmain(int argc, wchar_t** argv) {
         const auto customControls = state.at("controls");
         Command({{"action", "profile"}, {"recommended", true}}); Sleep(100); state = State();
         Require(state.at("lighting").at("recommended") == true && Value(state, "Brightness") == 23 &&
-            Value(state, "SourceDiscRadiusDegrees") == 60 && Value(state, "LocalStrength") == 125,
+            Value(state, "SourceDiscRadiusDegrees") == 30 && Value(state, "Spread") == 4 &&
+            Value(state, "SourceDiscSoftness") == 20 && Value(state, "LocalStrength") == 125,
             "Recommended retained custom spatial tuning or changed the current brightness limit");
         Command({{"action", "profile"}, {"recommended", false}}); Sleep(100); state = State();
         Require(state.at("lighting").at("recommended") == false && state.at("controls") == customControls,
@@ -122,7 +123,9 @@ int wmain(int argc, wchar_t** argv) {
             Require(value.at("value") == 130.0, "Out-of-range spherical radius changed mapping");
         Command({{"action", "reset"}, {"group", "Output"}}); Command({{"action", "reset"}, {"group", "Space"}}); Sleep(100);
         state = State(); for (const auto& value : state.at("controls")) if (value.at("key") == "SourceDiscRadiusDegrees")
-            Require(value.at("value") == 60.0, "Space reset did not restore spherical radius default");
+            Require(value.at("value") == 30.0, "Space reset did not restore spherical radius default");
+        Require(Value(state, "Spread") == 4 && Value(state, "SourceDiscSoftness") == 20,
+            "Space reset did not restore the focused directional defaults");
 
         state = State(); Require(state.at("wallWashers").size() == 2, "Missing per-lamp wall calibration");
         for (const auto& washer : state.at("wallWashers")) {

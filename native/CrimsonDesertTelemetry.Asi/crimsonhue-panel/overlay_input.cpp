@@ -20,6 +20,7 @@ float wheel = 0, horizontalWheel = 0;
 std::atomic<HWND> activeWindow{nullptr};
 RECT previousClip{};
 bool clipReleased = false;
+HCURSOR previousCursor{};
 struct Presses {
     std::bitset<256> legacy, raw;
     bool Any() const { return legacy.any() || raw.any(); }
@@ -121,10 +122,43 @@ void ReadMousePacket(HWND window, const RAWMOUSE& mouse) {
     else { cursorClient.x += static_cast<float>(mouse.lLastX); cursorClient.y += static_cast<float>(mouse.lLastY); }
     ClampCursor();
 }
+bool NativeCursorInClient(HWND window, CURSORINFO& cursor) {
+    cursor.cbSize = sizeof(cursor);
+    if (!GetCursorInfo(&cursor)) return false;
+    auto point = cursor.ptScreenPos;
+    RECT client{};
+    return ScreenToClient(window, &point) && GetClientRect(window, &client) &&
+        point.x >= client.left && point.x < client.right && point.y >= client.top && point.y < client.bottom;
+}
+void RestoreNativeCursor(HWND window, HCURSOR previous) {
+    CURSORINFO cursor{};
+    if (previous && GetForegroundWindow() == GetAncestor(window, GA_ROOT) &&
+        NativeCursorInClient(window, cursor) && !cursor.hCursor) SetCursor(previous);
+}
+bool HideNativeCursor(HWND window) {
+    CURSORINFO cursor{};
+    if (!capture || activeWindow != window || GetForegroundWindow() != GetAncestor(window, GA_ROOT) ||
+        !NativeCursorInClient(window, cursor)) return false;
+    // The raw HUD cursor can differ from the OS position. Show only the former.
+    // Borrow the old shape; never change ShowCursor counters or cursor position.
+    const auto previous = SetCursor(nullptr);
+    bool owned = false;
+    {
+        std::lock_guard lock(inputMutex);
+        owned = capture && activeWindow == window;
+        if (owned && previous) previousCursor = previous;
+    }
+    // A close/focus transition may run while User32 is executing. Undo a hide
+    // which no longer belongs to us, without replacing another visible cursor.
+    if (!owned) RestoreNativeCursor(window, previous);
+    return owned;
+}
 LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
     const bool foreground = window == activeWindow && GetForegroundWindow() == GetAncestor(window, GA_ROOT);
     const bool focusLost = message == WM_KILLFOCUS || (message == WM_ACTIVATEAPP && !wParam);
     if (focusLost && window == activeWindow) ReleaseInput();
+    if (foreground && message == WM_SETCURSOR && LOWORD(lParam) == HTCLIENT &&
+        reinterpret_cast<HWND>(wParam) == window && HideNativeCursor(window)) return TRUE;
     RAWINPUT packet{};
     const bool havePacket = foreground && message == WM_INPUT && ReadPacket(lParam, packet);
     if (foreground && capture && havePacket && packet.header.dwType == RIM_TYPEMOUSE)
@@ -181,7 +215,7 @@ void MaintainInputHandoff() noexcept {
 void ReleaseInput() noexcept {
     // Poll before the mutex while capture still protects in-flight panel input.
     const auto physical = capture ? PhysicalPresses() : std::bitset<256>{};
-    RECT clip{}; bool restore = false; HWND window{};
+    RECT clip{}; bool restore = false; HWND window{}; HCURSOR cursor{};
     {
         std::lock_guard lock(inputMutex);
         if (capture) {
@@ -191,11 +225,13 @@ void ReleaseInput() noexcept {
         capture = false; ++inputEpoch; resetUiInput = true; waitingForRelease = false;
         restore = clipReleased; clip = previousClip; window = activeWindow;
         clipReleased = false;
+        cursor = previousCursor; previousCursor = nullptr;
         rawCursor = false;
         characters.clear(); wheel = horizontalWheel = 0;
     }
     // User32 calls can dispatch messages. Never hold our WndProc's mutex here.
     if (restore && GetForegroundWindow() == GetAncestor(window, GA_ROOT)) ClipCursor(&clip);
+    RestoreNativeCursor(window, cursor);
 }
 void SetInputWindow(HWND window) noexcept {
     // Called every rendered frame. Releasing capture here used to create a small
@@ -258,6 +294,7 @@ void FeedInput(HWND window, bool visible) {
     }
     waitingForRelease = requested && !owns;
     io.MouseDrawCursor = owns;
+    if (owns) HideNativeCursor(window);
     io.AddFocusEvent(owns);
     if (owns) io.AddMousePosEvent(position.x, position.y);
     else io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
