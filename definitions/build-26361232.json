@@ -34,6 +34,11 @@
         "rva": 67766242,
         "bytes": "41 8B 85 E0 08 00 00 4D 8B BC C5 38 06 00 00 4C 89 7C 24 58 49 8B 8C C5 48 06 00 00",
         "purpose": "Bank index owner+0x8E0 followed by paired counter/output banks owner+0x638/+0x648; offline disassembly"
+      },
+      {
+        "rva": 62342602,
+        "bytes": "48 8B 83 C0 08 00 00 44 8B CF 44 8B C6 8B D5 48 8B 48 08 48 8B 01 FF 50 70",
+        "purpose": "Command Dispatch: RBX+0x8C0 -> holder+8 -> native command list, Dispatch virtual slot0x70; live vtable provenance"
       }
     ],
     "registers": {
@@ -47,7 +52,7 @@
       "strideOffset": 192,
       "countOffset": 196,
       "resourceOffset": 360,
-      "commandHolderOffset": 2048,
+      "commandHolderOffset": 2240,
       "nativeListOffset": 8,
       "ownerBankIndexOffset": 2272
     },

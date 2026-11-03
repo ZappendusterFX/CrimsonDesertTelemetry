@@ -44,8 +44,14 @@ struct Image
         nt->OptionalHeader.SizeOfImage = Size;
         nt->OptionalHeader.SizeOfHeaders = 0x400;
         sections = IMAGE_FIRST_SECTION(nt);
-        const auto codeStart = static_cast<DWORD>(contract::ContextSignatures.front().rva & ~uint64_t{0xFFF});
-        const auto codeEnd = static_cast<DWORD>((contract::HookRva + contract::HookSignature.size() + 0xFFF) & ~uint64_t{0xFFF});
+        uint64_t firstCode = contract::HookRva, lastCode = contract::HookRva + contract::HookSignature.size();
+        for (const auto& context : contract::ContextSignatures)
+        {
+            firstCode = std::min(firstCode, context.rva);
+            lastCode = std::max(lastCode, context.rva + context.bytes.size());
+        }
+        const auto codeStart = static_cast<DWORD>(firstCode & ~uint64_t{0xFFF});
+        const auto codeEnd = static_cast<DWORD>((lastCode + 0xFFF) & ~uint64_t{0xFFF});
         sections[0].VirtualAddress = codeStart; sections[0].Misc.VirtualSize = codeEnd - codeStart;
         sections[0].Characteristics = IMAGE_SCN_CNT_CODE | IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_EXECUTE;
         sections[1].VirtualAddress = static_cast<DWORD>(contract::SceneGlobalRva & ~uint64_t{0xFFF});

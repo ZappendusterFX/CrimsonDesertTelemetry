@@ -259,8 +259,9 @@ int main(int argc, char** argv)
     Put(counterInner,0x168,reinterpret_cast<uint64_t>(counter.Get()));
     Put(counterOuter,0x30,reinterpret_cast<uint64_t>(counterInner.data()));
     std::array<uint8_t,0x900> owner{};
-    std::array<uint8_t,16> holder{}; std::array<uint8_t,0x808> command{};
-    Put(holder,8,reinterpret_cast<uint64_t>(list.Get())); Put(command,0x800,reinterpret_cast<uint64_t>(holder.data()));
+    std::array<uint8_t,16> holder{};
+    std::array<uint8_t,contract::CommandHolderOffset + sizeof(uint64_t)> command{};
+    Put(holder,8,reinterpret_cast<uint64_t>(list.Get())); Put(command,contract::CommandHolderOffset,reinterpret_cast<uint64_t>(holder.data()));
     Check(OpenBridge(upstreamTest),"bridge");
     const auto mappingName=L"Local\\CrimsonDesertTelemetry.Render."+std::to_wstring(GetCurrentProcessId());
     HANDLE mapHandle=OpenFileMappingW(FILE_MAP_READ,FALSE,mappingName.c_str());

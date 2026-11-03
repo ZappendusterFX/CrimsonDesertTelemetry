@@ -23,7 +23,8 @@ internal static class UpdateCheckTests
             d => d.AllowAutomaticCompatibility = true, d => d.EngineCamera!.CameraVtableFingerprints = null!,
             d => d.NativeCapture!.Scene.RootPointerOffset = 0x430, d => d.PlayerRoot!.BasisXOffset = d.PlayerRoot.PositionOffset,
             d => d.EngineCamera!.SourcePointerOffset = 0x430, d => d.NativeCapture!.Scene = null!,
-            d => d.NativeCapture!.Wrapper.OwnerBankIndexOffset = 0x8E0
+            d => d.NativeCapture!.Wrapper.OwnerBankIndexOffset = 0x8E0,
+            d => d.NativeCapture!.Wrapper.CommandHolderOffset = 0x8C0
         ];
         foreach (var corrupt in corruptions)
         {
@@ -31,6 +32,9 @@ internal static class UpdateCheckTests
             Reject(() => BuildProfileValidation.Validate(profile), "Malformed profile accepted.");
             Reject(() => BuildCompatibility.Resolve("file-must-not-be-read.exe", [profile]), "Profile was used before validation.");
         }
+        var updated = BuildDefinition.LoadAll("not-a-profile-directory").Single(d => d.SteamBuildId == "26361232");
+        updated.NativeCapture!.Wrapper.CommandHolderOffset = 0x800;
+        Reject(() => BuildProfileValidation.Validate(updated), "New build retained the obsolete command-list holder.");
         var valid = Current();
         Reject(() => BuildProfileValidation.ValidateAll([valid, valid]), "Duplicate identity accepted.");
         var research = Current();

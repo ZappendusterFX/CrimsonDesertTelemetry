@@ -1,6 +1,57 @@
 # Patch 2.04.05 / build 26361232 recovery — 2026-11-03, Codex
 
-## Current continuation: owner-installed .2, visible diagnostic .3
+## Current continuation: Dispatch-proven holder correction, diagnostic .4
+
+Owner installed diagnostic.3/restarted PID30508 at10:33:34. ASI, Core, host and INI
+match that ZIP. HTTP health is playing/research-exact; sequences3672->6263 progress.
+The native one-shot report rejects output/list: reads0xFF, stride48/count32768,
+nonzero resource/counter; command+0x800 reaches an unrelated inline holder whose
++8 list is null. Thus accepted CPU telemetry is not native light acceptance.
+Raw log preserved at artifacts/light-research/update-26361232-diagnostic3-live-native-20261103.log.
+
+The exact logged command object0x57D14B9D200 has stable vtable RVA0x60B5DF8;
+Dispatch slot0x338 points at RVA0x3B744D0. Existing preset-static disassembly of
+that function completely decodes to0x3B74628. At RVA0x3B745CA the code reads
+[RBX+0x8C0], then [RAX+8], and calls native list virtual slot0x70 (Dispatch).
+Its indirect path also uses+0x8C0. RCX was saved as RBX, proving the command role.
+Report: artifacts/light-research/update-26361232-command-dispatch-20261103.json.
+
+A bounded live read follows this exact chain to a native COM list, with function
+pointers in D3D12Core/nvwgf2umx. Its GetType leaf is 8B4118C3 (read DWORD list+18,
+return); reading the field, without calling into the game, yields COMPUTE/type2.
+The first chain is stable. A later combined type/context snapshot crosses a bank
+rotation and explicitly records stable=false; a bounded chain-local double read
+then confirms type2/stable=true. All five exact native contexts match live code.
+These are pointer/type/context controls, not fenced GPU or light-state proof.
+Private evidence: update-26361232-command-{live,validation,stable}-20261103.json
+under artifacts/light-research/. Session pointers are never update anchors.
+
+Only the build26361232 wrapper contract changes commandHolderOffset0x800->0x8C0.
+NativeListOffset8 and the guarded resource layout stay as measured. A fifth exact
+context at RVA0x3B745CA covers holder/native-list/Dispatch provenance. Old profiles
+retain+0x800. The managed validator rejects carrying that obsolete holder onto the
+new build. WARP command fixtures use the selected offset; preflight fixture bounds
+now cover every exact context, including the independently located Dispatch.
+No runtime source search, fallback, installed configuration edit or API change.
+
+New immutable ZIP:
+artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.6-build26361232-diagnostic.4-ModManagers.zip
+SHA256 F89D7F595789FAC627301C7C67473C618A1EDF620DD313C238D2F805395CE861.
+ASI SHA256 E072EBA8405371EE437CDAA7B705B7B24754852B3D8918F96BF5E1BFACDAA10D.
+Core SHA256 993A2FDD103E8A68E7BBE9DD5EC10B307EC0ABEA4B48DE1FA83FBA1A9AA08252.
+Built with maintained -UnvalidatedDiagnostic -DiagnosticHud -Research off,
+-NativeBuildId26361232, -IniOverrides @{'Lights.Upstream'='0'}.
+HUDs/server/notices remain ON; unrecovered upstream/Ambient/visibility remain OFF.
+Managed79/79, native40/40, generated hook/five contexts against the actual EXE,
+expanded/ZIP validators, exact packaged embedded profile/settings and ASI equality
+all pass. Native final log: artifacts/light-research/update-26361232-diagnostic4-native-20261103.log.
+No package acceptance or changed light response is claimed before the owner
+installs .4 and restarts. The loaded .3 cannot take a compiled contract change.
+Next: owner installs the complete ZIP with game closed, restarts and reports;
+then read progressing fenced samples and validate the known AN/AUS/AN light.
+
+
+## Previous continuation: owner-installed .2, visible diagnostic .3
 
 Owner installed diagnostic.2 and restarted at10:08:11, PID18928. ASI, Core, host,
 CFGs and INI hashes match that package. Its Server/Notifications/Overlay/

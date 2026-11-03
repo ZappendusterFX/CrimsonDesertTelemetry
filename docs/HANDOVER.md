@@ -1,4 +1,24 @@
-# Current checkpoint — 2026-11-03, live diagnostic.2 blocked; diagnostic.3 restores HUD
+# Current checkpoint — 2026-11-03, command-list holder recovered; diagnostic.4 ready
+
+Owner installed diagnostic.3/restarted PID30508. Runtime/INI match; HTTP health
+playing/research-exact and camera/player progress. Native rejection is output/list:
+stride48/count32768 and resource pointers pass, but command+800->holder+8 is null.
+Live command vtable Dispatch slot338 resolves RVA3B744D0. Its actual native Dispatch
+call proves command+8C0->holder+8 (COM slot70), with stable read-only live COMPUTE
+list confirmation. This is provenance-led recovery, not a neighboring-pointer guess.
+
+Build26361232 alone now uses holder+8C0, with a fifth exact context guard at
+RVA3B745CA. Old profiles keep+800. Managed79/79, native40/40, exact-EXE/context,
+packaged embedded-profile/config/ASI hash and expanded/ZIP checks pass. New immutable
+HUD/server-ON diagnostic.4 stays research/unvalidated; upstream/Ambient/physics OFF.
+ZIP SHA256 F89D7F595789FAC627301C7C67473C618A1EDF620DD313C238D2F805395CE861.
+Evidence and exact payload hashes: [BUILD-26361232-RECOVERY.md](BUILD-26361232-RECOVERY.md).
+No installed files changed; .4 is not game-tested. No physical output/game input.
+Next: owner personally installs whole diagnostic.4 ZIP with game closed and
+restarts; then verify hashes, progressing fenced native samples and the known
+light response. No AN/AUS state yet supplied; no polling/waiting for owner.
+
+# Previous checkpoint — 2026-11-03, live diagnostic.2 blocked; diagnostic.3 restores HUD
 
 Owner installed diagnostic.2 and restarted (PID18928). Runtime/INI hashes match
 that ZIP. Its Server/Notifications/Overlay/LightOverlay=0 intentionally explains

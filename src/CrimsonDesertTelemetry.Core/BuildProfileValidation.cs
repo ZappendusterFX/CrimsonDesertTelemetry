@@ -133,7 +133,8 @@ public static class BuildProfileValidation
         }
         if (native.Registers is not { Output: "r12", Command: "rbx", Counter: "r15", Owner: "r13" } ||
             native.Wrapper is not { InnerOffset: 48, StrideOffset: 192, CountOffset: 196, ResourceOffset: 360,
-                CommandHolderOffset: 2048, NativeListOffset: 8 } ||
+                NativeListOffset: 8 } ||
+            native.Wrapper.CommandHolderOffset != (definition.SteamBuildId == "26361232" ? 0x8C0 : 0x800) ||
             native.Wrapper.OwnerBankIndexOffset != (definition.SteamBuildId == "26361232" ? 0x8E0 : 0x8F8) ||
             native.Scene is not { ByteCount: 2816, FrameOffset: 32, ScreenOffset: 48,
                 PositionOffset: 128, DirectionOffset: 144, ViewRelativeOffset: 160, EarthRadiusOffset: 2752, EarthRadius: 6360000f } ||
