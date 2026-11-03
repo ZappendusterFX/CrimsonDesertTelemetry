@@ -1,4 +1,27 @@
-# Current checkpoint — 2026-11-03, regular 2.2.6 ready for GitHub publication
+# Current checkpoint — 2026-11-03, public 2.2.6 published on main
+
+Owner-requested release complete. Regular CDT2.2.6 targets gamepatch2.04.05,
+Steam26361232/EXE1.0.0.3479 (DF531A... exact hash), verified with new DLC installed.
+[Public stable Latest release](https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/tag/v2.2.6)
+published2026-11-03 at11:24:16UTC. Source/tag commit a590ce7. Both research switches
+OFF; exact locally-validated profile, automatic compatibility OFF; all9 normal
+features/HUDs ON. Runtime layouts/INI unchanged from live integrated.3.
+
+Local79/79 managed,40/40 native, API smoke, EXE/native/Ambient guards and packaged
+normal tested-build route pass. GitHub CI main41626382748, CI tag41626383149 and
+Release41626382725 all succeeded. Uploaded local ZIP was preserved by the workflow.
+Public download was fetched and independently hashed; matches ZIP/digest SHA256
+1C9520C9EEE0CD8EB268AFC3E6264FB319F31F5FCBE001D4D94D0CF9C402CF97,
+1060731bytes. [Validation and limits](releases/v2.2.6-validation.md).
+
+NEXUS_AUTO_PUBLISH remains false; publication job41627243336 completed skipped.
+No Nexus upload, installation or game settings/input/output changes by assistant.
+Exact release ZIP not reinstalled; separate live integrated.3 evidence and owner
+manual-test waiver remain explicit. All old releases/private ZIPs preserved.
+Private receipt: artifacts/light-research/release-2.2.6-github-publication-20261103.json.
+No remaining work for this release; resume only for the owner's next request.
+
+# Previous checkpoint — 2026-11-03, regular 2.2.6 ready for GitHub publication
 
 Owner requests release after the completed integrated.3 live recovery. Exact
 26361232 product/native profile and measured anchors are locally-validated;

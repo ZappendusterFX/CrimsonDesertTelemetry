@@ -1,6 +1,18 @@
 # Patch 2.04.05 / build 26361232 recovery — 2026-11-03, Codex
 
-## Current continuation: owner-requested regular 2.2.6 release
+## Current continuation: 2.2.6 publicly released
+
+Owner-requested GitHub publication completed2026-11-03 11:24:16UTC:
+[stable Latest2.2.6](https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/tag/v2.2.6).
+Source/tag a590ce7; main/tagCI and Release workflows succeeded. Public ZIP download
+matches local validated SHA2561C9520C9EEE0CD8EB268AFC3E6264FB319F31F5FCBE001D4D94D0CF9C402CF97.
+Local79 managed/40 native/API and exact guards pass; normal packaged build route
+tested. See [release validation](releases/v2.2.6-validation.md). Old/private ZIPs
+preserved; exact release ZIP not reinstalled under existing owner rules. Nexus
+remains disabled/skipped. No assistant installation or game changes. Recovery
+and requested release complete; further work only on the owner's next request.
+
+## Previous continuation: owner-requested regular 2.2.6 release
 
 Owner asks for release after integrated.3's successful live evidence. The exact
 new profile/native contract and measured runtime anchors are locally-validated;
