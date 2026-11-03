@@ -1,4 +1,30 @@
-# Current checkpoint — 2026-11-03, new-build natural physics profile selected
+# Current checkpoint — 2026-11-03, integrated.3 live recovery verified
+
+Owner installed integrated.3/restarted PID32560; all six runtime payload hashes
+match. Build26361232/patch2.04.05: health playing/errornull. Camera, filtered
+ManyLights, paired upstream INPUT and Ambient/GI supply fresh progressing data.
+Existing20s recorder:1188 frames, both light streams available throughout;
+filtered age0..94ms. One malformed filtered record remains explicitly rejected.
+
+Physics now works through the preserved path:241 accepted natural templates,
+all profile0x40000017;8751 completed9-ray targets (7986 all blocked,652 all clear,
+113 partly clear). No fault/stop reported; budget-skipped9473 and one unavailable
+target remain unknown. Known API ages0..500ms; stale/budget failures stay unknown.
+116478 API observations correlate with240 in-window native measurements across
+capture/frame/camera/target/completion tick/sample counts, zero mismatches.
+Latest saved snapshot:102 blocked,38 clear,1 stale; Ambient/GI fresh and available.
+
+Source fix c29353d and installed immutable private integrated.3 unchanged.
+No new ZIP/code/settings/deployment required. Exact contract stays research/
+unpromoted; this is passive live acquisition/control/freshness evidence, not
+repeated AN/AUS, general optical/scene acceptance, new shader identity or physical
+Hue acceptance. User's rule9a waiver and owner-only installation remain in force.
+Evidence/details: [BUILD-26361232-RECOVERY.md](BUILD-26361232-RECOVERY.md), private
+update-26361232-integrated3-live-summary-20261103.json plus its20s raw/native trace.
+This scoped recovery is complete. No further owner action/manual retest needed;
+resume only for the owner's next request. No publication requested/performed.
+
+# Previous checkpoint — 2026-11-03, new-build natural physics profile selected
 
 Owner installed integrated.2/restarted PID31416; all six runtime hashes match.
 Health playing, light/upstream/Ambient/GI feeds available. Existing20s recorder

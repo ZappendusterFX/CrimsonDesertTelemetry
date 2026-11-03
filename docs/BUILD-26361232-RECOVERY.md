@@ -1,6 +1,76 @@
 # Patch 2.04.05 / build 26361232 recovery — 2026-11-03, Codex
 
-## Current continuation: integrated.2 identifies current natural profile candidate
+## Current continuation: integrated.3 passive live recovery passes
+
+Owner reported ingame after installing complete integrated.3. PID32560 started
+11:58:31; installed ASI/Core/host/bothCFGs/INI hashes all equal the immutable ZIP.
+Startup selects exact-build natural profile0x40000017 and all requested features.
+Health playing/errornull, exact build26361232 and DF531A... EXE hash. Original
+source correction remains c29353d; no source, installed file, setting or game input
+was changed during this verification. Existing recorder --trace adds no rays.
+
+Existing bounded20s recorder finishes normally:1188 frames/API7405->8592.
+Filtered and upstream status=available in every recorded frame; filtered ages
+0..94ms. Counter/fence/camera pairing checks remain enforced. The explicitly
+rejected malformed filtered record remains in diagnostics; no new shader packing
+or optical-response claim is inferred. Follow-up saved API sequence12336 has
+health playing, filtered/upstream available, Ambient available(age167ms), GI camera
+sky visibility available(age16ms). This confirms continuing data after the trace.
+
+The existing natural/control/visibility path now produces:
+
+-241 accepted native templates, all profile0x40000017 and the exact guarded caller;
+ native lastControlStatus=diagnostic-ray-fan-completed67 rounds or shared batch
+ time-budget refusal174 rounds. No native fault/restart latch is reported.
+-8751 completed targets with9 rays each:7986 all blocked,652 all clear and113 with
+ 1..8 clear samples. Completion code1 requires natural control matching, intact
+ private guards, unchanged originals and no exception under the unchanged code.
+-9473 budget-skipped target attempts and one unavailable attempt; these are not
+ successful measurements. Existing per-scene2ms/256targets/20Hz limits remain.
+ Completed-to-publication age0..16ms. A busy/moving scene can have unknown/stale
+ entries; this is retained behavior rather than an all-target freshness promise.
+-API supplies clear AND blocked results in both rendered/upstream feeds; known
+ result ages0..500ms. Native traces contain mixed as well as all-clear/all-blocked
+ outcomes, unlike the historic wrong-profile all-clear failure. No new controlled
+ optical/material comparison is claimed. Latest saved upstream snapshot contains
+ 102 blocked,38 clear and one stale-physics unknown.
+
+Offline correlation of the SAME recording matches116478 known-source observations
+(111714 blocked,4764 clear) to240 native measurement sequences. Identity checks
+include measurement/capture/frame, actual camera, exact completion tick,9 samples,
+clear count and paired target within existing cache radius/JSON float precision,
+plus0..500ms age. No mismatches remain.788 known observations belong to normal
+measurement sequences just outside the explicit trace window and are not claimed
+as trace-correlated. Rendered contributions must use their paired upstream-derived
+ray target, as PhysicsVisibilityClient already implements. Initial correlator
+mistakenly used their own noisy contribution positions, producing two false
+mismatches at API8056/8057,measurement2005. Actual upstream target distance0.11515gu
+passes existing radius; contribution distance0.12334gu was the wrong input. Only
+the offline correlator was corrected; product association/policy was unchanged.
+
+Private immutable evidence under artifacts/light-research/:
+-visibility-motion-20261103-120303-6fb7e43bf7da4a2e9a06cbd425d547a6/
+ summary.json, visibility.jsonl.gz and copied native-context.jsonl(241 rounds).
+-update-26361232-integrated3-live-native-20261103.log.
+-update-26361232-integrated3-live-summary-20261103.json, including counts,
+ representative known sources, correlation results and analysis correction.
+-update-26361232-integrated3-live-api-20261103.json (full follow-up health/snapshot/
+ Ambient response).
+Original bin64 trace remains preserved:
+physics-visibility-context-32560-134381771113398669-10042359.jsonl.
+
+This completes the scoped passive recovery checks for the installed integrated.3:
+all requested data paths acquire/publish again and visibility now provides fresh
+measured classifications with bounded unknown fallback. Owner's no repeated AN/
+AUS/full historical tests waiver remains. No controlled new light switching,
+general scene/material classifier acceptance, bound-shader identity/packing,
+physical Hue output, pristine-baseline or full supported-release claim is made.
+The exact build contract remains explicitly private/research, no automatic
+compatibility promotion. No new package, installation, unrelated test repetition
+or publication is needed/performed. Existing ZIPs unchanged. No further owner
+action is required for this recovery; resume only on the owner's next request.
+
+## Previous continuation: integrated.2 identifies current natural profile candidate
 
 Owner installed integrated.2 and reported ingame; PID31416 started11:46:08.
 All six deployed runtime files equal the immutable package. Health playing,
