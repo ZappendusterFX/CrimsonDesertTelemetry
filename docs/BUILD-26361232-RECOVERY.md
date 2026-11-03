@@ -104,8 +104,9 @@ including intermediate diagnostic.1, remain immutable. Nothing installed/publish
 HTTP/WS host, upstream input, Ambient, visibility, notices and HUDs are OFF; only
 the native filtered bridge is ON. This package cannot restore normal Hue sync.
 
-One next step: owner closes the game before any ASI replacement. Then install the
-whole diagnostic.2 ZIP through DMM, verify deployed hashes, and restart at the
-known documented light. Use the existing Capture-PrivateManyLights.ps1 with
+One next step: the owner closes the game and personally installs the whole
+diagnostic.2 ZIP through DMM. Assistants never install or replace deployed files.
+After the owner reports installation and restart at the known documented light,
+verify deployed hashes and use the existing Capture-PrivateManyLights.ps1 with
 -BuildId 26361232 and freshly read player coordinates for the controlled AN/AUS/AN.
 Do not label camera layout evidence or WARP success as live native acceptance.

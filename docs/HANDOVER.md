@@ -13,8 +13,10 @@ Managed79/79, native40/40, exact-EXE signature check and package validators pass
 ZIP SHA256 8735A6CDA89EEFD114D78EBF1ABF167BDA3A8F30F384AD844CF64BDF34692BE4.
 No install, publication, game writes or physical output. Existing ZIPs/untracked
 work preserved. Evidence/limitations: [BUILD-26361232-RECOVERY.md](BUILD-26361232-RECOVERY.md).
-One next step: owner closes game, then DMM replacement/hash check/restart at the
-known light for existing private AN/AUS/AN capture; no waiting for owner this turn.
+One next step: owner closes game and personally installs diagnostic.2 via DMM.
+After the owner reports installation/restart at the known light, verify deployed
+hashes and use the existing private AN/AUS/AN capture. Assistants never install;
+no waiting or polling for the owner.
 
 # Previous checkpoint — 2026-10-18, public 2.2.5 published on main
 
