@@ -48,6 +48,10 @@ public static class BuildProfileValidation
         Rva(camera.CameraReferenceRva); Rva(camera.CameraGlobalRva, 8); Rva(camera.CameraVtableRva, 8);
         Signature(camera.CameraReferencePattern, 12, 64);
         CameraInstruction(camera.CameraReferencePattern, "05");
+        if (camera.SourcePointerOffset != 0x428 &&
+            !(definition.SteamBuildId == "26361232" && camera.Layout == "renderer-camera-direct-v1" &&
+              camera.SourcePointerOffset == 0x430))
+            Fail("Unsupported camera source-pointer layout.");
         Fingerprints(camera.CameraVtableFingerprints);
         Fingerprints(camera.ContextVtableFingerprints);
         if (camera.Layout == "renderer-camera-v1")
@@ -129,9 +133,11 @@ public static class BuildProfileValidation
         }
         if (native.Registers is not { Output: "r12", Command: "rbx", Counter: "r15", Owner: "r13" } ||
             native.Wrapper is not { InnerOffset: 48, StrideOffset: 192, CountOffset: 196, ResourceOffset: 360,
-                CommandHolderOffset: 2048, NativeListOffset: 8, OwnerBankIndexOffset: 2296 } ||
-            native.Scene is not { RootPointerOffset: 1064, ByteCount: 2816, FrameOffset: 32, ScreenOffset: 48,
+                CommandHolderOffset: 2048, NativeListOffset: 8 } ||
+            native.Wrapper.OwnerBankIndexOffset != (definition.SteamBuildId == "26361232" ? 0x8E0 : 0x8F8) ||
+            native.Scene is not { ByteCount: 2816, FrameOffset: 32, ScreenOffset: 48,
                 PositionOffset: 128, DirectionOffset: 144, ViewRelativeOffset: 160, EarthRadiusOffset: 2752, EarthRadius: 6360000f } ||
+            native.Scene.RootPointerOffset != definition.EngineCamera.SourcePointerOffset ||
             native.Gpu is not { RecordCount: 32768, RecordStride: 48, CounterBytes: 256, ValidCounterByteOffset: 4,
                 ResourceState: "unordered-access" }) Fail("Unsupported native capture ABI, register or layout contract.");
         if (native.ShaderEvidence is { } evidence && (!Hex(evidence.ProducerEntry, 8) ||

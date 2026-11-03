@@ -244,7 +244,7 @@ int main(int argc, char** argv)
     Put(constants,0x30,std::array<float,4>{3840,2160,1.0f/3840,1.0f/2160});
     Put(constants,0x80,std::array<float,4>{-10528,611,-4354,0}); Put(constants,0x90,std::array<float,4>{0,0,1,0});
     std::array<uint8_t,0x500> root{};
-    Put(root,0x428,reinterpret_cast<uint64_t>(constants.data()));
+    Put(root,contract::SceneRootPointerOffset,reinterpret_cast<uint64_t>(constants.data()));
     const auto scenePage=contract::SceneGlobalRva&~uint64_t{0xFFF};
     const auto fakeModuleBytes=(contract::SceneGlobalRva+sizeof(uint64_t)+0xFFF)&~uint64_t{0xFFF};
     auto* fakeBase=static_cast<uint8_t*>(VirtualAlloc(nullptr,static_cast<SIZE_T>(fakeModuleBytes),MEM_RESERVE,PAGE_NOACCESS));
@@ -399,8 +399,8 @@ int main(int argc, char** argv)
         for(uint32_t n=0;n<2;++n)
         {
             Hr(allocator->Reset(),"pair allocator reset"); Hr(list->Reset(allocator.Get(),nullptr),"pair list reset");
-            Put(constants,0x20,uint32_t{101+n}); Put(owner,0x8F8,n);
-            start(); capture(); Put(owner,0x8F8,uint32_t{99});
+            Put(constants,0x20,uint32_t{101+n}); Put(owner,contract::OwnerBankIndexOffset,n);
+            start(); capture(); Put(owner,contract::OwnerBankIndexOffset,uint32_t{99});
             start(); // busy must not queue an additional capture
             Hr(list->Close(),"pair close"); Hr(queue->Wait(gate.Get(),n+1),"pair GPU block");
             queue->ExecuteCommandLists(1,lists); PollCapture();
@@ -688,7 +688,7 @@ int main(int argc, char** argv)
     capture();
     CheckCapture(std::strcmp(CapturePhaseForTest(),"recorded (not submitted)")==0,
         bridge,device.Get(),"capture step did not record a GPU copy");
-    Put(owner,0x8F8,uint32_t{99}); // Publication must keep the index captured BEFORE GPU execution.
+    Put(owner,contract::OwnerBankIndexOffset,uint32_t{99}); // Publication must keep the index captured BEFORE GPU execution.
     Hr(list->Close(),"target close");
     ID3D12CommandList* unrelatedLists[]{unrelated.Get()}; queue->ExecuteCommandLists(1,unrelatedLists);
     PollCapture(); Check(bridge->header.sampleSequence==0,"unrelated list falsely completed sample");
@@ -713,8 +713,8 @@ int main(int argc, char** argv)
     Hr(allocator->Reset(),"reuse allocator"); Hr(list->Reset(allocator.Get(),nullptr),"reuse list");
     Put(constants,0x20,uint32_t{101}); Put(constants,0x80,-10527.0f);
     Put(inner,0x168,reinterpret_cast<uint64_t>(source2.Get()));
-    Put(counterInner,0x168,reinterpret_cast<uint64_t>(counter2.Get())); Put(owner,0x8F8,uint32_t{1});
-    capture(); Put(owner,0x8F8,uint32_t{98});
+    Put(counterInner,0x168,reinterpret_cast<uint64_t>(counter2.Get())); Put(owner,contract::OwnerBankIndexOffset,uint32_t{1});
+    capture(); Put(owner,contract::OwnerBankIndexOffset,uint32_t{98});
     Hr(list->Close(),"second close"); queue->ExecuteCommandLists(1,lists);
     WaitForSample(bridge,device.Get(),2,101,"recurring capture failed");
     Check(memcmp(bridge->scene,constants.data(),SceneBytes)==0,"second camera not paired");

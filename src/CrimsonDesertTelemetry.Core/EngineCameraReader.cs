@@ -15,7 +15,7 @@ public sealed class EngineCameraReader
     private readonly IReadOnlyProcessMemory _reader;
     private readonly ulong _mainGlobal, _cameraGlobal, _contextVtable, _cameraVtable;
     private readonly bool _directCamera;
-    private readonly int _counterOffset;
+    private readonly int _counterOffset, _sourcePointerOffset;
     private readonly Func<TimeSpan> _clock;
     private Chain? _lastChain;
     private uint _lastCounter;
@@ -29,6 +29,9 @@ public sealed class EngineCameraReader
     {
         if (definition.Layout is not ("renderer-camera-v1" or "renderer-camera-direct-v1"))
             throw new InvalidDataException("Unsupported native camera layout.");
+        if (definition.SourcePointerOffset is <= 0 or > 0x10000 || (definition.SourcePointerOffset & 7) != 0)
+            throw new InvalidDataException("Invalid native camera source-pointer offset.");
+        _sourcePointerOffset = definition.SourcePointerOffset;
         _reader = reader;
         var watch = Stopwatch.StartNew();
         _clock = clock ?? (() => watch.Elapsed);
@@ -119,7 +122,7 @@ public sealed class EngineCameraReader
             var directCamera = ReadPointer(_cameraGlobal);
             if (ReadPointer(directCamera) != _cameraVtable)
                 throw new InvalidDataException("Native camera object type disagrees.");
-            return new Chain(0, 0, directCamera, directCamera, ReadPointer(At(directCamera, 0x428)));
+            return new Chain(0, 0, directCamera, directCamera, ReadPointer(At(directCamera, checked((ulong)_sourcePointerOffset))));
         }
 
         var main = ReadPointer(_mainGlobal);
@@ -129,7 +132,7 @@ public sealed class EngineCameraReader
         if (camera != ReadPointer(_cameraGlobal) || ReadPointer(context) != _contextVtable ||
             ReadPointer(camera) != _cameraVtable)
             throw new InvalidDataException("Native camera roots or object types disagree.");
-        return new Chain(main, application, context, camera, ReadPointer(At(camera, 0x428)));
+        return new Chain(main, application, context, camera, ReadPointer(At(camera, checked((ulong)_sourcePointerOffset))));
     }
 
     private uint Counter(ulong context) => BitConverter.ToUInt32(

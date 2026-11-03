@@ -44,8 +44,10 @@ inline constexpr std::uint32_t ValidCounterByteOffset = @CDT_GPU_validCounterByt
 static_assert(SceneBytes == 2816 && RecordCount == 32768 && RecordStride == 48 && CounterBytes == 256);
 static_assert(ValidCounterByteOffset == 4 && ValidCounterByteOffset + 4 <= CounterBytes);
 static_assert(InnerOffset == 48 && StrideOffset == 192 && CountOffset == 196 && ResourceOffset == 360);
-static_assert(CommandHolderOffset == 2048 && NativeListOffset == 8 && OwnerBankIndexOffset == 2296);
-static_assert(SceneRootPointerOffset == 1064 && FrameOffset == 32 && ScreenOffset == 48);
+static_assert(CommandHolderOffset == 2048 && NativeListOffset == 8);
+static_assert(OwnerBankIndexOffset == (BuildId == "26361232" ? 0x8E0 : 0x8F8));
+static_assert(SceneRootPointerOffset == (BuildId == "26361232" ? 0x430 : 0x428));
+static_assert(FrameOffset == 32 && ScreenOffset == 48);
 static_assert(PositionOffset == 128 && DirectionOffset == 144 && ViewRelativeOffset == 160);
 static_assert(EarthRadiusOffset == 2752 && EarthRadius == 6360000.0f);
 static_assert(FrameOffset + 4 <= SceneBytes && ScreenOffset + 16 <= SceneBytes);

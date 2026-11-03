@@ -23,7 +23,8 @@ void Check(bool condition, const char* reason)
 }
 struct Image
 {
-    static constexpr uint32_t Size = 0x7000000;
+    static constexpr uint32_t Size = static_cast<uint32_t>(std::max<uint64_t>(0x7000000,
+        (contract::SceneGlobalRva + sizeof(uint64_t) + 0xFFF) & ~uint64_t{0xFFF}));
     uint8_t* data = static_cast<uint8_t*>(VirtualAlloc(nullptr, Size, MEM_RESERVE, PAGE_NOACCESS));
     IMAGE_DOS_HEADER* dos{};
     IMAGE_NT_HEADERS64* nt{};
@@ -167,7 +168,8 @@ int wmain(int argc, wchar_t** argv)
     image.Commit(AmbientSourceRvas[0],7); image.Commit(AmbientSourceRvas[1],7);
     const std::array<uint8_t,7> sourceA{0x48,0x8B,0xAF,0x98,0,0,0}, sourceB{0x48,0x8B,0x9D,0x98,0,0,0};
     memcpy(image.data+AmbientSourceRvas[0],sourceA.data(),7); memcpy(image.data+AmbientSourceRvas[1],sourceB.data(),7);
-    Check(CheckAmbientPreflight(image.Base()),"valid ambient preflight rejected");
+    Check(CheckAmbientPreflight(image.Base()) == !CameraRecoveryDiagnostic,
+        "Ambient preflight disagrees with the supported/private-diagnostic contract");
     for(auto rva : {AmbientHookRvas[0],AmbientHookRvas[1],AmbientHookRvas[0]-6,AmbientHookRvas[1]-6,
                     AmbientSourceRvas[0],AmbientSourceRvas[1]})
     {

@@ -137,6 +137,16 @@ internal static class EngineCameraTests
             "Direct camera layout did not resolve its source.");
         fixture.Memory.Q(DirectFixture.Camera, DirectFixture.Base + fixture.Definition.CameraVtableRva + 8);
         Reject(() => fixture.Reader.Capture((10, 20, 30)), "Direct camera layout accepted the wrong camera type.");
+
+        var updated = new DirectFixture(0x430, 0x2D0);
+        const ulong oldSource = 0x220000;
+        updated.Memory.Q(DirectFixture.Camera + 0x428, oldSource);
+        updated.Memory.Blocks[oldSource] = SceneBytes();
+        Check(updated.Reader.Capture((10, 20, 30)).Camera.Address == DirectFixture.SourceAddress,
+            "Updated camera layout used the obsolete pointer despite a valid old-shaped source.");
+        updated.Memory.Q(DirectFixture.Camera + 0x430, 0);
+        Reject(() => updated.Reader.Capture((10, 20, 30)),
+            "Updated camera silently fell back to the obsolete pointer.");
     }
 
     public static void SceneConstantsValidation()
@@ -202,11 +212,13 @@ internal static class EngineCameraTests
         public EngineCameraReader Reader { get; }
         public TimeSpan Now;
 
-        public DirectFixture()
+        public DirectFixture(int sourcePointerOffset = 0x428, int counterOffset = 0x2C8)
         {
             Definition = BuildDefinition.LoadAll(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")))
                 .Single(value => value.SteamBuildId == "25116796").EngineCamera
                 ?? throw new InvalidOperationException("Direct camera definition is not embedded.");
+            Definition.SourcePointerOffset = sourcePointerOffset;
+            Definition.FrameCounterOffset = counterOffset;
             var code = Definition.CameraReferencePattern.Split(' ')
                 .Select(token => token == "??" ? (byte)0 : Convert.ToByte(token, 16)).ToArray();
             BitConverter.GetBytes(checked((int)((long)Definition.CameraGlobalRva -
@@ -215,7 +227,7 @@ internal static class EngineCameraTests
             Memory.Q(Base + Definition.CameraGlobalRva, Camera);
             Memory.Q(Camera, Base + Definition.CameraVtableRva);
             Memory.U(Camera + checked((ulong)Definition.FrameCounterOffset), 100);
-            Memory.Q(Camera + 0x428, SourceAddress);
+            Memory.Q(Camera + checked((ulong)Definition.SourcePointerOffset), SourceAddress);
             Memory.Blocks[SourceAddress] = SceneBytes();
             Reader = new EngineCameraReader(Memory, Base, Definition, () => Now);
         }

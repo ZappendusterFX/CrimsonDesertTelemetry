@@ -21,7 +21,9 @@ internal static class UpdateCheckTests
             d => d.NativeCapture!.Gpu.ValidCounterByteOffset = 0, d => d.NativeCapture!.Registers.Counter = "r14",
             d => d.NativeCapture!.ContextSignatures.Clear(), d => d.EngineLights!.SceneGlobalRva += 8,
             d => d.AllowAutomaticCompatibility = true, d => d.EngineCamera!.CameraVtableFingerprints = null!,
-            d => d.NativeCapture!.Scene.RootPointerOffset = 0x430, d => d.PlayerRoot!.BasisXOffset = d.PlayerRoot.PositionOffset
+            d => d.NativeCapture!.Scene.RootPointerOffset = 0x430, d => d.PlayerRoot!.BasisXOffset = d.PlayerRoot.PositionOffset,
+            d => d.EngineCamera!.SourcePointerOffset = 0x430, d => d.NativeCapture!.Scene = null!,
+            d => d.NativeCapture!.Wrapper.OwnerBankIndexOffset = 0x8E0
         ];
         foreach (var corrupt in corruptions)
         {

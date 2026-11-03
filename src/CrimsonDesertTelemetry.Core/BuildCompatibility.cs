@@ -91,7 +91,7 @@ public static class BuildCompatibility
         camera.CameraVtableRva = image.ResolveVtable(camera.CameraVtableFingerprints, "camera");
         if (direct)
         {
-            // The direct layout reads the camera global only; its struct offsets (source +0x428,
+            // The direct layout reads the camera global only; its profile offsets (source pointer,
             // frame counter) are carried unchanged and remain subject to the live decode checks.
             if (camera.MainRootReferenceRva != 0 || camera.MainRootGlobalRva != 0 || camera.ContextVtableRva != 0)
                 throw new InvalidDataException("Direct-camera template declares a legacy context chain.");

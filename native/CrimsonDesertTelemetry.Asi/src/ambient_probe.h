@@ -26,7 +26,12 @@ constexpr bool UpdatedGameBuild = native_contract::BuildId == "25477059";
 constexpr std::array<uint32_t, 2> AmbientHookRvas = UpdatedGameBuild
     ? std::array<uint32_t, 2>{0x3931317, 0x3934313}
     : std::array<uint32_t, 2>{0x384BD77, 0x384ED63};
-static_assert(AmbientHookRvas[0] == native_contract::SkyProducerRva);
+// This private recovery contract deliberately exercises only filtered ManyLights.
+// The relocated A pass is recorded, but its changed source fields are not enabled.
+constexpr bool CameraRecoveryDiagnostic = native_contract::ResearchContract &&
+    native_contract::BuildId == "26361232";
+static_assert((CameraRecoveryDiagnostic && native_contract::SkyProducerRva == 0x3C094F7) ||
+    AmbientHookRvas[0] == native_contract::SkyProducerRva);
 // The [sky+0x98] source-field load preceding each hook. Held here rather than
 // inline so one relocation touches one place.
 constexpr std::array<uint32_t, 2> AmbientSourceRvas = UpdatedGameBuild

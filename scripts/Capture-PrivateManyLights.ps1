@@ -6,6 +6,7 @@ param(
     [Parameter(Mandatory)][ValidateRange(1,2147483647)][int]$ProcessId,
     [Parameter(Mandatory)][ValidateSet('AN','AUS')][string]$FireState,
     [Parameter(Mandatory)][string]$OutFile,
+    [ValidatePattern('^[0-9]+$')][string]$BuildId = '25477059',
     [float]$PlayerX = -10530.632,
     [float]$PlayerY = 609.1567,
     [float]$PlayerZ = -4419.819,
@@ -19,12 +20,28 @@ if (-not $output.StartsWith($artifacts,[StringComparison]::OrdinalIgnoreCase) -o
     (Test-Path -LiteralPath $output)) { throw 'Choose a new output file below artifacts/.' }
 $game = Get-Process -Id $ProcessId -ErrorAction Stop
 if ($game.ProcessName -ne 'CrimsonDesert') { throw 'Target process is not Crimson Desert.' }
-$profile = Get-Content -LiteralPath (Join-Path $root 'definitions\build-25477059.json') -Raw | ConvertFrom-Json
+$profile = Get-Content -LiteralPath (Join-Path $root "definitions\build-$BuildId.json") -Raw | ConvertFrom-Json
 $hash = (Get-FileHash -LiteralPath $game.Path -Algorithm SHA256).Hash
 if ($hash -ne $profile.executableSha256) { throw 'Game executable differs from the exact diagnostic build.' }
 $core = Join-Path $root 'src\CrimsonDesertTelemetry.Core\bin\Release\net8.0-windows\CrimsonDesertTelemetry.Core.dll'
 if (-not (Test-Path -LiteralPath $core)) { throw 'Build the managed Core in Release first.' }
 Add-Type -Path $core
+# Mirror the existing host's playable-world gate: validate current player and camera
+# before arming native GPU capture. The diagnostic package deliberately has no host.
+$definitions = [CrimsonDesertTelemetry.Core.BuildDefinition]::LoadAll((Join-Path $root 'definitions'))
+$resolved = [CrimsonDesertTelemetry.Core.BuildCompatibility]::Resolve($game.Path, $definitions, $true)
+if ($resolved.GameBuild -ne $BuildId) { throw 'Resolved diagnostic build differs from the requested build.' }
+$memory = [CrimsonDesertTelemetry.Core.ReadOnlyProcess]::new($game)
+try {
+    $addresses = [CrimsonDesertTelemetry.Core.StaticPositionProbe]::Resolve($game, $game.Path, $resolved.Definition, $true)
+    $currentPlayer = [CrimsonDesertTelemetry.Core.StaticPositionProbe]::Read($memory, $addresses)
+    $camera = [CrimsonDesertTelemetry.Core.EngineCameraReader]::new($memory,
+        [ulong]$game.MainModule.BaseAddress.ToInt64(), $resolved.Definition.EngineCamera)
+    $null = $camera.Capture($currentPlayer)
+} finally { $memory.Dispose() }
+if (-not [CrimsonDesertTelemetry.Core.NativeCaptureReadySignal]::TrySet($ProcessId)) {
+    throw 'The private native capture ready gate is unavailable; no capture was armed.'
+}
 $player = [ValueTuple[float,float,float]]::new($PlayerX,$PlayerY,$PlayerZ)
 $reader = [CrimsonDesertTelemetry.Core.RenderLightReader]::new($ProcessId,$game.StartTime.ToFileTimeUtc())
 try {

@@ -1,4 +1,22 @@
-# Current checkpoint — 2026-10-18, public 2.2.5 published on main
+# Current checkpoint — 2026-11-03, patch 2.04.05 / DLC recovery candidate
+
+Owner reports new game 2.04.05 plus installed DLC; CDT loads but has no data.
+Actual Steam build26361232/EXE1.0.0.3479/SHA256 DF531A58...D4519C7 is preserved
+privately. Existing update tools recover the established camera/ManyLights route.
+Scene source pointer moved +428->+430, object frame +2C8->+2D0, ManyLights owner
+bank +8F8->+8E0. Existing full camera decoder, static player, orientation and four
+live instruction contexts pass read-only checks; no native GPU/game acceptance.
+
+Private research profile and filtered-only diagnostic.2 are prepared; automatic
+promotion is OFF, Ambient explicitly refused, upstream/physics/server/HUD OFF.
+Managed79/79, native40/40, exact-EXE signature check and package validators pass.
+ZIP SHA256 8735A6CDA89EEFD114D78EBF1ABF167BDA3A8F30F384AD844CF64BDF34692BE4.
+No install, publication, game writes or physical output. Existing ZIPs/untracked
+work preserved. Evidence/limitations: [BUILD-26361232-RECOVERY.md](BUILD-26361232-RECOVERY.md).
+One next step: owner closes game, then DMM replacement/hash check/restart at the
+known light for existing private AN/AUS/AN capture; no waiting for owner this turn.
+
+# Previous checkpoint — 2026-10-18, public 2.2.5 published on main
 
 Owner declines fresh GPU capture and authorizes publishing current behavior to
 GitHub, refreshing descriptions/Nexus copy, and merging both products to main.

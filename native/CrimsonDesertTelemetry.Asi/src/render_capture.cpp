@@ -216,7 +216,7 @@ bool ReadScene(std::array<uint8_t, SceneBytes>& result)
 {
     uint64_t root{}, data{};
     if (!Read(gameBase + contract::SceneGlobalRva, root) || !Read(root + contract::SceneRootPointerOffset, data)) return false;
-    // +428 is a pointer to the SceneConstantBuffer, not an inline structure.
+    // The profile field is a pointer to SceneConstantBuffer, not an inline structure.
     return ch::mem::SafeRead(reinterpret_cast<void*>(data), result.data(), result.size()) && ValidateScene(result.data());
 }
 bool ReadExposure(uint64_t sky, ExposureCacheSample& result)
@@ -670,6 +670,7 @@ void CaptureAmbient(uint64_t sky, uint64_t command, uint64_t path)
 
 bool CheckAmbientPreflight(uint64_t moduleBase)
 {
+    if constexpr (CameraRecoveryDiagnostic) return false; // No partial sky port on the recovery build.
     if (!CheckCapturePreflight(moduleBase)) return false;
     IMAGE_DOS_HEADER dos{}; IMAGE_NT_HEADERS64 nt{};
     if (!Read(moduleBase, dos) || !Read(moduleBase + static_cast<uint32_t>(dos.e_lfanew), nt)) return false;

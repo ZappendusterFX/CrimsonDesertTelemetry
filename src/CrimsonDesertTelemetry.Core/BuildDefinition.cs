@@ -110,6 +110,7 @@ public sealed class EngineCameraDefinition
     public ulong ContextVtableRva { get; set; }
     public ulong CameraVtableRva { get; set; }
     public int FrameCounterOffset { get; set; }
+    public int SourcePointerOffset { get; set; } = 0x428;
     public List<VtableSlotFingerprint> ContextVtableFingerprints { get; set; } = [];
     public List<VtableSlotFingerprint> CameraVtableFingerprints { get; set; } = [];
 }
