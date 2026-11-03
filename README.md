@@ -14,12 +14,13 @@ and per-light physics data for **Crimson Desert patch 2.04.05** (Steam build
 26361232), verified with the new DLC installed. See the
 [2.2.6 release notes](docs/releases/v2.2.6.md).
 
-**New in 2.2.5:** optional **[CrimsonHue 1.0.0](https://github.com/ZappendusterFX/CrimsonHue)**
+**Optional [CrimsonHue 1.0.4](https://github.com/ZappendusterFX/CrimsonHue)**
 provides Philips Hue Entertainment lighting and an interactive in-game mixer.
 CDT hosts that panel in its existing renderer; CrimsonHue owns the lamp controller
 without a second set of graphics hooks. Install CrimsonHue separately; CDT's
-telemetry, radar and markers work independently. Ctrl+Shift+H shows/hides Hue.
-See [shared panel integration](docs/CRIMSONHUE_PANEL.md) and
+telemetry, radar and markers work independently. The current companion includes
+local output smoothing and updated equipped-lantern recognition during movement.
+Ctrl+Shift+H shows/hides Hue. See [shared panel integration](docs/CRIMSONHUE_PANEL.md) and
 [2.2.5 release notes](docs/releases/v2.2.5.md).
 
 **New in 2.2:**

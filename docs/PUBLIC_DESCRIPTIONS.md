@@ -1,7 +1,8 @@
-# Public descriptions — 2.2.5, 2026-10-18
+# Public descriptions — 2.2.7, 2026-11-03
 
-Ready-to-paste full Nexus BBCode: [NEXUS_DESCRIPTION.bbcode](NEXUS_DESCRIPTION.bbcode).
-Short Nexus fields and changelog: [NEXUS-2.2.5.md](NEXUS-2.2.5.md).
+Current GitHub/product text for CDT 2.2.7 and optional CrimsonHue 1.0.4.
+The historical Nexus 2.2.5 text remains in [NEXUS_DESCRIPTION.bbcode](NEXUS_DESCRIPTION.bbcode)
+and [NEXUS-2.2.5.md](NEXUS-2.2.5.md); it has not been updated or uploaded here.
 The owner publishes Nexus manually. GitHub publication does not imply a Nexus upload.
 Historical release notes remain unchanged.
 
@@ -16,8 +17,13 @@ Crimson Desert Telemetry provides a 3D light radar, fullscreen markers, status
 notices and local HTTP/WebSocket APIs for overlays, tools and lighting integrations.
 It works independently and does not itself drive physical lamps.
 
-**New in 2.2.5:** install the separate **CrimsonHue 1.0.0** companion for Philips
-Hue Entertainment lighting and an in-game mixer. CDT hosts that optional panel
+**Fixed in 2.2.7:** retired light positions no longer fill the bounded visibility
+cache and prevent current lights from being queried during rapidly changing
+effects. New targets still require their own fresh measurement. Query limits,
+unknown handling, native game hooks and the neutral API remain unchanged.
+
+Install the separate **CrimsonHue 1.0.4** companion for Philips Hue Entertainment
+lighting and an in-game mixer. CDT hosts that optional panel
 inside its existing renderer; CrimsonHue owns the headless lamp controller.
 There is no second graphics renderer and no Hue controller bundled in the CDT ZIP.
 The neutral telemetry API and raw light values remain unchanged.
@@ -27,8 +33,11 @@ setup; ordinary and segmented wall-light calibration; Recommended and preserved
 Custom settings; separate Point lights, Spotlights and Own lantern weights;
 presets and diagnostic data. Point lights range from 0–200%, Spotlights from
 0–1000%, and Own lantern from 0–100%. Point/spot can each be standalone or grouped.
-Own-lantern matching is conservative and exact-build limited, not a general
-engine ownership ID.
+Own-lantern matching uses a conservative paired emission/cone signature near the
+player, including the lamp's movement, rather than a general engine ownership ID.
+It consumes CDT metadata without a separate game-build allowlist. Local output
+smoothing reduces rapid changes after room mapping; genuine short effects can
+still be softened, and unmeasured sources remain excluded.
 
 Ctrl+Shift+H opens or hides Hue. Its title-bar X and Hide settings also keep
 lighting sync running; use Stop to end it. Input handoff handles held delivered
@@ -52,8 +61,8 @@ The existing Telemetry features remain available:
 - Configurable HUD/radar, fullscreen markers, notices, HTTP snapshots, schema,
   health and WebSocket streams on loopback port 27311 by default.
 
-Target: **Crimson Desert patch 2.03.02** on Steam for Windows (EXE `1.0.0.2976`,
-Steam build `25477059`). Native capture rejects unknown executables. No NVIDIA,
+Target: **Crimson Desert patch 2.04.05** on Steam for Windows (EXE `1.0.0.3479`,
+Steam build `26361232`). Native capture rejects unknown executables. No NVIDIA,
 DLSS, Streamline, Nsight or PIX runtime dependency is required.
 
 ## Visibility and data limits
@@ -108,7 +117,7 @@ Keep CFG filenames unchanged and migrate useful INI preferences into the current
 template. Importing without activating/deploying is insufficient. Other manager
 lifecycle coverage remains limited.
 
-For Hue, install **CrimsonHue 1.0.0 separately**, plus .NET 8 Desktop Runtime
+For Hue, install **CrimsonHue 1.0.4 separately**, plus .NET 8 Desktop Runtime
 (x64). It is optional. Stop Hue sync and wait for stopped status before exiting
 the game; process termination cannot guarantee bridge restoration. No stream
 starts just by loading the modules. Hot unloading is unsupported.

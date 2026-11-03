@@ -1,4 +1,25 @@
-# Current checkpoint — 2026-11-03, effect recording proves cache-admission starvation
+# Current checkpoint — 2026-11-03, owner accepts paired lighting; GitHub publication requested
+
+The owner installed CDT2.2.7 and Hue1.0.3 themselves, then tested the Hue1.0.4
+lantern correction and reports "sehr gut jetzt". They request GitHub publication
+of both products and any necessary current description updates. Publish the
+existing immutable CDT2.2.7 ZIP with Hue1.0.4 as optional companion. No rebuild,
+assistant installation, game input or repeated AN/AUS/full game tests.
+
+The earlier post-install passive observation verified the loaded CDT ASI hash
+F1F5F3FF1781D70CABBF59A167075DA6BA97EC5988E49168CFB448BA13BF579D.
+The following outdoor capture has fresh progressing data and no
+outside-physics-budget event. Positive final owner appearance feedback is
+separate from synthetic checks and does not establish universal optical accuracy.
+The package/managed evidence remains [v2.2.7-validation.md](releases/v2.2.7-validation.md).
+
+Source branch is codex/physics-visibility-cache-admission at33fa49d plus current
+publication docs. Fast-forward main and tagv2.2.7; attach the locally validated
+ZIP before the release workflow reaches asset creation so it preserves that
+immutable asset. Verify CI/release results and asset hashes. GitHub About text
+remains accurate. NEXUS_AUTO_PUBLISH remains false; no Nexus publication.
+
+# Previous checkpoint — 2026-11-03, effect recording proves cache-admission starvation
 
 The owner authorizes necessary CDT/Hue fixes and remains the only installer.
 The later 30s effect recording reveals a concrete pre-existing CDT defect:
