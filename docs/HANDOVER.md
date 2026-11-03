@@ -1,16 +1,20 @@
-# Current checkpoint — 2026-11-03, movement flicker diagnosed; no product changes
+# Current checkpoint — 2026-11-03, static corridor clarification; cause still under review
 
-Owner go:existing5s stream capture286 frames plus6 credential-free Hue UI reads.
-CDT feeds fresh/available throughout. Hue runs installed1.0.0, Balanced250/600ms,
-Point200%, master100%. Bright moving near spot has constant RGB but all78 native
-captures start visibility unknown;33 later clear.77/77 position steps0.178..0.523GU
-exceed current0.12GU cache matching, explaining repeated exclusion/reinclusion.
-Ambient local level also changes1.83..8.73. Exact1.0.1 offline replay finds no
-lantern pair; current cone differs from retained signature. No physical ownership
-or general GI decoder fault inferred. [Full diagnosis](HUE-MOVEMENT-FLICKER-20261103.md).
-No settings/input/installation/bridge output/code changes. Public2.2.6 unchanged.
-Next only if owner requests: fix moving-source visibility association conservatively;
-keep raw/freshness/provenance and fail-unknown rules. No repeated AN/AUS required.
+Owner explicitly clarifies NO combat/moving scene lights: walk corridor forward,
+180deg turn/back,180deg/forward. Supplied image shows fixed baskets/daylight.
+Prior identification of changing sampleIndex2 as a physically moving light and
+asserted moving-source/cache root cause was too strong and is withdrawn. Combat
+transients remain a future requirement, not this recording's explanation.
+
+Existing recording rechecked by unique fixed world position/type/kind/cone/direction,
+not list index:15 in-range stationary anchors change visibility. A fixed spot in
+all286 frames/78 captures switches six times, twice at unchanged native capture/
+position/RGB. This proves visibility updates affect steady sampled source data;
+it does not prove incorrect occlusion while the camera/player moves. Exact cause
+needs camera/provenance/collision/association discrimination, not a guessed filter.
+[Corrected diagnosis](HUE-MOVEMENT-FLICKER-20261103.md); private stationary-near-
+anchor-recheck.json. Balanced250/600ms and available fresh feeds remain measured.
+No new recording/settings/code/output/install changes. No repeated AN/AUS asked.
 
 # Previous checkpoint — 2026-11-03, public 2.2.6 published on main
 

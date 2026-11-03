@@ -1,5 +1,32 @@
 # Hue movement flicker — owner-go passive diagnosis, 2026-11-03
 
+## Owner clarification and corrected interpretation
+
+The owner clarifies: NO combat and no moving scene lights. They walked along the
+pictured quiet corridor, turned180 degrees, walked back, turned180 and went
+forward again. The screenshot shows fixed hanging fire baskets, walls and a
+bright daylight opening. Combat effects are a future design constraint, not an
+explanation of this recording. Changing telemetry positions at sampleIndex2 do
+NOT establish that the same physical light moved; a list index is not identity.
+The earlier asserted moving-source/cache root cause is withdrawn as unproven.
+
+Rechecking without source-index identity finds15 unique stationary world-position/
+geometric anchors present in20+ native captures, within the effective35GU range,
+whose visibility changes. Example: a fixed spot present in all286 frames/78
+captures switches clear/blocked six times. Two switches occur while its native
+capture, position and RGB are unchanged. Its RGB changes across other captures;
+there are no globally constant-RGB stationary anchors with changes within35GU.
+These facts isolate visibility/measurement updates, but do not alone prove they
+are erroneous: camera/player movement can legitimately change occlusion. Camera
+pose/provenance, collision geometry and source association remain to distinguish.
+The screenshot is context, not a ray-hit or optical-visibility ground truth.
+No conclusion about the actual owned lantern is supported by these data alone.
+
+Corrected private reports:stationary-anchor-recheck.json(global anchors, some
+outside Hue range) and stationary-near-anchor-recheck.json(in-range only).
+No new game capture, user test, settings or product change was performed.
+
+
 Owner reports strong physical flicker while moving and asks for a short live-data
 read, then sends go. Existing Capture-LightStreams.ps1 captured5s/raw286 and
 smoothed286 messages with Ambient, without settings/input/output changes. Six
@@ -29,11 +56,12 @@ and cone33.571743. Of286 observations it is waiting-for-physics228, clear52,
 stale2, blocked4. Every one of78 new native captures begins unknown;33 later
 become clear before the next capture. Its77 measured inter-capture position
 steps are0.178..0.523GU, all beyond the existing0.12GU visibility-cache match
-radius(PhysicsVisibilityClient.Find, squared0.0144). New positions therefore
-lack the previous measured result and wait again. This spatial association/query
-latency explains repeated removal/reinclusion of an otherwise steady-color source
-in Hue's clear-only input. It is a concrete upstream flicker driver, not proof
-that it accounts for every physical fluctuation. Do not blindly widen the cache
+radius(PhysicsVisibilityClient.Find, squared0.0144). Those numerical steps are compatible with
+missing previous measurements at a position-only cache. However, physical source
+identity and actual scene motion were NOT established. The owner describes static
+scene lights; treating these changing indexed records as one physically moving
+light and asserting this as the scene root cause was too strong. This remains a
+hypothesis requiring source/provenance checks, not an established cause. Do not blindly widen the cache
 or retain unknown/blocked results as clear; movement through geometry still needs
 fresh provenance and conservative visibility.
 
@@ -64,8 +92,9 @@ A provisional distance-power proxy used a linear tail instead of the mapper's
 smoothstep and was removed. The corrected diagnosis uses exact status/count/RGB/
 Ambient observations only; no such provisional power estimate is a lamp result.
 
-No product fix yet. Next scoped work, if requested: correct association/freshness
-for moving sources in CDT while preserving fail-unknown/raw/provenance limits;
+No product fix yet. Next scoped work, if requested: distinguish visibility/provenance
+and source-association changes during camera/player movement in this STATIC scene,
+while preserving fail-unknown/raw/provenance limits;
 separately revisit the observed complete-pair metadata before changing Hue's
 lantern heuristic. Calm(500/1000ms) can damp targets but does not repair source
 association. No automatic tuning, installation or physical output was performed.
