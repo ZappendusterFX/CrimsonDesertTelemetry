@@ -1,4 +1,27 @@
-# Current checkpoint — 2026-11-03, patch 2.04.05 / DLC recovery candidate
+# Current checkpoint — 2026-11-03, live diagnostic.2 blocked; diagnostic.3 restores HUD
+
+Owner installed diagnostic.2 and restarted (PID18928). Runtime/INI hashes match
+that ZIP. Its Server/Notifications/Overlay/LightOverlay=0 intentionally explains
+the missing HUD; owner expects HUD during diagnosis. No installed files edited.
+The existing player/camera guard passes; its named ready event was signalled.
+Twelve bounded bridge samples remain waiting. Exact-ASI read-only state confirms
+captureReady=1, phase=Discover and advancing lastAttempt: hook is running, but
+resource/list resolution fails before source discovery/GPU preparation.
+
+New immutable diagnostic.3 uses the maintained builder's new -DiagnosticHud option:
+server/notices/both HUDs ON, filtered capture ON, upstream/Ambient/physics OFF.
+Exact research profile remains unpromoted. One bounded, once-per-process native
+log of the existing hook arguments distinguishes output/list/counter failure;
+no substitute source, memory scan or relaxed resource guard. Package validators,
+configuration/hash checks and native40/40 pass.
+ZIP SHA256 E38CE090FDFD7176900B0D0F2D30DCF2554D14208C979B4960F3F9DAC47E9CD4.
+Details and evidence: [BUILD-26361232-RECOVERY.md](BUILD-26361232-RECOVERY.md).
+Next: owner personally installs complete diagnostic.3 ZIP with game closed,
+restarts and reports HUD/state; then read the bounded native rejection. No owner
+light state was supplied, so no AN/AUS acceptance. No assistant installation,
+game input, installed-settings change, public release or physical output.
+
+# Previous checkpoint — 2026-11-03, patch 2.04.05 / DLC recovery candidate
 
 Owner reports new game 2.04.05 plus installed DLC; CDT loads but has no data.
 Actual Steam build26361232/EXE1.0.0.3479/SHA256 DF531A58...D4519C7 is preserved

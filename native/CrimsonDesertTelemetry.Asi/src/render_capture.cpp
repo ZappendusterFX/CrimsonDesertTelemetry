@@ -251,6 +251,37 @@ bool ResolveCounter(uint64_t outer, ID3D12Resource*& counter)
     return desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER && desc.Width >= CounterBytes &&
         (desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) != 0;
 }
+// Private recovery: one bounded observation of the existing hook arguments.
+// Do not scan for replacements or relax the resource/list guards on a mismatch.
+void DiagnoseResolution(const char* stage, uint64_t outer, uint64_t command, uint64_t counterOuter)
+{
+    if constexpr (!CameraRecoveryDiagnostic) return;
+    static bool reported = false; // Called only under the capture lock.
+    if (reported) return;
+    reported = true;
+    uint64_t inner{}, resource{}, holder{}, nativeList{}, counterInner{}, counterResource{};
+    uint32_t stride{}, count{}, reads{};
+    if (Read(outer + contract::InnerOffset, inner) && inner)
+    {
+        reads |= 1;
+        if (Read(inner + contract::StrideOffset, stride)) reads |= 2;
+        if (Read(inner + contract::CountOffset, count)) reads |= 4;
+        if (Read(inner + contract::ResourceOffset, resource)) reads |= 8;
+    }
+    if (Read(command + contract::CommandHolderOffset, holder) && holder)
+    {
+        reads |= 16;
+        if (Read(holder + contract::NativeListOffset, nativeList)) reads |= 32;
+    }
+    if (Read(counterOuter + contract::InnerOffset, counterInner) && counterInner)
+    {
+        reads |= 64;
+        if (Read(counterInner + contract::ResourceOffset, counterResource)) reads |= 128;
+    }
+    ch::Log("ManyLights recovery resolution refused at %s: reads=0x%X outer=0x%llX inner=0x%llX stride=%u count=%u resource=0x%llX command=0x%llX holder=0x%llX list=0x%llX counterOuter=0x%llX counterInner=0x%llX counterResource=0x%llX. Expected stride48/count32768; existing offsets retained, no fallback.",
+        stage, reads, outer, inner, stride, count, resource, command, holder, nativeList,
+        counterOuter, counterInner, counterResource);
+}
 bool ResolveAmbient(uint64_t outer, uint64_t command, ID3D12Resource*& source, ID3D12GraphicsCommandList*& list)
 {
     uint64_t inner{}, resource{}, holder{}, nativeList{};
@@ -318,7 +349,15 @@ void Record(uint64_t outer, uint64_t command, uint64_t counterOuter, uint64_t ow
     {
         if (!ResolveAmbient(outer, command, source, list)) return;
     }
-    else if (!Resolve(outer, command, source, list) || !ResolveCounter(counterOuter, counter) || source == counter) return;
+    else
+    {
+        if (!Resolve(outer, command, source, list))
+        { DiagnoseResolution("output/list", outer, command, counterOuter); return; }
+        if (!ResolveCounter(counterOuter, counter))
+        { DiagnoseResolution("counter", outer, command, counterOuter); return; }
+        if (source == counter)
+        { DiagnoseResolution("same-resource", outer, command, counterOuter); return; }
+    }
     if (phase == Phase::Discover)
     {
         source->AddRef();

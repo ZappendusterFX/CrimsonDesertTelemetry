@@ -19,7 +19,10 @@ param(
     [switch]$UnvalidatedDiagnostic,
     # One private, exact-hash integrated test of every current product feature.
     # The embedded profile remains research and the archive is never releasable.
-    [switch]$IntegratedDiagnostic
+    [switch]$IntegratedDiagnostic,
+    # Keep the filtered-only private diagnostic visible: host, HUDs and notices ON;
+    # unvalidated Ambient, source visibility and upstream input remain OFF.
+    [switch]$DiagnosticHud
 )
 
 $ErrorActionPreference = 'Stop'
@@ -38,6 +41,9 @@ $privateDiagnostic = $UnvalidatedDiagnostic -or $IntegratedDiagnostic
 if ($UnvalidatedDiagnostic -and $IntegratedDiagnostic) {
     throw 'Choose exactly one private diagnostic mode.'
 }
+if ($DiagnosticHud -and -not $UnvalidatedDiagnostic) {
+    throw 'DiagnosticHud requires the filtered-only UnvalidatedDiagnostic mode.'
+}
 if ($privateDiagnostic) {
     if ($Version -notmatch '-' -or $Research -ne 'off' -or $researchEnabled) {
         throw 'Private exact-build diagnostics require a prerelease version and -Research off.'
@@ -49,11 +55,12 @@ if ($privateDiagnostic) {
         throw 'Private diagnostics require a paired research-status exact-build profile.'
     }
     $enabledValue = if ($IntegratedDiagnostic) { '1' } else { '0' }
+    $visibleValue = if ($IntegratedDiagnostic -or $DiagnosticHud) { '1' } else { '0' }
     $forced = @{
-        'Server.Enabled' = $enabledValue; 'Notifications.Enabled' = $enabledValue
+        'Server.Enabled' = $visibleValue; 'Notifications.Enabled' = $visibleValue
         'Lights.Enabled' = '1'; 'Lights.ManyLights' = '1'
         'Ambient.Enabled' = $enabledValue; 'SourceVisibility.Enabled' = $enabledValue
-        'Overlay.Enabled' = $enabledValue; 'LightOverlay.Enabled' = $enabledValue
+        'Overlay.Enabled' = $visibleValue; 'LightOverlay.Enabled' = $visibleValue
     }
     if (-not $IniOverrides) { $IniOverrides = @{} }
     foreach ($key in $forced.Keys) {
@@ -68,6 +75,8 @@ $iniTemplate = Join-Path $repoRoot $(if ($researchEnabled) {
 } else { 'packaging\mod-manager\CrimsonDesertTelemetry.ini' })
 $readmeTemplate = Join-Path $repoRoot $(if ($IntegratedDiagnostic) {
     'packaging\mod-manager\README.integrated-diagnostic.txt'
+} elseif ($DiagnosticHud) {
+    'packaging\mod-manager\README.hud-diagnostic.txt'
 } elseif ($UnvalidatedDiagnostic) {
     'packaging\mod-manager\README.diagnostic.txt'
 } elseif ($researchEnabled) {

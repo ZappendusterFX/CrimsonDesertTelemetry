@@ -1,6 +1,48 @@
-# Patch 2.04.05 / build 26361232 recovery â€” 2026-11-03, Codex
+# Patch 2.04.05 / build 26361232 recovery — 2026-11-03, Codex
 
-## Result and boundary
+## Current continuation: owner-installed .2, visible diagnostic .3
+
+Owner installed diagnostic.2 and restarted at10:08:11, PID18928. ASI, Core, host,
+CFGs and INI hashes match that package. Its Server/Notifications/Overlay/
+LightOverlay=0 explains the absent HUD; no new graphics failure is established.
+No assistant installation or installed-settings change occurred.
+
+The existing current-player/full-camera guard passed and the named ready event
+was signalled. The native log confirms receipt. Twelve bounded samples remain
+bridge-waiting. Raw evidence: artifacts/light-research/update-26361232-native-live-20261103-1.json.
+This run is instrumented; ownerReportedLightState is null, not an invented AN/AUS.
+
+Existing PE/Capstone and preset-static helpers resolve the exact deployed ASI
+SHA2561323E4D0...415CCEE: filter thunk9B1C0 ->7FD90 ->7B500 ->recording7D7C0.
+Read-only statics at phase19A170, ready1B1264, attempt1B1230, error1B1260 show
+phase0/Discover, ready1, error0, attempt3569484->3569625 (tick3569500->3569625).
+The game's active MinHook jump is present. Therefore the hook is running, but
+output/list or counter resolution rejects it before Found/GPU preparation. No
+specific changed field is established. These ASI RVAs must not be reused for .3.
+Private reports: update-26361232-asi-{filter,filter-body,record}-20261103.json.
+
+New diagnostic.3: -UnvalidatedDiagnostic -DiagnosticHud -Research off,
+-NativeBuildId26361232, -IniOverrides @{'Lights.Upstream'='0'}.
+Server/notices/both HUDs ON; unrecovered upstream/Ambient/visibility OFF. The new
+builder switch requires filtered-only private mode and is rejected before builds
+otherwise. Old modes/packages remain intact. Dedicated README states the profile.
+
+A private once-per-process native log reads only the SAME existing hook inputs:
+output/counter outer/inner/resource, stride/count, command holder/list, read bits
+and rejection stage. No scan, fallback, changed offset or weakened resource gate.
+It runs under the existing capture lock and introduces no API schema.
+
+ZIP: artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.6-build26361232-diagnostic.3-ModManagers.zip
+SHA256 E38CE090FDFD7176900B0D0F2D30DCF2554D14208C979B4960F3F9DAC47E9CD4.
+Expanded/ZIP validators, actual packaged setting checks and native40/40 pass;
+packaged ASI equals the test binary. Native log preserved at
+artifacts/light-research/update-26361232-diagnostic3-native-20261103.log.
+The new ZIP is not installed/game-tested; live evidence above belongs to .2.
+Next: owner installs the whole ZIP with game closed, restarts and reports HUD/
+state; then read its first resolution rejection before choosing offsets.
+
+
+## Initial pre-install result and boundary
 
 The installed CDT host answers HTTP but remains loading/sequence 1 because its
 native-camera read rejects the scene constants. Automatic compatibility relocated
@@ -74,7 +116,7 @@ and live checks; no unchanged shader identity/packing or resource-wrapper layout
 is claimed. The new native contract explicitly refuses Ambient preflight, even
 if INI settings request it. No full-product compatibility promotion.
 
-## Verification and immutable diagnostic
+## Initial verification and immutable diagnostic.2
 
 Managed: 79/79 tests pass, including the updated pointer with a valid-looking old
 source present, refusal to fall back, malformed/null profile guards, and the
