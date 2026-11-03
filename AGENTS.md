@@ -21,6 +21,7 @@ evidence. This does not authorize unrelated fixes.
 7. Use PowerShell 7 where suitable. Keep `AGENTS.md` and `CLAUDE.md` byte-identical.
 8. When a game action or user input is needed, finish the current turn immediately. Do not keep a command/session open, poll, sleep, or spend tokens waiting for the owner. The owner will return with `AN`, `AUS`, `weiter`, or another message; resume only then. Keep each handoff short.
 9. For rendered-light data and AN/AUS status, start with the proven, camera-paired filtered ManyLights path. Never guess a substitute from the authored-light vector or another nearby structure. After a game update, validate the exact EXE, hook/context bytes, live bridge and controlled light response before trusting that path. If it fails, report unavailable and diagnose the failure; do not restart broad light-source research by default.
+9a. Owner exception (2026-11-03, patch 2.04.05 recovery): do not require or request repeated AN/AUS comparisons or a full repeat of previously established game tests. Continue using preserved evidence and targeted new-build/code/data checks; distinguish those observations from an actually repeated controlled test.
 
 ## Locations
 

@@ -26,9 +26,10 @@ private package/build, not full compatibility or known-source AN/AUS response.
 Upstream, Ambient and physics visibility remain disabled and are not accepted.
 No installed files/settings, input, physical output or package were changed by
 the assistant. The owner alone installed/restarted the package.
-Next control: owner remains at a known switchable light with camera/player fixed,
-sets AN and reports it; then capture AN/AUS/AN using the existing paired filtered
-path before promoting its semantics or using another source as a substitute.
+Owner exception, 2026-11-03: repeated AN/AUS comparisons and a full repeat of
+historical game tests are declined. No controlled retest is pending or claimed.
+Continue recovery of the disabled paths with preserved evidence and targeted
+new-build checks; do not request the declined test again.
 
 
 ## Previous continuation: Dispatch-proven holder correction, diagnostic .4

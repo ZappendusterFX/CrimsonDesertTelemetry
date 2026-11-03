@@ -13,9 +13,10 @@ Evidence: artifacts/light-research/update-26361232-diagnostic4-live-20261103.jso
 and matching *-live-native-20261103.log; [BUILD-26361232-RECOVERY.md](BUILD-26361232-RECOVERY.md).
 Upstream/Ambient/visibility remain OFF. No source/setting/package change needed
 for this observation; no assistant installation, game input or physical output.
-No owner light state has been supplied. Next: owner holds a known switchable
-light/camera/player position steady, turns it ON and reports AN; then capture
-AN/AUS/AN through the proven filtered path. End turn; do not wait/poll for owner.
+Owner explicitly declines repeated AN/AUS comparisons (2026-11-03); no retest
+request is pending. Use preserved controls and targeted new-build evidence.
+Next: recover the still-disabled upstream, Ambient and visibility paths using
+the existing tools; do not repeat the complete historical game acceptance suite.
 
 # Previous checkpoint — 2026-11-03, command-list holder recovered; diagnostic.4 ready
 
