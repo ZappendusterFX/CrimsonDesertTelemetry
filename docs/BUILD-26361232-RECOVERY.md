@@ -1,6 +1,66 @@
 # Patch 2.04.05 / build 26361232 recovery — 2026-11-03, Codex
 
-## Current continuation: diagnostic .4 native acquisition progresses
+## Current remaining-port proposal and automatic-review boundary
+
+Owner exception,2026-11-03: no repeated AN/AUS comparisons or full repetition of
+historical game tests. Continue from preserved controls and targeted build/code/
+data evidence. No controlled new light test is claimed. Rules9a/CLAUDE record it.
+
+Existing tools identify the remaining old/new mappings:
+
+| Path | Build26361232 mapping | Evidence |
+|---|---|---|
+| Upstream input | owner+628; load RVA40A175F; SRV binder40A1815 | exact existing7/12-byte signatures match new ProcessManyLights disassembly |
+| Ambient A | hook3C094F7; source3C091EF reads sky+A8 | named PrecomputeAmbient, same sky RDI/command RBX roles, Dispatch1x1x1 |
+| Ambient B | hook3C0D573; source3C0D4AB reads sky+A8 | GenerateAmbientFromEnvironmentAtmosphericScattering, same sky RBP/command RDI roles, Dispatch1x1x1 |
+| GI acquisition | Dispatch3B744D0; exposure return38F774A; renderer GI688 | existing Dispatch provenance; named AdaptExposure function38F50E0..38F7823 resolves the formerly ambiguous return |
+| Sky/exposure links | renderer sky690, exposure6B8 | new pass disassembly and live parent/backreference checks; exposure cache remains D8..117 |
+| Physics | Ray45AE380, Shape45AE480, collector60D71D0/method3CB3010 | exact profiler strings/unwind ranges, unchanged24/30-byte entry guards, existing collector-vtable shape |
+| Natural physics callers | ray350C807, shape350CB52 | old/new bounded instruction context each matches uniquely; same virtual slots/argument roles |
+
+Read-only live layout proof from the existing capture owner:
+GI owner matches the measured ManyLights owner; renderer+688 backreferences it.
+GI wrapper/storage backreference and64x32x264 dimensions pass. Sky(renderer+690)
+backreference, stride16/count64 and resource pointer pass. Exposure(renderer+6B8)
+backreference, stride4/count32, mode2 and positive cache0=0.031134529 pass. No GPU
+read, game call, settings change or additional hook was used for these checks.
+
+New private evidence under artifacts/light-research/:
+- update-26361232-physics-profiler-20261103.json.
+- update-26361232-old-remaining-contexts-20261103.json.
+- update-26361232-ambient-exposure-profiler-20261103.json.
+- update-26361232-renderer-links-20261103.json.
+- update-26361232-ambient-layout-live-20261103.json.
+
+Targeted current shader-index lookup with the existing CrimsonForge tool failed
+parsing group0017 (required2755995 bytes, actual2755921). Its saved
+update-26361232-shader-index-20261103.json explicitly marks the reader invalid;
+zero returned candidates do not prove absent assets. No archive format or shader
+schema was invented. Preserve the archived decoder evidence and honestly retain
+the missing new bound-shader identity/packing verification.
+
+Concrete proposed source work: add the two upstream anchors to the existing
+exact-build guard; update both Ambient source offsets/signatures without weakening
+preflight; use the proven current Dispatch/renderer/scene/command links in the
+existing bounded GI sampler; select exact physics hash/entry/collector/caller
+anchors for this build while preserving query selection, budgets, expiry and
+fault cleanup. Existing fixtures follow reviewed per-build constants. Keep HUD/
+server ON. Use focused affected checks, then the maintained integrated-diagnostic
+builder to prepare ONE full integration ZIP. Do not install or publish it.
+
+The combined source/contract edit and native build were submitted for automatic
+approval review and REJECTED before process creation. Stated reason: broad native
+change enabling upstream/Ambient/GI/physics from incomplete static/runtime proof,
+with multiple hooks and extra physics calls beyond the narrowly validated
+ManyLights fix. The edit script was not executed; no proposed source change or
+new integration package exists. Do not retry by relocating/splitting equivalent
+mutations or using another tool. Owner approval is required to proceed with this
+combined proposal; the installed .4 continues unchanged. Targeted physics-query
+runtime behavior and new GPU feeds remain unproven, even though wrapper/layout
+anchors above are measured. No AN/AUS repeat is a prerequisite being requested.
+
+
+## Previous continuation: diagnostic .4 native acquisition progresses
 
 Owner installed .4/restarted PID29772 at10:52:08. Installed ASI, Core, host, both
 CFGs and INI hashes equal the immutable diagnostic.4 package. Native log completes

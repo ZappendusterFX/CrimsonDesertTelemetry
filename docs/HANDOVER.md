@@ -1,4 +1,24 @@
-# Current checkpoint — 2026-11-03, diagnostic.4 native stream progresses live
+# Current checkpoint — 2026-11-03, remaining anchors recovered; bundled change rejected
+
+Owner explicitly declines repeated AN/AUS and full historical game retesting;
+rule9a and CLAUDE mirror record the exception. Diagnostic.4's measured filtered
+stream remains the accepted acquisition checkpoint; installed files are untouched.
+Existing tools recover upstream, both Ambient producers, GI/Exposure renderer
+links, named physics wrappers, collector and unique caller contexts. Live reads
+confirm GI64x32x264, sky16x64, exposure4x32/mode2 and parent/backreferences.
+Details/implementation proposal: [BUILD-26361232-RECOVERY.md](BUILD-26361232-RECOVERY.md).
+
+Automatic approval review rejected the combined native-source/contract change
+before CreateProcess: several disabled paths/new physics calls, incomplete new
+runtime evidence and broader hook impact than the measured ManyLights fix.
+No proposed source edit, build or enablement ran; only the already committed
+owner waiver and read-only evidence/documentation changed. Current tracked code
+is still the diagnostic.4 implementation. Do not bypass by moving/splitting the
+same rejected action into another path/tool. Preserve all packages and evidence.
+Next: owner approval for the documented combined source port, focused checks and
+new integration ZIP; installation stays exclusively owner-managed. Stop this turn.
+
+# Previous checkpoint — 2026-11-03, diagnostic.4 native stream progresses live
 
 Owner installed .4/restarted PID29772. All six runtime/CFG/INI hashes match the
 immutable ZIP. Native log reaches recurring capture through the game's matching
