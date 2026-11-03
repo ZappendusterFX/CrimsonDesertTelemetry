@@ -1,8 +1,8 @@
 param(
     [ValidatePattern('^[0-9A-Za-z][0-9A-Za-z.+-]*$')]
-    [string]$Version = '2.2.5',
+    [string]$Version = '2.2.6',
     [ValidatePattern('^[0-9]+$')]
-    [string]$NativeBuildId = '25477059',
+    [string]$NativeBuildId = '26361232',
     # Private diagnostic builds ship ready to run instead of forcing a hand edit
     # after every install, which has already cost one wasted game start. Keys must
     # already exist in the template. A version without a prerelease suffix is

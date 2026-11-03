@@ -14,6 +14,11 @@ Included telemetry features:
   cages, closed collision hulls and colliding glass can exclude visibly shining
   lamps; noncolliding geometry may fail to block. F11 shows only fresh clear ones.
 
+Fixed in 2.2.6:
+- Restores camera/player, filtered and all-around light data, Ambient/GI and
+  per-light physics checks for game patch2.04.05, Steam build26361232.
+- Exact EXE and instruction/context guards remain; unknown executables fail closed.
+
 Fixed in 2.2.4:
 - Camera-local sky visibility and the local ambient estimate no longer stay
   unavailable for a whole session. Their copy was sometimes recorded during
@@ -23,14 +28,14 @@ Fixed in 2.2.4:
   presentation queue when the HUD, markers or notices are enabled.
 
 Source and support: https://github.com/ZappendusterFX/CrimsonDesertTelemetry
-Validation: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/releases/v2.2.5-validation.md
+Validation: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/releases/v2.2.6-validation.md
 API: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/API.md
 
 Requirements and installation
 -----------------------------
 Windows x64, Microsoft .NET 8 ASP.NET Core Runtime (x64), one x64 ASI loader,
-and Crimson Desert patch version 2.03.02 on Steam for Windows. Technical identity:
-EXE file version 1.0.0.2976, Steam build ID 25477059. Native capture rejects
+and Crimson Desert patch version 2.04.05 on Steam for Windows. Technical identity:
+EXE file version 1.0.0.3479, Steam build ID 26361232. Native capture rejects
 unknown EXEs. The file/Steam numbers are not the game's public patch version.
 Close the game, back up useful INI preferences and disable previous telemetry
 packages and any separate legacy console ASI, if installed.

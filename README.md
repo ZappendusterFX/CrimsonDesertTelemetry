@@ -4,6 +4,11 @@
 
 Inspect positions, colors and brightness of current light contributions from fires, candles, lanterns and glass/crystal lamps, alongside the player and render camera. Use the data in your own overlays, tools and lighting integrations.
 
+**New in 2.2.6:** restores player/camera, all-around light capture, Ambient/GI
+and per-light physics data for **Crimson Desert patch 2.04.05** (Steam build
+26361232), verified with the new DLC installed. See the
+[2.2.6 release notes](docs/releases/v2.2.6.md).
+
 **New in 2.2.5:** optional **[CrimsonHue 1.0.0](https://github.com/ZappendusterFX/CrimsonHue)**
 provides Philips Hue Entertainment lighting and an interactive in-game mixer.
 CDT hosts that panel in its existing renderer; CrimsonHue owns the lamp controller
@@ -38,7 +43,7 @@ sky RGB itself remains unoccluded.
 The product goal is to answer both **how exposed the player/camera location is to
 the sky and environment** and **which individual nearby game lights can actually
 reach it through world geometry**, including sources off-screen or behind the
-camera. The current source targets **Crimson Desert patch 2.03.02** on Steam
+camera. The current source targets **Crimson Desert patch 2.04.05** on Steam
 for Windows. Internal EXE/Steam identifiers are listed under Compatibility.
 
 Per-light visibility is a sampled collision estimate, not a measurement of how
@@ -253,8 +258,8 @@ The external host alone can read player/camera and supported authored lights. **
 
 ## Compatibility and limits
 
-The new package targets **Crimson Desert patch 2.03.02** on Steam for Windows.
-Technical identity: EXE file version `1.0.0.2976`, Steam build ID `25477059`,
+The new package targets **Crimson Desert patch 2.04.05** on Steam for Windows.
+Technical identity: EXE file version `1.0.0.3479`, Steam build ID `26361232`,
 and the exact validated EXE SHA-256. The file version is not the public game
 patch version. Older
 player/camera profiles remain preserved; they do not establish compatibility of
@@ -300,7 +305,7 @@ under the normal packaged filename. See [INI validation](docs/INI_VALIDATION.md)
 
 GitHub CI covers managed/API tests and native capture, guard and UI tests. Current acceptance and outstanding checks are recorded in [the handover](docs/HANDOVER.md); historical test totals are not a result for a new package.
 
-See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.5.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [current public description drafts](docs/PUBLIC_DESCRIPTIONS.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
+See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.6.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [current public description drafts](docs/PUBLIC_DESCRIPTIONS.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
 
 ## Credits and scope
 

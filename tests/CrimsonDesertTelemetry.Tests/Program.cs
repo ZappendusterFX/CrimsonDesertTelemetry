@@ -231,6 +231,16 @@ static void EmbeddedBuildDefinition()
                                          !definition.AllowAutomaticCompatibility &&
                                          definition.EngineLights is { Layout: "light-source-array-v1", RootGlobalRva: 0x637A4D8 }),
         "The automatically recognized and live-validated update is not embedded.");
+    Assert(definitions.Any(definition => definition.SteamBuildId == "26361232" &&
+                                         definition.ExecutableVersion == "1.0.0.3479" &&
+                                         definition.Status == "locally-validated" &&
+                                         !definition.AllowAutomaticCompatibility &&
+                                         definition.NativeCapture is { Status: "locally-validated" } &&
+                                         definition.EngineCamera is
+                                             { Layout: "renderer-camera-direct-v1", SourcePointerOffset: 0x430 } &&
+                                         definition.Patterns.All(p => p.Confidence == "locally-validated") &&
+                                         definition.PlayerRoot!.WorldSystemPattern.Confidence == "locally-validated"),
+        "The exact patch2.04.05 profile is not embedded for normal supported-build use.");
     Assert(definitions.Single(definition => definition.SteamBuildId == "24994088").EngineLights is null,
         "Unvalidated light offsets leaked into the automatic reference build.");
     Assert(definitions.Where(definition => definition.AllowAutomaticCompatibility)

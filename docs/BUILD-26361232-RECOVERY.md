@@ -1,6 +1,22 @@
 # Patch 2.04.05 / build 26361232 recovery — 2026-11-03, Codex
 
-## Current continuation: integrated.3 passive live recovery passes
+## Current continuation: owner-requested regular 2.2.6 release
+
+Owner asks for release after integrated.3's successful live evidence. The exact
+new profile/native contract and measured runtime anchors are locally-validated;
+no offset, instruction guard, layout or unknown-build fallback changes. Automatic
+compatibility remains OFF for26361232. Production defaults and docs target
+2.2.6/gamepatch2.04.05. Both research switches OFF; normal host route tested.
+Private logger conditional-compilation correction only; capture/replay unchanged.
+79 managed and40 native checks, API smoke, EXE/context/Ambient preflight, actual
+normal packaged profile and payload checks pass. See
+[2.2.6 validation](releases/v2.2.6-validation.md) for hashes, scope and known
+static-update-report ambiguity. The exact release ZIP is not reinstalled, under
+the existing owner decision; prior live candidate evidence remains separately
+identified. GitHub publication is authorized; Nexus stays disabled. All private
+packages/evidence remain immutable and assistants never install anything.
+
+## Previous continuation: integrated.3 passive live recovery passes
 
 Owner reported ingame after installing complete integrated.3. PID32560 started
 11:58:31; installed ASI/Core/host/bothCFGs/INI hashes all equal the immutable ZIP.

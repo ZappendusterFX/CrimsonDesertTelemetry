@@ -1,4 +1,28 @@
-# Current checkpoint — 2026-11-03, integrated.3 live recovery verified
+# Current checkpoint — 2026-11-03, regular 2.2.6 ready for GitHub publication
+
+Owner requests release after the completed integrated.3 live recovery. Exact
+26361232 product/native profile and measured anchors are locally-validated;
+automatic compatibility stays OFF. Defaults now2.2.6/build26361232, clean
+production INI, Research/bypass OFF. Runtime signatures/layouts/INI match live
+integrated.3. The private-only recovery logger compiles away without/WX warnings.
+Normal packaged host resolves current game as tested, without private opt-in.
+
+Managed79/79, native40/40, isolated API smoke, exact game SHA and native/Ambient
+preflight, actual embedded profile and expanded/ZIP payload checks PASS.
+Immutable ZIP: artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.6-ModManagers.zip
+SHA2561C9520C9EEE0CD8EB268AFC3E6264FB319F31F5FCBE001D4D94D0CF9C402CF97.
+All9 normal features/HUDs ON. Detailed evidence/limits:
+[2.2.6 validation](releases/v2.2.6-validation.md). Exact release ZIP not installed;
+prior live candidate is separately identified. No new manual retest is required.
+
+GitHub credential access works outside the restricted process; the apparent401
+was sandbox credential access, not an invalid owner account. origin/main is an
+ancestor of this recovery branch. Latest public release2.2.5;v2.2.6 unused.
+NEXUS_AUTO_PUBLISH is false and remains so. Next: fast-forward main, push main/tag,
+attach the validated local asset to a GitHub draft, verify workflows/digest and
+publish GitHub only. Owner-only installation remains; no game files changed.
+
+# Previous checkpoint — 2026-11-03, integrated.3 live recovery verified
 
 Owner installed integrated.3/restarted PID32560; all six runtime payload hashes
 match. Build26361232/patch2.04.05: health playing/errornull. Camera, filtered
