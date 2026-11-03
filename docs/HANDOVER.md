@@ -1,4 +1,18 @@
-# Current checkpoint — 2026-11-03, public 2.2.6 published on main
+# Current checkpoint — 2026-11-03, movement flicker diagnosed; no product changes
+
+Owner go:existing5s stream capture286 frames plus6 credential-free Hue UI reads.
+CDT feeds fresh/available throughout. Hue runs installed1.0.0, Balanced250/600ms,
+Point200%, master100%. Bright moving near spot has constant RGB but all78 native
+captures start visibility unknown;33 later clear.77/77 position steps0.178..0.523GU
+exceed current0.12GU cache matching, explaining repeated exclusion/reinclusion.
+Ambient local level also changes1.83..8.73. Exact1.0.1 offline replay finds no
+lantern pair; current cone differs from retained signature. No physical ownership
+or general GI decoder fault inferred. [Full diagnosis](HUE-MOVEMENT-FLICKER-20261103.md).
+No settings/input/installation/bridge output/code changes. Public2.2.6 unchanged.
+Next only if owner requests: fix moving-source visibility association conservatively;
+keep raw/freshness/provenance and fail-unknown rules. No repeated AN/AUS required.
+
+# Previous checkpoint — 2026-11-03, public 2.2.6 published on main
 
 Owner-requested release complete. Regular CDT2.2.6 targets gamepatch2.04.05,
 Steam26361232/EXE1.0.0.3479 (DF531A... exact hash), verified with new DLC installed.
