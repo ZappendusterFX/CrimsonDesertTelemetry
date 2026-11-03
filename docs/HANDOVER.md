@@ -1,4 +1,26 @@
-# Current checkpoint — 2026-11-03, owner accepts paired lighting; GitHub publication requested
+# Current checkpoint — 2026-11-03, CDT 2.2.7 published on GitHub main
+
+Owner-requested publication is complete. Source was fast-forwarded to main;
+tagv2.2.7 points to4c8f553. [Stable Latest2.2.7](https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/tag/v2.2.7)
+published2026-11-03 18:38:02CET. The locally validated immutable ZIP was preserved
+by the release workflow. GitHub digest and a fresh public download match SHA256
+69CFE94F305806D65CC7D16BB000C87C85C51C3B6706136DC2537BC99CA23820,
+1061211bytes. Main CI41684488312, tag CI41684488446 and Release41684488380 all
+succeeded, including managed/API/package/native checks. This adds remote CI
+evidence; the original local validation record remains unchanged.
+
+README, current public descriptions and release notes are updated for the
+cache-admission fix, current game target and optional Hue1.0.4 companion.
+Hue1.0.4 is also published and has positive owner in-game appearance feedback.
+Generic GitHub About text remains accurate and unchanged. NEXUS_AUTO_PUBLISH
+remains false; the publication-triggered Nexus job41686137171 completed skipped.
+No Nexus upload, assistant installation or game/settings/output changes.
+
+Private receipt:artifacts/github-2.2.7-publication-20261103/receipt.json.
+All inherited untracked research and older packages/releases remain preserved.
+No remaining release work; resume for the owner's next request.
+
+# Previous checkpoint — 2026-11-03, owner accepts paired lighting; GitHub publication requested
 
 The owner installed CDT2.2.7 and Hue1.0.3 themselves, then tested the Hue1.0.4
 lantern correction and reports "sehr gut jetzt". They request GitHub publication
