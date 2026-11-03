@@ -433,6 +433,29 @@ int main()
     RunVisibilityBatch();
     Check(calls==4&&replayFaulted&&visibilityResult.entries[0].code==3&&visibilityResult.entries[1].code==3,
         "native fault prevents every remaining target and invalidates batch");
+    // The current exact-build selection is a natural context, not a wildcard
+    // or a rewritten mask. Old-build/adjacent and known foreign families refuse.
+    SetupRayControl(); work = {}; work.continuous = true; work.mode = "rayfan";
+    contextTraceCapturing = false;
+    const std::uint32_t adjacentProfile = RecoveryPhysicsBuild ? 0x40000016 : 0x40000017;
+    for (const auto foreign : {adjacentProfile, 0x40004027u, 0x40004028u, 0x4002C028u, 0x403D8028u})
+    {
+        Put(query.query, 0x14, foreign);
+        Check(!CaptureRay(worldBytes.data(), query.query.data(), query.collector.data()) && !work.copied,
+            "adjacent/foreign query profile is not accepted despite valid collector");
+        SetupRayControl(); work.continuous = true; continuousVisibility = true;
+        Put(work.snapshot.query, 0x14, foreign);
+        RunRayControl();
+        Check(calls == 0 && !replayFaulted && work.controlStatus &&
+            std::strcmp(work.controlStatus, "unknown-visibility-query-profile") == 0,
+            "second profile guard refuses foreign replay before any native call");
+        work = {}; work.continuous = true; work.mode = "rayfan";
+    }
+    SetupRayControl(); work = {}; work.continuous = true; work.mode = "rayfan";
+    work.player = {-10529.755f, 611.292f, -4420.300f};
+    Check(CaptureRay(worldBytes.data(), query.query.data(), query.collector.data()) &&
+        work.copied && work.snapshot.query == query.query && calls == 0,
+        "selected exact-build profile captures original natural query without rewriting or calls");
     // Refused contexts stay refused; raw copies require the existing trace.
     SetupRayControl(); work = {}; work.continuous = true; work.mode = "rayfan";
     Put(query.query, 0x14, std::uint32_t{0x40004027});

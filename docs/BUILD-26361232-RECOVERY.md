@@ -1,6 +1,86 @@
 # Patch 2.04.05 / build 26361232 recovery — 2026-11-03, Codex
 
-## Current continuation: integrated.1 live data; bounded refused-context diagnosis
+## Current continuation: integrated.2 identifies current natural profile candidate
+
+Owner installed integrated.2 and reported ingame; PID31416 started11:46:08.
+All six deployed runtime files equal the immutable package. Health playing,
+exact EXE/build26361232, no error. Filtered/upstream and Ambient/GI remain
+available (saved API snapshot); filtered capture880/frame6693/47ms, upstream3476
+records/zero malformed in the initial read, Ambient117/67ms, GI visibility0ms.
+One malformed filtered record remains rejected. No controlled light response,
+physical lamp validation or full compatibility promotion is claimed.
+
+Existing VisibilityRecorder.exe20--trace finishes normally:1197 frames/20s.
+Native56 rounds,4789 profile rejections and873 collector rejections, no accepted
+template or completed target. Of55 firstRejectedContext records (first pending
+batch began before trigger),46 have queryProfile0x40000017 and all match:
+
+- collector vtable0x1460D71D0, the exact guarded closest-hit table;
+- collector=query+0xA0, hit pointer=collector+0x30, initial count0;
+- query origin layout double3+0x40, horizontal player-local distance0..2.2667gu,
+  vertical offset-0.7567..2.3342gu, within retained selection guards.
+
+Five first contexts with the OLD0x40000016 have a DIFFERENT vtable0x1456B4FC0
+and no established inline hit pointer. Keep refusing that collector. Four first
+contexts use foreign0x40004028/4002C028/4008C028/403D8028; not adopted. This shows
+the old profile selects the wrong family after this update. It does not decode
+all profile bits or prove general optical/collision equivalence of the new family.
+The built-in natural-result replay control remains a prerequisite for changed rays.
+
+Existing PE/name/xref tools also examined old/new filter registrations. Named enum
+entries do NOT establish the numerical composition of query+0x14. Do not claim a
+universal+1 translation or label profile0x17 from a similarly numbered enum row.
+The scoped selector is based on exact live natural-context/layout evidence only.
+
+Private evidence:
+- visibility-motion-20261103-114817-c03b0b07b56e4c5daf96ef6d430c0979/
+  summary.json, visibility.jsonl.gz and copied native-context.jsonl.
+- update-26361232-integrated2-live-summary-20261103.json.
+- update-26361232-integrated2-live-api-20261103.json and
+  update-26361232-integrated2-live-native-20261103.log.
+- update-26361232-filter-registration-20261103.json,
+  update-25477059-filter-registration-20261103.json and
+  update-26361232-filter-enum-compare-20261103.json (static evidence limitation).
+
+Source fix moves the build-dependent selection from the shared math/layout header
+to physics_probe.cpp: only26361232 uses0x40000017;25477059 retains0x40000016.
+Start still requires the exact corresponding SHA/entries/collector table. Both
+CaptureRay and RunRayControl compare against that same selected constant. No
+query bits are changed; lifetime/thread/caller/near-player/collector/copy/unchanged
+originals/control-result/budget/fault/expiry rules and raw light output remain.
+The startup message now says exact-build natural query profile, without claiming
+that new collision semantics have already been validated. Existing trace is idle
+until explicitly triggered; no new tracing mechanism is introduced.
+
+Focused physics-natural-query-observer passes. Additional cases confirm old/new
+adjacent profiles and known foreign families cannot enter capture or replay even
+with a valid collector; the selected natural input is copied unmodified with zero
+native calls. All existing same-call control/fan/fault/trace checks in that target
+also pass. Log:update-26361232-profile-selection-tests-20261103.log. Native build
+passes/W4/WX. No unchanged managed or full historical game suite was repeated.
+
+New immutable private ZIP, built from these scoped tracked source changes:
+artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.6-build26361232-integrated.3-ModManagers.zip
+SHA256 B2F31E8D931276567ED66C2366065C11AFBBF3DEA6F3E3B9EA385625BA1F0461.
+ASI SHA256 55E60699BD5354C7DEF05C53828CE14E7CFF8ABAFD6D35417C275F9577641741.
+Core SHA256 12D4E8A37B0F88C5864166A188951FCA2B7346214C4FC7D23F6F2E000539F773.
+Maintained builder options remain-NativeBuildId26361232-Research off
+-IntegratedDiagnostic-IniOverrides @{'Lights.Upstream'='1'}. All9 features/HUDs ON,
+INI byte-identical to integrated.2. Builder/expanded/ZIP payload validators pass;
+actual ZIP bytes equal expanded package and packaged ASI equals native build.
+Core's actual embedded private resource remains research, auto-compatibility OFF,
+seven exact native contexts. Actual evidence:
+update-26361232-integrated3-package-check-20261103.json.
+
+Not installed/game-tested/published. Natural-control success, completed9-ray fans
+and resulting live visibility remain pending. No physical Hue/game input/settings
+or deployment was changed by assistant. Earlier ZIPs remain immutable.
+Next: owner closes game, personally installs complete integrated.3 ZIP and starts/
+reports. Then verify hashes and inspect feed plus existing20s--trace for accepted
+natural templates, control matches, completed9-ray targets and freshness. Do not
+request AN/AUS or repeat full old manual tests. Refuse unknown contexts as before.
+
+## Previous continuation: integrated.1 live data; bounded refused-context diagnosis
 
 Owner reported ingame after installing integrated.1. PID3240 started11:34:28;
 installed ASI, Core, host, both CFG files and INI hashes all equal that immutable

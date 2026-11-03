@@ -1,4 +1,30 @@
-# Current checkpoint — 2026-11-03, live feeds restored; physics refuses natural queries
+# Current checkpoint — 2026-11-03, new-build natural physics profile selected
+
+Owner installed integrated.2/restarted PID31416; all six runtime hashes match.
+Health playing, light/upstream/Ambient/GI feeds available. Existing20s recorder
+finished1197 frames; native56 rounds, no accepted template. Refusals now identify
+46 first contexts with0x40000017, exact closest-hit vtable, inline collector query+
+A0/hits+30, empty initial collector and established player-near origin. Five first
+0x40000016 contexts instead have another collector. No mask semantics inferred.
+
+Scoped correction: Build26361232 alone selects0x40000017;25477059 keeps0x40000016.
+Both pre-capture/pre-replay profile guards, exact SHA/entries/caller/collector,
+same-thread/lifetime, natural-result control, budget/fault/freshness rules remain.
+Focused native check (adjacent/foreign profiles refused at both guards, accepted
+query unmodified, existing replay controls) passes; native build/package validators
+pass. This candidate's actual natural control/fan behavior is still untested live.
+No AN/AUS/full old-game retest or physical output is claimed/requested.
+
+Immutable private integrated.3: all9 features/HUDs ON, INI unchanged, research
+instrumentation compiled OUT; exact contract research/unpromoted. Actual expanded/
+ZIP/ASI/profile checks pass. ZIP SHA256
+B2F31E8D931276567ED66C2366065C11AFBBF3DEA6F3E3B9EA385625BA1F0461.
+Details/evidence: [BUILD-26361232-RECOVERY.md](BUILD-26361232-RECOVERY.md).
+Owner-only installation remains mandatory. Next: owner installs complete
+integrated.3 ZIP with game closed/restarts/reports; then existing passive feed/
+context-trace check for accepted natural controls, completed9-ray fans and freshness.
+
+# Previous checkpoint — 2026-11-03, live feeds restored; physics refuses natural queries
 
 Owner installed integrated.1 and restarted (PID3240); all six runtime payload
 hashes match. Health=playing, exact build26361232. Camera, filtered ManyLights,

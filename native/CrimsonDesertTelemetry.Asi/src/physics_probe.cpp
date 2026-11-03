@@ -22,6 +22,14 @@ namespace
 {
 using Json = nlohmann::json;
 constexpr bool RecoveryPhysicsBuild = native_contract::BuildId == "26361232";
+// Exact-build natural-context selection, never a decoded/general collision mask.
+// Build25477059: retained ground/wall controls and291 normal PID456 batches used
+// 0x40000016; the10 all-clear failures used0x40004027. Build26361232 PID31416:
+// 46 traced0x40000017 contexts have the guarded closest-hit collector, query+A0
+// inline storage and player-near layout;0x40000016 has a different collector.
+// Select only this new-build candidate. Same-call control must still reproduce
+// the original result before any changed segment; never rewrite query bits.
+constexpr std::uint32_t VisibilityRayProfile = RecoveryPhysicsBuild ? 0x40000017 : 0x40000016;
 constexpr uint64_t ShapeRva = RecoveryPhysicsBuild ? 0x45AE480 : 0x42B0C50;
 constexpr uint64_t RayRva = RecoveryPhysicsBuild ? 0x45AE380 : 0x42B0B50;
 constexpr uint64_t CollectorRva = RecoveryPhysicsBuild ? 0x60D71D0 : 0x5D13528;
@@ -775,7 +783,7 @@ bool Start(std::uint64_t moduleBase, const wchar_t* directory, bool continuous)
     }
     ch::Log("Physics probe v10 ready. Continuous sampled visibility=%s (shared HUD/player radius, max 500gu; camera-origin rays; max 20 scene batches/sec, 256 queued targets, shared 2ms issue window; unknown on failure).",
         continuousVisibility ? "enabled" : "disabled");
-    if (continuousVisibility) ch::Log("Continuous visibility accepts only the validated native query profile 0x%08X; foreign profiles pass through without capture.", VisibilityRayProfile);
+    if (continuousVisibility) ch::Log("Continuous visibility accepts only the exact-build natural query profile 0x%08X; foreign profiles pass through without capture.", VisibilityRayProfile);
 #if CDT_RESEARCH
     ch::Log("Physics manual probe ready. Ray observer=%s; explicit requests only; max 12 transactions / 24 extra calls per process.",
         rayEnabled.load() ? "ready" : "unavailable");
