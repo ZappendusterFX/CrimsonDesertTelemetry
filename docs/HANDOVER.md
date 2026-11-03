@@ -1,4 +1,24 @@
-# Current checkpoint — 2026-11-03, CDT 2.2.7 published on GitHub main
+# Current checkpoint — 2026-11-04, shared OpenRGB 3D panel test
+
+Owner requests an OpenRGB HUD section in CrimsonHue for selecting available SDK
+devices and placing them in 3D. Hue branch codex/openrgb-parallel-preview adds the
+settings/backend; this CDT branch codex/openrgb-room-panel updates only the shared
+panel and its smoke harness. Panel source is maintained in C:/DEV/CrimsonHue/native/
+CrimsonHue.Panel and synced with Sync-CdtPanel.ps1 including SOURCE-SHA256.txt.
+No telemetry, visibility, game profile, graphics hook or production INI change.
+
+New tab includes device discovery/selection and a rotatable 3D room with floor
+drag, XYZ controls and a front screen/seat reference. The actual managed ASI and
+CDT D3D12 renderer passed an initial --openrgb screenshot smoke. Layout was then
+compacted for controls and labels. Hue Core tests158/158 and controller ABI pass.
+Final paired packages are Hue1.0.5-openrgb.2 and CDT2.2.8-openrgb.1; build CDT with
+-NativeBuildId26361232 -Research off (production acquisition, private version).
+Final hashes and exact candidate smoke are recorded after build. Owner alone
+installs with game closed; do not deploy, operate DMM or wait/poll for installation.
+Inherited unrelated untracked research remains preserved and unstaged. No push
+or main merge. Earlier public2.2.7 evidence remains below.
+
+# Previous checkpoint — 2026-11-03, CDT 2.2.7 published on GitHub main
 
 Owner-requested publication is complete. Source was fast-forwarded to main;
 tagv2.2.7 points to4c8f553. [Stable Latest2.2.7](https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/tag/v2.2.7)

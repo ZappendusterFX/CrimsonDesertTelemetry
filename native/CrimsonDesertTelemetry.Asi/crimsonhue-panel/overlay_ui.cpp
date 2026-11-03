@@ -17,6 +17,155 @@ void Action(const char* name) { Command({{"action", name}}); }
 bool Button(const char* label, bool enabled = true) {
     ImGui::BeginDisabled(!enabled); const bool clicked = ImGui::Button(label); ImGui::EndDisabled(); return clicked;
 }
+std::string rgbSelected;
+bool rgbTabActive = false;
+void RgbPosition(const std::string& key, const std::array<float, 3>& p) {
+    Command({{"action", "openRgb"}, {"key", "position"}, {"device", key},
+        {"position", {{"x", p[0]}, {"y", p[1]}, {"z", p[2]}}}});
+}
+void OpenRgbControls(const Json& view) {
+    const auto room = view.value("openRgbRoom", Json::object());
+    Wrap("Select devices and arrange them in the room on the right.");
+    if (!room.value("available", false)) { Wrap("Install a CrimsonHue OpenRGB build to use this panel."); return; }
+    bool enabled = room.value("enabled", true);
+    if (ImGui::Checkbox("Include OpenRGB in lighting sync", &enabled))
+        Command({{"action", "openRgb"}, {"key", "enabled"}, {"value", enabled}});
+    if (Button("Read devices", !room.value("busy", false) && !view.value("smoke", false))) Action("openRgbDiscover");
+    Wrap(Text(room, "status"));
+    if (ImGui::CollapsingHeader("Connection and output limit")) {
+    static int port = 6742, observedPort = 0;
+    const int savedPort = room.value("port", 6742);
+    if (savedPort != observedPort) { port = savedPort; observedPort = savedPort; }
+    ImGui::SetNextItemWidth(110);
+    if (ImGui::InputInt("SDK port (Enter)", &port, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue))
+        Command({{"action", "openRgb"}, {"key", "port"}, {"value", port}});
+    float brightness = room.value("brightness", .25f) * 100;
+    if (ImGui::SliderFloat("Output limit", &brightness, 0, 100, "%.0f%%"))
+        Command({{"action", "openRgb"}, {"key", "brightness"}, {"value", brightness / 100}});
+    }
+    ImGui::SeparatorText("Devices");
+    const auto devices = room.value("devices", Json::array());
+    if (devices.empty()) Wrap("Start OpenRGB's SDK server and click Read devices.");
+    bool selectedFound = false;
+    for (const auto& d : devices) if (Text(d, "key") == rgbSelected) selectedFound = true;
+    if (!selectedFound && !devices.empty()) rgbSelected = Text(devices[0], "key");
+    for (const auto& d : devices) {
+        const auto key = Text(d, "key"); ImGui::PushID(key.c_str());
+        bool use = d.value("enabled", false);
+        ImGui::BeginDisabled(!d.value("eligible", false) && d.value("present", false));
+        if (ImGui::Checkbox("##use", &use)) Command({{"action", "openRgb"}, {"key", "deviceEnabled"}, {"device", key}, {"value", use}});
+        ImGui::EndDisabled(); ImGui::SameLine();
+        if (ImGui::Selectable(Text(d, "name").c_str(), key == rgbSelected)) rgbSelected = key;
+        if (!d.value("present", false)) ImGui::TextDisabled("Not connected - placement saved");
+        else if (!d.value("eligible", false)) ImGui::TextDisabled("No supported global Direct RGB mode");
+        ImGui::PopID();
+    }
+    for (const auto& d : devices) if (Text(d, "key") == rgbSelected) {
+        ImGui::SeparatorText("Selected device position");
+        const auto p = d.at("position");
+        std::array<float, 3> xyz{p.value("x", 0.f), p.value("y", 1.f), p.value("z", 0.f)};
+        bool changed = ImGui::SliderFloat("Left / right", &xyz[0], -1, 1, "%.2f");
+        changed |= ImGui::SliderFloat("Back / front", &xyz[1], -1, 1, "%.2f");
+        changed |= ImGui::SliderFloat("Height", &xyz[2], -1, 1, "%.2f");
+        if (changed) RgbPosition(rgbSelected, xyz);
+        if (Button("In front of monitor")) RgbPosition(rgbSelected, {0, 1, 0});
+    }
+    Wrap("Start/Stop lighting sync controls Hue and selected OpenRGB devices. Positions are saved locally.");
+}
+void OpenRgbRoom(const Json& view) {
+    const auto room = view.value("openRgbRoom", Json::object());
+    const auto devices = room.value("devices", Json::array());
+    Wrap("Drag a device to move it across the room. Use Height to move it up/down. Right-drag to rotate the view.");
+    static float yaw = -.45f, elevation = .60f;
+    if (Button("Reset view")) { yaw = -.45f; elevation = .60f; }
+    const auto at = ImGui::GetCursorScreenPos();
+    const ImVec2 size{std::max(220.f, ImGui::GetContentRegionAvail().x), std::max(270.f, ImGui::GetContentRegionAvail().y - 55)};
+    ImGui::InvisibleButton("OpenRGB 3D room", size, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+    const bool hovered = ImGui::IsItemHovered();
+    auto& io = ImGui::GetIO();
+    if (hovered && ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
+        yaw += io.MouseDelta.x * .008f;
+        elevation = std::clamp(elevation + io.MouseDelta.y * .008f, .25f, 1.35f);
+    }
+    const float c = std::cos(yaw), s = std::sin(yaw), se = std::sin(elevation), ce = std::cos(elevation);
+    const float scale = std::min(size.x / 3.6f, size.y / 3.6f);
+    const ImVec2 center{at.x + size.x / 2, at.y + size.y * .52f};
+    const auto project = [&](float x, float y, float z) {
+        return ImVec2{center.x + (c*x-s*y)*scale, center.y + (-se*(s*x+c*y)-ce*z)*scale};
+    };
+    auto* draw = ImGui::GetWindowDrawList();
+    draw->PushClipRect(at, {at.x + size.x, at.y + size.y}, true);
+    draw->AddRectFilled(at, {at.x+size.x, at.y+size.y}, IM_COL32(21,25,34,255), 8);
+    const auto line = [&](std::array<float,3> a, std::array<float,3> b, ImU32 color, float width = 1) {
+        draw->AddLine(project(a[0],a[1],a[2]), project(b[0],b[1],b[2]), color, width);
+    };
+    for (int i = 0; i <= 4; ++i) {
+        const float t = -1 + static_cast<float>(i) * .5f;
+        line({-1,t,-1}, {1,t,-1}, IM_COL32(50,61,75,255));
+        line({t,-1,-1}, {t,1,-1}, IM_COL32(50,61,75,255));
+    }
+    for (const float x : {-1.f,1.f}) for (const float y : {-1.f,1.f}) {
+        line({x,y,-1},{x,y,1},IM_COL32(65,80,100,170));
+        line({x,y,1},{-x,y,1},IM_COL32(65,80,100,170));
+        line({x,y,1},{x,-y,1},IM_COL32(65,80,100,170));
+    }
+    line({-.45f,1,0},{.45f,1,0},IM_COL32(100,185,220,255),5);
+    line({-.45f,1,.5f},{.45f,1,.5f},IM_COL32(100,185,220,255),2);
+    line({-.45f,1,0},{-.45f,1,.5f},IM_COL32(100,185,220,255),2);
+    line({.45f,1,0},{.45f,1,.5f},IM_COL32(100,185,220,255),2);
+    const auto screen = project(-.3f,1,.65f);
+    draw->AddText(screen, IM_COL32(175,205,230,255), "SCREEN / FRONT");
+    draw->AddCircleFilled(project(0,0,0),5,IM_COL32(225,230,240,255));
+    const auto seat = project(0,0,-.15f);
+    draw->AddText(seat,IM_COL32(160,175,195,255),"YOUR SEAT");
+    static std::string dragging;
+    static std::array<float,3> start{}, live{};
+    static ImVec2 mouseStart{};
+    if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        float best = 16*16; std::string picked;
+        for (const auto& d : devices) {
+            const auto p = d.at("position"); const auto point = project(p.value("x",0.f),p.value("y",0.f),p.value("z",0.f));
+            const float dx=point.x-io.MousePos.x, dy=point.y-io.MousePos.y;
+            if (dx*dx+dy*dy < best || (Text(d,"key")==rgbSelected && dx*dx+dy*dy < 16*16)) {
+                best=dx*dx+dy*dy; picked=Text(d,"key");
+                start={p.value("x",0.f),p.value("y",0.f),p.value("z",0.f)};
+                if (picked==rgbSelected) break;
+            }
+        }
+        if (!picked.empty()) { rgbSelected=picked; dragging=picked; live=start; mouseStart=io.MousePos; }
+    }
+    if (!dragging.empty()) {
+        const float dx=(io.MousePos.x-mouseStart.x)/scale, dy=(io.MousePos.y-mouseStart.y)/scale;
+        live={std::clamp(start[0]+c*dx-s*dy/se,-1.f,1.f),
+            std::clamp(start[1]-s*dx-c*dy/se,-1.f,1.f),start[2]};
+        if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) { RgbPosition(dragging,live); dragging.clear(); }
+    }
+    std::vector<Json> ordered(devices.begin(), devices.end());
+    std::sort(ordered.begin(),ordered.end(),[&](const Json& a,const Json& b) {
+        if (Text(a,"key")==rgbSelected) return false;
+        if (Text(b,"key")==rgbSelected) return true;
+        const auto p=a.at("position"), q=b.at("position");
+        return s*p.value("x",0.f)+c*p.value("y",0.f) > s*q.value("x",0.f)+c*q.value("y",0.f);
+    });
+    for (const auto& d : ordered) {
+        const auto key=Text(d,"key"); const auto p=d.at("position");
+        const std::array<float,3> xyz=key==dragging ? live : std::array<float,3>{p.value("x",0.f),p.value("y",0.f),p.value("z",0.f)};
+        const auto point=project(xyz[0],xyz[1],xyz[2]);
+        const auto rgb=d.value("rgb",Json::object());
+        line({xyz[0],xyz[1],-1},xyz,IM_COL32(90,110,135,160));
+        const bool enabled=d.value("enabled",false);
+        const auto color=enabled ? ImGui::ColorConvertFloat4ToU32({.15f+.85f*rgb.value("x",0.f),.15f+.85f*rgb.value("y",0.f),.15f+.85f*rgb.value("z",0.f),1}) : IM_COL32(50,55,65,255);
+        draw->AddCircleFilled(point,9,color);
+        draw->AddCircle(point,key==rgbSelected?13.f:10.f,key==rgbSelected?IM_COL32(50,220,210,255):IM_COL32(150,165,185,255),0,2);
+        if (key==rgbSelected) {
+            const auto name=Text(d,"name"); const auto textSize=ImGui::CalcTextSize(name.c_str());
+            const float labelX=point.x+13+textSize.x > at.x+size.x-8 ? point.x-13-textSize.x : point.x+13;
+            draw->AddText({std::max(at.x+6,labelX),point.y-7},IM_COL32(205,215,230,255),name.c_str());
+        }
+    }
+    draw->PopClipRect();
+    if (view.value("demo",false)) Wrap("DEMO PREVIEW - NO PHYSICAL OUTPUT");
+}
 void Room(const Json& view) {
     const ImVec2 size{std::max(200.0f, ImGui::GetContentRegionAvail().x), 260};
     const auto at = ImGui::GetCursorScreenPos();
@@ -499,19 +648,21 @@ void DrawUi(const Json& view, bool& visible, float scale) {
         else {
             const float left = std::max(350 * scale, ImGui::GetContentRegionAvail().x * .47f);
             bool advanced = !simple;
+            rgbTabActive = false;
             ImGui::BeginChild("Mixer", {left, -110 * scale}, ImGuiChildFlags_Borders);
             if (ImGui::BeginTabBar("MixerTabs")) {
                 static bool previousWallPreview = false;
                 const bool selectRoom = view.value("wallPreview", false) && !previousWallPreview && testTab.empty();
                 previousWallPreview = view.value("wallPreview", false);
-                const std::vector<const char*> tabs = simple ? std::vector<const char*>{"Lighting", "Room", "Setup", "Advanced"} :
-                    std::vector<const char*>{"Output", "Ambient", "Color", "Space", "Room", "Setup", "Presets"};
+                const std::vector<const char*> tabs = simple ? std::vector<const char*>{"Lighting", "Room", "OpenRGB", "Setup", "Advanced"} :
+                    std::vector<const char*>{"Output", "Ambient", "Color", "Space", "Room", "OpenRGB", "Setup", "Presets"};
                 for (const auto* group : tabs) {
                     const bool choose = (selectRoom && strcmp(group, "Room") == 0) || testTab == group ||
                         (simple && strcmp(group, "Advanced") == 0 && AdvancedTab(testTab));
                     if (ImGui::BeginTabItem(group, nullptr, choose ? ImGuiTabItemFlags_SetSelected : 0)) {
                         if (testTab == group) testTab.clear();
                         if (strcmp(group, "Lighting") == 0) Lighting(view);
+                        else if (strcmp(group, "OpenRGB") == 0) { rgbTabActive=true; OpenRgbControls(view); }
                         else if (strcmp(group, "Advanced") == 0) { advanced = true; Advanced(view); }
                         else if (strcmp(group, "Setup") == 0) Setup(view);
                         else if (strcmp(group, "Room") == 0) WallWash(view);
@@ -528,7 +679,8 @@ void DrawUi(const Json& view, bool& visible, float scale) {
             ImGui::BeginDisabled(view.value("canStop", false) || view.value("smoke", false));
             if (ImGui::Checkbox("Demo preview only", &demo)) Command({{"action", "demo"}, {"value", demo}});
             ImGui::EndDisabled();
-            if (simple) {
+            if (rgbTabActive) OpenRgbRoom(view);
+            else if (simple) {
                 Room(view);
                 OutputSummary(view);
                 if (advanced && ImGui::CollapsingHeader("Channel details")) {

@@ -24,7 +24,8 @@ int wmain(int argc, wchar_t** argv) {
     const bool advancedPreview = argc == 4 && wcscmp(argv[3], L"--advanced") == 0;
     const bool customPreview = argc == 4 && wcscmp(argv[3], L"--custom") == 0;
     const bool rawPreview = argc == 4 && wcscmp(argv[3], L"--raw") == 0;
-    if (argc == 4 && !setupPreview && !lightingPreview && !advancedPreview && !customPreview && !rawPreview) return 1;
+    const bool rgbPreview = argc == 4 && wcscmp(argv[3], L"--openrgb") == 0;
+    if (argc == 4 && !setupPreview && !lightingPreview && !advancedPreview && !customPreview && !rawPreview && !rgbPreview) return 1;
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
     try {
         const auto asi = std::filesystem::absolute(argv[1]);
@@ -215,7 +216,8 @@ int wmain(int argc, wchar_t** argv) {
             Command({{"action", "profile"}, {"recommended", true}}); Sleep(100); state = State();
             Require(state.at("lighting").at("recommended") == true, "Recommended did not resume before product UI preview");
         }
-        if (lightingPreview || customPreview) crimson::overlay::SelectTabForTest("Lighting");
+        if (rgbPreview) crimson::overlay::SelectTabForTest("OpenRGB");
+        else if (lightingPreview || customPreview) crimson::overlay::SelectTabForTest("Lighting");
         else if (advancedPreview) crimson::overlay::SelectTabForTest("Advanced");
         else if (rawPreview) crimson::overlay::SelectTabForTest("CDT raw input");
         else if (!setupPreview) crimson::overlay::SelectTabForTest("Room");
