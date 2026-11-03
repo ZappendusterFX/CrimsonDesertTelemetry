@@ -1,6 +1,37 @@
 # Patch 2.04.05 / build 26361232 recovery — 2026-11-03, Codex
 
-## Current continuation: Dispatch-proven holder correction, diagnostic .4
+## Current continuation: diagnostic .4 native acquisition progresses
+
+Owner installed .4/restarted PID29772 at10:52:08. Installed ASI, Core, host, both
+CFGs and INI hashes equal the immutable diagnostic.4 package. Native log completes
+source device/readback/fence setup, takes its submission-hook target from the
+matching game presentation queue without creating a probe queue, and reaches
+recurring capture. No native fault/rejection is reported in this saved log.
+
+The GET-only progression check contains eight available filtered samples:
+API sequence6178->6252, native capture1528->1547 (eight distinct sampled values),
+scene frames8881->8947. Ages are79/31/32/15/62/15/47/63ms; published sources in the
+configured100gu radius are33/34/33/34/33/37/31/31. Counter/fence/paired-scene guards
+are enforced by the production RenderLightReader before status=available.
+One malformed record per sampled prefix is rejected and remains in diagnostics;
+this must not be hidden or taken as proof that shader/record semantics are fully
+unchanged. No controlled owner light state or active shader identity is supplied.
+
+Raw evidence under artifacts/light-research/:
+- update-26361232-diagnostic4-live-20261103.json (hashes, health, full paired samples).
+- update-26361232-diagnostic4-live-native-20261103.log (preserved process log).
+
+This establishes successful live progressing native acquisition for this exact
+private package/build, not full compatibility or known-source AN/AUS response.
+Upstream, Ambient and physics visibility remain disabled and are not accepted.
+No installed files/settings, input, physical output or package were changed by
+the assistant. The owner alone installed/restarted the package.
+Next control: owner remains at a known switchable light with camera/player fixed,
+sets AN and reports it; then capture AN/AUS/AN using the existing paired filtered
+path before promoting its semantics or using another source as a substitute.
+
+
+## Previous continuation: Dispatch-proven holder correction, diagnostic .4
 
 Owner installed diagnostic.3/restarted PID30508 at10:33:34. ASI, Core, host and INI
 match that ZIP. HTTP health is playing/research-exact; sequences3672->6263 progress.

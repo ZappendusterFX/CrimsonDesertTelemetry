@@ -1,4 +1,23 @@
-# Current checkpoint — 2026-11-03, command-list holder recovered; diagnostic.4 ready
+# Current checkpoint — 2026-11-03, diagnostic.4 native stream progresses live
+
+Owner installed .4/restarted PID29772. All six runtime/CFG/INI hashes match the
+immutable ZIP. Native log reaches recurring capture through the game's matching
+presentation queue, with no probe queue. HTTP is playing/research-exact.
+Eight GET-only samples all contain available, fresh camera-paired filtered data:
+API6178->6252, native1528->1547, scene frames8881->8947, ages15..79ms,
+31..37 published sources in100gu. One malformed record is consistently rejected;
+keep that diagnostic honest and check semantics before promotion. This establishes
+live progressing fenced acquisition, not controlled light ON/OFF or full support.
+
+Evidence: artifacts/light-research/update-26361232-diagnostic4-live-20261103.json
+and matching *-live-native-20261103.log; [BUILD-26361232-RECOVERY.md](BUILD-26361232-RECOVERY.md).
+Upstream/Ambient/visibility remain OFF. No source/setting/package change needed
+for this observation; no assistant installation, game input or physical output.
+No owner light state has been supplied. Next: owner holds a known switchable
+light/camera/player position steady, turns it ON and reports AN; then capture
+AN/AUS/AN through the proven filtered path. End turn; do not wait/poll for owner.
+
+# Previous checkpoint — 2026-11-03, command-list holder recovered; diagnostic.4 ready
 
 Owner installed diagnostic.3/restarted PID30508. Runtime/INI match; HTTP health
 playing/research-exact and camera/player progress. Native rejection is output/list:
