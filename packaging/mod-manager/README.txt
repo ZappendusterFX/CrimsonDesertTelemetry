@@ -14,6 +14,12 @@ Included telemetry features:
   cages, closed collision hulls and colliding glass can exclude visibly shining
   lamps; noncolliding geometry may fail to block. F11 shows only fresh clear ones.
 
+Fixed in 2.2.7:
+- Retired source positions no longer fill the visibility cache and prevent
+  current lights from being queried during rapidly changing effects.
+- New positions remain unknown until measured; no extra query budget or
+  position-matching tolerance is granted. Late retired responses are ignored.
+
 Fixed in 2.2.6:
 - Restores camera/player, filtered and all-around light data, Ambient/GI and
   per-light physics checks for game patch2.04.05, Steam build26361232.
@@ -28,7 +34,7 @@ Fixed in 2.2.4:
   presentation queue when the HUD, markers or notices are enabled.
 
 Source and support: https://github.com/ZappendusterFX/CrimsonDesertTelemetry
-Validation: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/releases/v2.2.6-validation.md
+Validation: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/releases/v2.2.7-validation.md
 API: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/API.md
 
 Requirements and installation

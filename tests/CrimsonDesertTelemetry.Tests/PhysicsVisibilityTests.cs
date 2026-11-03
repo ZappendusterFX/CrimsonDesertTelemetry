@@ -6,6 +6,8 @@ internal static class PhysicsVisibilityTests
     public static void Exchange()
     {
         RadiusSelection();
+        CacheAdmission();
+        PendingResponseAfterInvalidation();
         var pid = Environment.ProcessId + 210000;
         const long born = 987654321;
         long now = 10000;
@@ -107,6 +109,125 @@ internal static class PhysicsVisibilityTests
         snapshot=snapshot with {Rendered=rendered with {AgeMilliseconds=500}};
         Check(Apply().Rendered!.Sources![0].SourceVisibility is null,"stale paired source cannot keep classification");
     }
+    private static void CacheAdmission()
+    {
+        using var fixture = new CacheFixture();
+        var anchor = new CameraVector3(-30, 1, 0);
+        CameraVector3[] current = [];
+        EngineLightsSnapshot result = null!;
+        // 512 distinct retired positions plus the continuously present anchor,
+        // all within two seconds. Every live scene has just 17 selected targets.
+        for (var round = 0; round < 32; round++)
+        {
+            if (round > 0) { fixture.Now += 60; fixture.Reply(9); }
+            current = new[] { anchor }.Concat(Enumerable.Range(round * 16, 16)
+                .Select(n => new CameraVector3((n % 32) * .5f, 1, (n / 32) * .5f))).ToArray();
+            result = fixture.Apply(current);
+        }
+        var sources = result.Rendered!.Sources!;
+        Check(sources.Skip(1).All(s => s.SourceVisibility is { Status: "unknown", Reason: "waiting-for-physics" }),
+            "retired-position cache must admit every current target below the 256-target cap");
+        Check(fixture.Targets().Length == 17 && current.All(p => fixture.Targets().Contains(p)),
+            "cache replacement schedules the current scene without widening the query budget");
+        Check(sources[0].SourceVisibility is { Status: "clear", ClearSampleCount: 9 },
+            "cache admission preserves the continuously present measured target");
+        Check(sources.Skip(1).All(s => s.SourceVisibility!.MeasurementSequence is null),
+            "newly admitted positions start unknown without borrowing a retired verdict");
+        var measured = sources[0].SourceVisibility!.MeasuredAtTickMilliseconds;
+        fixture.Now += 60; fixture.Reply(0, 4);
+        var skipped = fixture.Apply(current).Rendered!.Sources!;
+        Check(skipped[0].SourceVisibility!.MeasuredAtTickMilliseconds == measured &&
+            skipped[0].SourceVisibility!.VolumeAgeMillisecondsAtCapture == 60,
+            "cache admission does not refresh a retained measurement on a budget skip");
+        Check(fixture.Targets()[0] != anchor,
+            "untested current targets retain priority over the measured anchor");
+        fixture.Now += 60; fixture.Reply(0);
+        Check(fixture.Apply(current).Rendered!.Sources!.All(s => s.SourceVisibility!.Status == "blocked"),
+            "new current targets change verdict only after their own complete measurement");
+        fixture.Now += 501;
+        Check(fixture.Apply(current).Rendered!.Sources!.All(s => s.SourceVisibility!.Reason == "stale-physics"),
+            "cache replacement retains the exact 500ms measurement expiry");
+    }
+
+    private static void PendingResponseAfterInvalidation()
+    {
+        using var fixture = new CacheFixture();
+        var position = new CameraVector3(2, 1, 3);
+        fixture.Apply(position);
+        var pendingSequence = fixture.Sequence;
+        fixture.Now += 10;
+        fixture.Invalidate();
+        fixture.Now++;
+        fixture.Apply(position);
+        Check(fixture.Sequence == pendingSequence, "fixture retains the original pending batch during recovery");
+        fixture.Now++;
+        fixture.Reply(9);
+        var recovered = fixture.Apply(position).Rendered!.Sources![0].SourceVisibility!;
+        Check(recovered.Status == "unknown" && recovered.MeasurementSequence is null,
+            "late response for a removed cache entry cannot revive a replacement at the same position");
+        fixture.Now += 60;
+        fixture.Apply(position);
+        fixture.Now++;
+        fixture.Reply(9);
+        Check(fixture.Apply(position).Rendered!.Sources![0].SourceVisibility!.Status == "clear",
+            "a replacement entry accepts its own new request after the retired response is discarded");
+    }
+
+    private sealed class CacheFixture : IDisposable
+    {
+        private static int nextId;
+        private readonly int pid = Environment.ProcessId + 230000 + nextId++;
+        private readonly MemoryMappedFile results, query;
+        private readonly MemoryMappedViewAccessor output, input;
+        private readonly PhysicsVisibilityClient client;
+        private ulong capture;
+        private EngineLightsSnapshot latest = null!;
+        public long Now = 10000;
+        public ulong Sequence => input.ReadUInt64(24);
+        public CacheFixture()
+        {
+            results = MemoryMappedFile.CreateNew($"Local\\CrimsonDesertTelemetry.PhysicsVisibilityResultV2.{pid}", PhysicsVisibilityClient.BatchBytes);
+            output = results.CreateViewAccessor();
+            client = new PhysicsVisibilityClient(pid, 987654321, () => Now, radius: 100);
+            query = MemoryMappedFile.OpenExisting($"Local\\CrimsonDesertTelemetry.PhysicsVisibilityQueryV2.{pid}");
+            input = query.CreateViewAccessor();
+        }
+        public EngineLightsSnapshot Apply(params CameraVector3[] positions)
+        {
+            var sources = positions.Select((p, n) => new RenderedLightSnapshot(n, p, new(1, 1, 1), 1, "point", null, null)).ToArray();
+            var camera = new CameraSnapshot(new(0, 2, 0), new(0, 1, 0), new(1, 0, 0), new(0, 0, 1), .1f, null, 50, 1.7f);
+            var rendered = new RenderLightsSnapshot("available", RenderLightReader.SourceName, ++capture, (uint)capture,
+                DateTimeOffset.UtcNow, 10, camera, sources, new(sources.Length, sources.Length, 0, 0));
+            latest = new EngineLightsSnapshot("available", EngineLightReader.SourceName, 100, [], new(0,0,0,0,0,0,0,0,0,0), null, rendered);
+            return client.Apply((0, 0, 0), latest);
+        }
+        public void Invalidate() => client.Apply((0, 0, 0), latest with { Rendered = RenderLightReader.Unavailable("fixture-unavailable") });
+        public CameraVector3[] Targets() => Enumerable.Range(0, (int)input.ReadUInt32(12)).Select(n =>
+        {
+            var offset = PhysicsVisibilityClient.HeaderBytes + n * PhysicsVisibilityClient.PacketBytes + 112;
+            return new CameraVector3(input.ReadSingle(offset), input.ReadSingle(offset + 4), input.ReadSingle(offset + 8));
+        }).ToArray();
+        public void Reply(uint clear, uint code = 1)
+        {
+            var bytes = new byte[PhysicsVisibilityClient.BatchBytes];
+            input.ReadArray(0, bytes, 0, bytes.Length);
+            BitConverter.TryWriteBytes(bytes.AsSpan(0), 0x53564443u);
+            for (var n = 0; n < BitConverter.ToUInt32(bytes, 12); n++)
+            {
+                var offset = PhysicsVisibilityClient.HeaderBytes + n * PhysicsVisibilityClient.PacketBytes;
+                BitConverter.TryWriteBytes(bytes.AsSpan(offset), 0x53564443u);
+                BitConverter.TryWriteBytes(bytes.AsSpan(offset + 12), 1u);
+                BitConverter.TryWriteBytes(bytes.AsSpan(offset + 28), code);
+                BitConverter.TryWriteBytes(bytes.AsSpan(offset + 56), (ulong)Now);
+                BitConverter.TryWriteBytes(bytes.AsSpan(offset + 76), 9u);
+                BitConverter.TryWriteBytes(bytes.AsSpan(offset + 80), clear);
+            }
+            output.Write(16, 1L); output.WriteArray(0, bytes, 0, 16);
+            output.WriteArray(24, bytes, 24, bytes.Length - 24); output.Write(16, 2L);
+        }
+        public void Dispose() { input.Dispose(); query.Dispose(); client.Dispose(); output.Dispose(); results.Dispose(); }
+    }
+
     private static void RadiusSelection()
     {
         var pid = Environment.ProcessId + 220000;

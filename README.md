@@ -4,6 +4,11 @@
 
 Inspect positions, colors and brightness of current light contributions from fires, candles, lanterns and glass/crystal lamps, alongside the player and render camera. Use the data in your own overlays, tools and lighting integrations.
 
+**Fixed in 2.2.7:** retired light positions no longer fill the visibility cache
+and prevent current lights from being queried during rapid effect changes.
+New targets still need their own fresh physics result; query limits and unknown
+handling are unchanged. [2.2.7 release notes](docs/releases/v2.2.7.md).
+
 **New in 2.2.6:** restores player/camera, all-around light capture, Ambient/GI
 and per-light physics data for **Crimson Desert patch 2.04.05** (Steam build
 26361232), verified with the new DLC installed. See the
@@ -305,7 +310,7 @@ under the normal packaged filename. See [INI validation](docs/INI_VALIDATION.md)
 
 GitHub CI covers managed/API tests and native capture, guard and UI tests. Current acceptance and outstanding checks are recorded in [the handover](docs/HANDOVER.md); historical test totals are not a result for a new package.
 
-See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.6.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [current public description drafts](docs/PUBLIC_DESCRIPTIONS.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
+See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.7.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [current public description drafts](docs/PUBLIC_DESCRIPTIONS.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
 
 ## Credits and scope
 

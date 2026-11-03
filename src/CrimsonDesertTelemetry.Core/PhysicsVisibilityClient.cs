@@ -24,6 +24,7 @@ public sealed class PhysicsVisibilityClient : IDisposable
     private long _retry, _lastRequest;
     private ulong _sequence, _consumed;
     private byte[]? _pending;
+    private Entry[] _pendingEntries = [];
     private bool _faulted;
     private readonly List<Entry> _cache = [];
 
@@ -90,8 +91,25 @@ public sealed class PhysicsVisibilityClient : IDisposable
             if (targets.Count == MaximumTargets) break;
             targets.Add(position);
         }
+        // Retired positions may otherwise fill the bounded cache for five seconds
+        // and prevent a much smaller current scene from being queried at all.
+        // Protect every current match before admitting new targets; only retire an
+        // entry no selected target uses. New positions still start unknown.
+        var currentEntries = targets.Select(Find).OfType<Entry>().ToHashSet();
         foreach (var position in targets)
-            if (Find(position) is null && _cache.Count < MaximumTargets * 2) _cache.Add(new Entry(position));
+        {
+            if (Find(position) is not null) continue;
+            if (_cache.Count >= MaximumTargets * 2)
+            {
+                var retired = _cache.Where(e => !currentEntries.Contains(e))
+                    .MinBy(e => Math.Max(e.Measured, e.LastRequested));
+                if (retired is null) continue;
+                _cache.Remove(retired);
+            }
+            var entry = new Entry(position);
+            _cache.Add(entry);
+            currentEntries.Add(entry);
+        }
 
         if (!_faulted && now - _lastRequest >= 50 &&
             (_pending is null || _consumed == _sequence || now - _lastRequest > 400))
@@ -105,7 +123,7 @@ public sealed class PhysicsVisibilityClient : IDisposable
             if (next.Length > 0)
             {
                 foreach (var item in next) item.Entry!.LastRequested = now;
-                Publish(player, camera, next.Select(v => v.Position).ToArray(), rendered, now);
+                Publish(player, camera, next.Select(v => v.Position).ToArray(), next.Select(v => v.Entry!).ToArray(), rendered, now);
             }
         }
         SourceVisibilitySnapshot Resolve(CameraVector3 position)
@@ -144,7 +162,7 @@ public sealed class PhysicsVisibilityClient : IDisposable
         .MinBy(e => DistanceSquared(e.Position, p));
 
     private void Publish((float X, float Y, float Z) player, CameraVector3 camera, CameraVector3[] targets,
-        RenderLightsSnapshot rendered, long now)
+        Entry[] entries, RenderLightsSnapshot rendered, long now)
     {
         var p = new byte[BatchBytes];
         Put(p, 0, 0x50564443u); Put(p, 4, 2u); Put(p, 8, (uint)BatchBytes);
@@ -162,7 +180,7 @@ public sealed class PhysicsVisibilityClient : IDisposable
         _write.Write(16, seq + 1); Thread.MemoryBarrier();
         _write.WriteArray(0, p, 0, 16); _write.WriteArray(24, p, 24, BatchBytes - 24);
         Thread.MemoryBarrier(); _write.Write(16, seq + 2);
-        _pending = p; _lastRequest = now;
+        _pending = p; _pendingEntries = entries; _lastRequest = now;
     }
 
     private void ReadResponse(long now)
@@ -196,19 +214,22 @@ public sealed class PhysicsVisibilityClient : IDisposable
                 if (completed < U64(p,o+48) || completed > (ulong)now || (ulong)now-completed > MaximumAgeMilliseconds) return;
             }
             _consumed = _sequence;
-            for (var n = 0; n < U32(p,12); n++) ApplyResponse(p, HeaderBytes + n*PacketBytes, now);
+            for (var n = 0; n < U32(p,12); n++) ApplyResponse(p, HeaderBytes + n*PacketBytes, _pendingEntries[n], now);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
         {
             _read?.Dispose(); _result?.Dispose(); _read = null; _result = null; _retry = now + 250;
         }
     }
-    private void ApplyResponse(byte[] batch, int offset, long now)
+    private void ApplyResponse(byte[] batch, int offset, Entry e, long now)
     {
             var p = batch.AsSpan(offset,PacketBytes).ToArray();
             var code = U32(p,28);
             if (code == 3) _faulted = true;
-            var e = Find(Vector(p,112)); if (e is null) return;
+            // Admission or a feed reset can remove an entry while its request is
+            // in flight. Do not attach that late result to a replacement position.
+            // A native fault still latches above, even if the old entry is gone.
+            if (!_cache.Contains(e)) return;
             if (code == 4) // Budget skip is NOT a fresh measurement or a failed ray.
             { if (e.Measured == 0) e.Reason = "physics-budget-pending"; return; }
             e.LastChecked = now;

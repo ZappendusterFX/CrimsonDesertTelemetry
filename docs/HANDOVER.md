@@ -1,4 +1,35 @@
-# Current checkpoint — 2026-11-03, static corridor clarification; cause still under review
+# Current checkpoint — 2026-11-03, effect recording proves cache-admission starvation
+
+The owner authorizes necessary CDT/Hue fixes and remains the only installer.
+The later 30s effect recording reveals a concrete pre-existing CDT defect:
+1,303 outside-physics-budget observations despite at most112 reconstructed
+current targets, including1,206 observations inside35GU. Retired positions fill
+512 cache entries for5s and prevent new current targets from being requested.
+This supersedes the earlier conditional recommendation to leave CDT unchanged;
+it does not prove the withdrawn moving-light/lantern interpretation.
+
+Branch codex/physics-visibility-cache-admission fixes managed admission only:
+protect current matches, evict least-recent retired entries when needed, start
+new entries unknown and bind pending responses to their original cache entries.
+No native/profile/radius/query-budget/TTL/fairness-policy or raw-schema changes.
+Actual-client pressure test fails before/pass after; late-response mutant fails;
+all79 managed tests pass. No install/game input/lamp output or repeatedAN/AUS.
+
+[Diagnosis and tests](PHYSICS-VISIBILITY-CACHE-20261103.md).
+Immutable2.2.7 production ZIP is built/validated:1,061,211bytes, SHA256
+69CFE94F305806D65CC7D16BB000C87C85C51C3B6706136DC2537BC99CA23820.
+Maintained builder/self-test/expanded/ZIP checks and exact packaged-Core focused
+tests pass. Core2.2.7.0 embeds the unchanged exact26361232 definition; native
+source/definitions unchanged, both research switchesOFF, all9 featuresON, INI
+byte-identical2.2.6. Rebuilt native ASI is not byte-identical; no new native40/40
+run is claimed. [Validation](releases/v2.2.7-validation.md).
+
+ZIP:artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.7-ModManagers.zip.
+Pair with separately prepared CrimsonHue1.0.3 (new local output response).
+No install/game acceptance/publication. Next: hand the immutable package paths
+to the owner for their installation; no assistant deployment or waiting.
+
+# Previous checkpoint — 2026-11-03, static corridor clarification; cause still under review
 
 Owner explicitly clarifies NO combat/moving scene lights: walk corridor forward,
 180deg turn/back,180deg/forward. Supplied image shows fixed baskets/daylight.
