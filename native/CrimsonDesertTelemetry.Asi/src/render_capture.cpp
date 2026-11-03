@@ -611,14 +611,16 @@ bool Prepare()
 // this field/anchor to another profile/build; relocate and re-verify after updates.
 bool InputAnchorsVerified(uint64_t moduleBase)
 {
-    if (contract::BuildId != "25477059" || contract::HookRva != 0x3DA97DA || !CheckCapturePreflight(moduleBase)) return false;
+    const bool recovered = contract::BuildId == "26361232" && contract::HookRva == 0x40A1B33;
+    if ((!recovered && !(contract::BuildId == "25477059" && contract::HookRva == 0x3DA97DA)) ||
+        !CheckCapturePreflight(moduleBase)) return false;
     constexpr std::array<uint8_t, 7> expected{0x49,0x8B,0xB5,0x28,0x06,0,0};
     std::array<uint8_t, 7> bytes{};
-    if (!ch::mem::SafeRead(reinterpret_cast<void*>(moduleBase + 0x3DA9406), bytes.data(), bytes.size()) || bytes != expected)
+    if (!ch::mem::SafeRead(reinterpret_cast<void*>(moduleBase + (recovered ? 0x40A175F : 0x3DA9406)), bytes.data(), bytes.size()) || bytes != expected)
         return false;
     constexpr std::array<uint8_t, 12> bind{0x4C,0x8B,0xC6,0x48,0x8B,0xD0,0x48,0x8B,0xCB,0x41,0xFF,0xD2};
     std::array<uint8_t, 12> binding{};
-    return ch::mem::SafeRead(reinterpret_cast<void*>(moduleBase + 0x3DA94BC), binding.data(), binding.size()) &&
+    return ch::mem::SafeRead(reinterpret_cast<void*>(moduleBase + (recovered ? 0x40A1815 : 0x3DA94BC)), binding.data(), binding.size()) &&
         binding == bind;
 }
 }
@@ -686,7 +688,7 @@ void CaptureAmbient(uint64_t sky, uint64_t command, uint64_t path)
     __try
     {
         uint64_t outer{};
-        if ((phase == Phase::Discover || phase == Phase::Ready) && Read(sky + 0x98, outer) && outer)
+        if ((phase == Phase::Discover || phase == Phase::Ready) && Read(sky + AmbientSourceOffset, outer) && outer)
         {
             const auto previous = phase;
             Record(outer, command, 0, sky, true);
@@ -709,7 +711,6 @@ void CaptureAmbient(uint64_t sky, uint64_t command, uint64_t path)
 
 bool CheckAmbientPreflight(uint64_t moduleBase)
 {
-    if constexpr (CameraRecoveryDiagnostic) return false; // No partial sky port on the recovery build.
     if (!CheckCapturePreflight(moduleBase)) return false;
     IMAGE_DOS_HEADER dos{}; IMAGE_NT_HEADERS64 nt{};
     if (!Read(moduleBase, dos) || !Read(moduleBase + static_cast<uint32_t>(dos.e_lfanew), nt)) return false;
@@ -732,8 +733,8 @@ bool CheckAmbientPreflight(uint64_t moduleBase)
     };
     if (!match(AmbientHookRvas[0], AmbientSignatureA) || !match(AmbientHookRvas[1], AmbientSignatureB)) return false;
     // Verify dispatch immediately before both hooks and the source-field loads.
-    const std::array<uint8_t, 7> sourceA{0x48,0x8B,0xAF,0x98,0x00,0x00,0x00};
-    const std::array<uint8_t, 7> sourceB{0x48,0x8B,0x9D,0x98,0x00,0x00,0x00};
+    const std::array<uint8_t, 7> sourceA{0x48,0x8B,0xAF,static_cast<uint8_t>(AmbientSourceOffset),0x00,0x00,0x00};
+    const std::array<uint8_t, 7> sourceB{0x48,0x8B,0x9D,static_cast<uint8_t>(AmbientSourceOffset),0x00,0x00,0x00};
     return match(AmbientHookRvas[0] - 6, AmbientDispatchSignature) && match(AmbientHookRvas[1] - 6, AmbientDispatchSignature) &&
         match(AmbientSourceRvas[0], sourceA) && match(AmbientSourceRvas[1], sourceB);
 }

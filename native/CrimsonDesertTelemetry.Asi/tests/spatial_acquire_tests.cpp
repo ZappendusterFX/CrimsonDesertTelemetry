@@ -60,18 +60,18 @@ FakeObject fakeQueue{queueTable.data()}, removedFence{fenceTable.data()};
 
 struct Game
 {
-    std::vector<uint8_t> owner = std::vector<uint8_t>(0x4C0), renderer = std::vector<uint8_t>(0x668),
+    std::vector<uint8_t> owner = std::vector<uint8_t>(0x4C0), renderer = std::vector<uint8_t>(cdt::spatial::RendererGiOffset + 8),
         outer = std::vector<uint8_t>(0x38), storage = std::vector<uint8_t>(0x108),
-        command = std::vector<uint8_t>(0x808), holder = std::vector<uint8_t>(0x10),
-        sceneOwner = std::vector<uint8_t>(0x430), sceneData = std::vector<uint8_t>(0x90);
+        command = std::vector<uint8_t>(cdt::native_contract::CommandHolderOffset + 8), holder = std::vector<uint8_t>(0x10),
+        sceneOwner = std::vector<uint8_t>(cdt::native_contract::SceneRootPointerOffset + 8), sceneData = std::vector<uint8_t>(0x90);
     Game(ID3D12Resource* volume, ID3D12GraphicsCommandList* list)
     {
-        Put(owner, 0x10, Address(renderer)); Put(renderer, 0x660, Address(owner));
+        Put(owner, 0x10, Address(renderer)); Put(renderer, cdt::spatial::RendererGiOffset, Address(owner));
         Put(owner, 0x4B8, Address(outer)); Put(outer, 0x30, Address(storage));
         Put(storage, 0x10, Address(outer)); Put(storage, 0x100, reinterpret_cast<uint64_t>(volume));
         Put(storage, 0xD0, 64u); Put(storage, 0xD4, 32u); Put(storage, 0xD8, 264u);
-        Put(command, 0x800, Address(holder)); List(list);
-        Put(owner, 8, Address(sceneOwner)); Put(sceneOwner, 0x428, Address(sceneData));
+        Put(command, cdt::native_contract::CommandHolderOffset, Address(holder)); List(list);
+        Put(owner, 8, Address(sceneOwner)); Put(sceneOwner, cdt::native_contract::SceneRootPointerOffset, Address(sceneData));
         // GI constants whose reference decodes inside clipmap 1 (status Ok).
         for (unsigned axis = 0; axis < 3; ++axis) Put(owner, 0x20 + 0x10 + axis * 4, 1.0f);
         Put(owner, 0x20 + 0x150 + 12, 1.0f);

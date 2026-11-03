@@ -22,28 +22,35 @@ static_assert(sizeof(AmbientRecordHeader) == 64);
 // signature is still unique image-wide and every surrounding anchor matched at the
 // shifted address; offline evidence in artifacts/recovery/20260911-build-25246367/.
 // These are exact-executable addresses: promote them with the build, never alone.
+constexpr bool RecoveryGameBuild = native_contract::BuildId == "26361232";
 constexpr bool UpdatedGameBuild = native_contract::BuildId == "25477059";
-constexpr std::array<uint32_t, 2> AmbientHookRvas = UpdatedGameBuild
+constexpr uint32_t AmbientSourceOffset = RecoveryGameBuild ? 0xA8 : 0x98;
+constexpr std::array<uint32_t, 2> AmbientHookRvas = RecoveryGameBuild
+    ? std::array<uint32_t, 2>{0x3C094F7, 0x3C0D573}
+    : UpdatedGameBuild
     ? std::array<uint32_t, 2>{0x3931317, 0x3934313}
     : std::array<uint32_t, 2>{0x384BD77, 0x384ED63};
-// This private recovery contract deliberately exercises only filtered ManyLights.
-// The relocated A pass is recorded, but its changed source fields are not enabled.
-constexpr bool CameraRecoveryDiagnostic = native_contract::ResearchContract &&
-    native_contract::BuildId == "26361232";
-static_assert((CameraRecoveryDiagnostic && native_contract::SkyProducerRva == 0x3C094F7) ||
-    AmbientHookRvas[0] == native_contract::SkyProducerRva);
+// The one-shot recovery log stays limited to this exact private contract.
+constexpr bool CameraRecoveryDiagnostic = native_contract::ResearchContract && RecoveryGameBuild;
+static_assert(AmbientHookRvas[0] == native_contract::SkyProducerRva);
 // The [sky+0x98] source-field load preceding each hook. Held here rather than
 // inline so one relocation touches one place.
-constexpr std::array<uint32_t, 2> AmbientSourceRvas = UpdatedGameBuild
+constexpr std::array<uint32_t, 2> AmbientSourceRvas = RecoveryGameBuild
+    ? std::array<uint32_t, 2>{0x3C091EF, 0x3C0D4AB}
+    : UpdatedGameBuild
     ? std::array<uint32_t, 2>{0x393100F, 0x393424B}
     : std::array<uint32_t, 2>{0x384BA6F, 0x384EC9B};
-constexpr std::array<uint8_t, 15> AmbientSignatureA = UpdatedGameBuild
+constexpr std::array<uint8_t, 15> AmbientSignatureA = RecoveryGameBuild
+    ? std::array<uint8_t, 15>{0x48,0x8B,0xCB,0xE8,0x71,0xD9,0xF8,0xFF,0x48,0x8B,0x03,0x48,0x8B,0xCB,0xFF}
+    : UpdatedGameBuild
     ? std::array<uint8_t, 15>{0x48,0x8B,0xCB,0xE8,0x81,0xD3,0xF8,0xFF,0x48,0x8B,0x03,0x48,0x8B,0xCB,0xFF}
     : std::array<uint8_t, 15>{0x48,0x8B,0xCB,0xE8,0x81,0xD0,0xF8,0xFF,0x48,0x8B,0x03,0x48,0x8B,0xCB,0xFF};
-constexpr std::array<uint8_t, 15> AmbientSignatureB = UpdatedGameBuild
+constexpr std::array<uint8_t, 15> AmbientSignatureB = RecoveryGameBuild
+    ? std::array<uint8_t, 15>{0x48,0x8B,0xCF,0xE8,0xF5,0x98,0xF8,0xFF,0x48,0x8B,0x07,0x48,0x8B,0xCF,0xFF}
+    : UpdatedGameBuild
     ? std::array<uint8_t, 15>{0x48,0x8B,0xCF,0xE8,0x85,0xA3,0xF8,0xFF,0x48,0x8B,0x07,0x48,0x8B,0xCF,0xFF}
     : std::array<uint8_t, 15>{0x48,0x8B,0xCF,0xE8,0x95,0xA0,0xF8,0xFF,0x48,0x8B,0x07,0x48,0x8B,0xCF,0xFF};
-constexpr std::array<uint8_t, 6> AmbientDispatchSignature = UpdatedGameBuild
+constexpr std::array<uint8_t, 6> AmbientDispatchSignature = (RecoveryGameBuild || UpdatedGameBuild)
     ? std::array<uint8_t, 6>{0xFF,0x90,0x38,0x03,0x00,0x00}
     : std::array<uint8_t, 6>{0xFF,0x90,0x28,0x03,0x00,0x00};
 bool CheckAmbientPreflight(uint64_t moduleBase);

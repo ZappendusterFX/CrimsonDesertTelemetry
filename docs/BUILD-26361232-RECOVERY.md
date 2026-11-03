@@ -1,6 +1,73 @@
 # Patch 2.04.05 / build 26361232 recovery — 2026-11-03, Codex
 
-## Current remaining-port proposal and automatic-review boundary
+## Current continuation: owner-approved complete existing-path port
+
+The owner explicitly answered yes to applying the documented Upstream, Ambient/
+GI and physics port with targeted checks and a new ZIP. This authorizes the
+previously rejected combined source change; the approved retry was accepted.
+No rejected action was bypassed or indirectly applied before that permission.
+The manual AN/AUS/full historical-game-test waiver remains in rule9a. Assistants
+still never install or update deployed files. The installed .4 remains untouched.
+
+Implementation follows the measured table below. Upstream gets its current
+owner+628 load/command-restore and SRV-binder guards (12bytes each), bringing the
+exact native context count to7. Both new Ambient producer/signature/source
+checks are active, source field+A8; the temporary full-sky refusal is removed.
+GI sampling selects Dispatch3B744D0 with its exact26-byte entry, Exposure return
+38F774A, renderer GI688, and the already proven scene430/command8C0 fields.
+Exposure context selects renderer sky690 and exposure6B8, preserving its bounded
+D8..117 diagnostic-only cache. Physics selects the new exact EXE hash, ray/shape
+entries, collector/method and natural callers; all query profile/budget/lifetime/
+thread/context/fault/expiry rules remain. Existing decoder/API layouts are reused.
+No new telemetry source or runtime scanning/fallback was added.
+
+Targeted verification:
+
+- 17 affected native cases were selected, covering natural physics observation,
+  GI acquisition, exposure cache, build/preflight guards, bridge, direct/compute/
+  presentation capture, paired input/upstream, Ambient/shared/first Sky and thunks.
+  Fifteen passed initially. The two failures were obsolete test fixtures: Ambient
+  renderer links and the assumption Ambient lies outside one contiguous native
+  code interval. Fixtures now use reviewed constants and disjoint contract pages;
+  the two cases pass on rerun. Product guard strictness was not weakened.
+- Existing managed --physics-visibility test passes. The full historical game/
+  manual test suite was not repeated, and no AN/AUS response is claimed.
+- Existing native preflight executable verifies hook/all7 contexts and Ambient
+  hook bytes against the actual EXE. Its synthetic mutation/section rejection
+  controls pass.
+- Read-only checks on the STILL INSTALLED .4 confirm original new ray, shape,
+  Dispatch and both Ambient entry bytes, plus12-slot collector/method shape.
+  This is entry/layout evidence, not runtime execution of the new integration.
+- Exact packaged embedded profile remains research, automatic promotion OFF,
+  contexts7. Packaged ASI equals the checked native build. All9 requested feature
+  settings are ON. Expanded folder/ZIP payload/profile validators pass.
+
+Private evidence: update-26361232-integration-initial-tests-20261103.log and
+update-26361232-integration-rechecked-tests-20261103.log retain initial/updated
+fixture results. update-26361232-integrated1-package-check-20261103.json records
+actual payload hashes, mode and live-original-code checks. All live source tests
+for this operation were read-only and issued no game calls or new installed hooks.
+
+Immutable ZIP:
+artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.6-build26361232-integrated.1-ModManagers.zip
+SHA256 C1E1846B950AB65CFBA8C7883450F099FCC82C1BE1D741BC61536938D21ACEE0.
+ASI SHA256 12DD58FE678F41F5E40509AB060FED2CE35ED46B0A65CE36EED1E42DBC6C68E6.
+Core SHA256 10CD613A62C0E0ADF587368C721F641887B67DC3854C3DA3929473A4B1E08DB1.
+Built by the maintained script with -NativeBuildId26361232 -Research off
+-IntegratedDiagnostic -IniOverrides @{'Lights.Upstream'='1'}.
+Server, notices, both HUDs, lights/ManyLights/input, Ambient and source visibility
+are enabled. General research instrumentation is compiled out. Native contract
+remains explicitly private/research, with no full new-runtime acceptance claim.
+No new shader identity/packing claim is made; the failed current archive-index
+reader and preserved decoder evidence remain documented below.
+
+No package was installed/published and no physical output or game input changed.
+All earlier release/diagnostic ZIPs remain immutable. Next: owner installs this
+complete ZIP with game closed, restarts normally and reports. Then use passive
+fresh feed/status checks; do not request the waived manual comparison again.
+
+
+## Previous remaining-port proposal and automatic-review boundary
 
 Owner exception,2026-11-03: no repeated AN/AUS comparisons or full repetition of
 historical game tests. Continue from preserved controls and targeted build/code/

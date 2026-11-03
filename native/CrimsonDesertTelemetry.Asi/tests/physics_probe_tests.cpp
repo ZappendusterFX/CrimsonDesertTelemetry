@@ -58,7 +58,7 @@ void Setup()
     Put(query.shape, 0, base + 0x200);
     Put(query.query, 0x28, reinterpret_cast<std::uint64_t>(query.shape.data()));
     Put(query.query, 0x30, Vec3{-529.755f, 611.292f, -420.300f});
-    Put(query.collector, 0, base + 0x5D13528);
+    Put(query.collector, 0, base + CollectorRva);
     Put(query.collector, 0x20, reinterpret_cast<std::uint64_t>(query.collector.data()) + 0x30);
     Put(query.collector, 0xC, std::uint32_t{1});
     Put(query.collector, 0x10, .25);
@@ -99,7 +99,7 @@ void SetupControl()
     // Fixture takes the natural snapshot then supplies its pre-call empty count.
     Put(work.snapshot.collector, 0xC, std::uint32_t{0});
     work.mode = "replay";
-    work.caller = base + 0x32554FA;
+    work.caller = base + ShapeCallerRva;
     work.stackLow = reinterpret_cast<std::uint64_t>(&query);
     work.stackHigh = work.stackLow + sizeof query;
     calls = 0; mockMode = MockMode::Match;
@@ -131,7 +131,7 @@ void SetupRayControl()
     std::fill(query.query.begin() + 0xA0, query.query.begin() + 0x100, std::uint8_t{0xCC});
     RayHook(worldBytes.data(), query.query.data(), query.collector.data());
     Put(work.snapshot.collector, 0xC, std::uint32_t{0});
-    work.mode = "rayreplay"; work.caller = base + 0x32551AF;
+    work.mode = "rayreplay"; work.caller = base + RayCallerRva;
     work.stackLow = reinterpret_cast<std::uint64_t>(&query);
     work.stackHigh = work.stackLow + sizeof query;
     calls = 0; rayFaultAt = 0; rayExpireAt = 0; rayBatchExpireAt = 0; mockMode = MockMode::Match; originalRay = MockRayReplay;

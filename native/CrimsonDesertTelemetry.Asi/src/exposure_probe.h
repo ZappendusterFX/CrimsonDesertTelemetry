@@ -3,9 +3,12 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include "native_contract.generated.h"
 
 namespace cdt::render
 {
+inline constexpr uint32_t RendererSkyOffset = native_contract::BuildId == "26361232" ? 0x690 : 0x668;
+inline constexpr uint32_t RendererExposureOffset = native_contract::BuildId == "26361232" ? 0x6B8 : 0x690;
 // Private diagnostic appendix. This is the engine's GPU-derived CPU cache,
 // NOT a GPU exposure sample fenced with ambient. Its source-frame age is unknown.
 // +118 contains pointers: copy ONLY +D8..+117 (64 bytes), never all 80 CBV bytes.
@@ -45,8 +48,8 @@ bool ReadExposureCache(uint64_t sky, ExposureCacheSample& result, Reader read)
     };
     uint64_t back{}, check{}; uint8_t mode{};
     if (!ExposurePointer(sky) || !pointer(sky + 0x10, s.renderer) ||
-        !pointer(s.renderer + 0x668, back) || back != sky ||
-        !pointer(s.renderer + 0x690, s.owner) ||
+        !pointer(s.renderer + RendererSkyOffset, back) || back != sky ||
+        !pointer(s.renderer + RendererExposureOffset, s.owner) ||
         !pointer(s.owner + 0x10, back) || back != s.renderer ||
         !pointer(s.owner + 0xC0, s.outer) || !pointer(s.outer + 0x30, s.inner) ||
         !pointer(s.inner + 0x168, s.resource) || !pointer(s.owner + 0xD0, s.readbackOwner) ||
@@ -58,8 +61,8 @@ bool ReadExposureCache(uint64_t sky, ExposureCacheSample& result, Reader read)
     // Detect lifetime/bank changes while chasing the known chain. This is a
     // double-read control, not an engine-owned synchronization guarantee.
     if (!pointer(sky + 0x10, check) || check != s.renderer ||
-        !pointer(s.renderer + 0x668, check) || check != sky ||
-        !pointer(s.renderer + 0x690, check) || check != s.owner ||
+        !pointer(s.renderer + RendererSkyOffset, check) || check != sky ||
+        !pointer(s.renderer + RendererExposureOffset, check) || check != s.owner ||
         !pointer(s.owner + 0x10, check) || check != s.renderer ||
         !pointer(s.owner + 0xC0, check) || check != s.outer ||
         !pointer(s.outer + 0x30, check) || check != s.inner ||

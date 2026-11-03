@@ -22,10 +22,19 @@ namespace
 {
 // Exact-build spatial acquisition. The private all-on package exercises this
 // candidate without promoting the build to a supported release.
+constexpr bool RecoveryGameBuild = native_contract::BuildId == "26361232";
+constexpr uint32_t RendererGiOffset = RecoveryGameBuild ? 0x688 : 0x660;
 constexpr bool UpdatedGameBuild = native_contract::BuildId == "25477059";
-constexpr uint32_t DispatchRva = UpdatedGameBuild ? 0x389C000 : 0x37B6520;
-constexpr uint32_t ExposureReturnRva = UpdatedGameBuild ? 0x362595A : 0x3547264;
-constexpr std::array<uint8_t, 14> Signature{0x48, 0x89, 0x5C, 0x24, 0x10, 0x48, 0x89, 0x6C, 0x24, 0x18, 0x56, 0x57, 0x41, 0x56};
+constexpr uint32_t DispatchRva = RecoveryGameBuild ? 0x3B744D0 : UpdatedGameBuild ? 0x389C000 : 0x37B6520;
+constexpr uint32_t ExposureReturnRva = RecoveryGameBuild ? 0x38F774A : UpdatedGameBuild ? 0x362595A : 0x3547264;
+constexpr auto DispatchSignature()
+{
+    if constexpr (RecoveryGameBuild)
+        return std::array<uint8_t, 26>{0x48,0x89,0x5C,0x24,0x08,0x48,0x89,0x6C,0x24,0x10,0x48,0x89,0x74,0x24,0x18,0x48,0x89,0x7C,0x24,0x20,0x41,0x56,0x48,0x83,0xEC,0x40};
+    else
+        return std::array<uint8_t, 14>{0x48,0x89,0x5C,0x24,0x10,0x48,0x89,0x6C,0x24,0x18,0x56,0x57,0x41,0x56};
+}
+constexpr auto Signature = DispatchSignature();
 using DispatchFn = uint64_t(*)(uint64_t, uint32_t, uint32_t, uint32_t);
 DispatchFn originalDispatch{};
 void* dispatchTarget{};
@@ -68,13 +77,13 @@ bool Resolve(uint64_t owner, uint64_t command, ID3D12Resource*& resource, ID3D12
 {
     uint64_t renderer{}, back{}, outer{}, storage{}, holder{}, sceneOwner{}, sceneData{};
     uint32_t width{}, height{}, depth{};
-    if (!Read(owner + 0x10, renderer) || !Read(renderer + 0x660, back) || back != owner ||
+    if (!Read(owner + 0x10, renderer) || !Read(renderer + RendererGiOffset, back) || back != owner ||
         !Read(owner + 0x4B8, outer) || !Read(outer + 0x30, storage) ||
         !Read(storage + 0x10, back) || back != outer || !Read(storage + 0x100, reinterpret_cast<uint64_t&>(resource)) || !resource ||
         !Read(storage + 0xD0, width) || !Read(storage + 0xD4, height) || !Read(storage + 0xD8, depth) ||
-        width != 64 || height != 32 || depth != 264 || !Read(command + 0x800, holder) ||
+        width != 64 || height != 32 || depth != 264 || !Read(command + native_contract::CommandHolderOffset, holder) ||
         !Read(holder + 8, reinterpret_cast<uint64_t&>(nativeList)) || !nativeList ||
-        !Read(owner + 8, sceneOwner) || !Read(sceneOwner + 0x428, sceneData) ||
+        !Read(owner + 8, sceneOwner) || !Read(sceneOwner + native_contract::SceneRootPointerOffset, sceneData) ||
         !Read(sceneData + 0x20, frame) || !Read(owner + 0x20, giArray)) return false;
     
     auto desc = resource->GetDesc();
@@ -137,7 +146,7 @@ uint64_t Dispatch(uint64_t command, uint32_t x, uint32_t y, uint32_t z, uint64_t
         if(observeSources)
         {
             uint64_t sceneOwner{},sceneData{};std::array<float,3> camera{};
-            if(Read(owner+8,sceneOwner)&&Read(sceneOwner+0x428,sceneData)&&Read(sceneData+0x80,camera))
+            if(Read(owner+8,sceneOwner)&&Read(sceneOwner+native_contract::SceneRootPointerOffset,sceneData)&&Read(sceneData+0x80,camera))
                 sdf::acquire::ObserveContext(list,giArray,camera,frame,GetTickCount64(),giBefore==giArray);
         }
         std::lock_guard<std::mutex> lock(acquireMutex);

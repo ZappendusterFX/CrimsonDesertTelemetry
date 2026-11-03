@@ -1,4 +1,28 @@
-# Current checkpoint — 2026-11-03, remaining anchors recovered; bundled change rejected
+# Current checkpoint — 2026-11-03, owner-approved full integration package ready
+
+Owner explicitly approved the documented combined Upstream/Ambient-GI/physics
+source port, targeted checks and ZIP after the automatic-review rejection.
+Approval was granted; the scoped changes/build succeeded. AN/AUS/full historical
+game retests remain waived under rule9a. Installation stays exclusively owner-only.
+
+Build26361232 now selects the recovered input anchors, both Ambient producers/
+source+A8, renderer GI688/sky690/exposure6B8, current Dispatch/Exposure context and
+exact physics hash/entries/collector/callers. Existing decoders, budgets, freshness,
+thread/lifetime and fault checks remain. Seven exact native contexts are guarded.
+17 affected native checks are green (15 first pass, two fixture-corrected reruns),
+targeted managed physics exchange passes, native/ambient EXE-byte checks pass.
+Original live ray/shape/Dispatch/Ambient entry bytes and collector shape also match.
+
+Immutable private integrated.1: all nine normal feature toggles ON; research code
+compiled OUT, exact contract still research/unpromoted. Expanded/ZIP and actual
+embedded-profile/config/ASI checks pass. ZIP SHA256
+C1E1846B950AB65CFBA8C7883450F099FCC82C1BE1D741BC61536938D21ACEE0.
+Details: [BUILD-26361232-RECOVERY.md](BUILD-26361232-RECOVERY.md).
+Not installed/game-tested, no game writes/input, physical output or publication.
+Next: owner installs the complete integrated.1 ZIP with game closed, starts
+normally and reports; then passively check requested feeds, no repeated AN/AUS.
+
+# Previous checkpoint — 2026-11-03, remaining anchors recovered; bundled change rejected
 
 Owner explicitly declines repeated AN/AUS and full historical game retesting;
 rule9a and CLAUDE mirror record the exception. Diagnostic.4's measured filtered

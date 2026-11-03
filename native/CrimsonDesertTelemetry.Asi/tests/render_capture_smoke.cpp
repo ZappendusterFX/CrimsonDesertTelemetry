@@ -450,10 +450,10 @@ int main(int argc, char** argv)
         Hr(device->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&desc,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&skySource)),"sky source");
         list->CopyBufferRegion(skySource.Get(),0,upload.Get(),2048,AmbientBytes);
         barrier.Transition.pResource=skySource.Get(); list->ResourceBarrier(1,&barrier);
-        std::array<uint8_t,0x200> skyInner{}; std::array<uint8_t,0x38> skyOuter{}; std::array<uint8_t,0xA0> skyOwner{};
+        std::array<uint8_t,0x200> skyInner{}; std::array<uint8_t,0x38> skyOuter{}; std::array<uint8_t,AmbientSourceOffset + 8> skyOwner{};
         Put(skyInner,0xC0,uint32_t{16}); Put(skyInner,0xC4,uint32_t{64});
         Put(skyInner,0x168,reinterpret_cast<uint64_t>(skySource.Get()));
-        Put(skyOuter,0x30,reinterpret_cast<uint64_t>(skyInner.data())); Put(skyOwner,0x98,reinterpret_cast<uint64_t>(skyOuter.data()));
+        Put(skyOuter,0x30,reinterpret_cast<uint64_t>(skyInner.data())); Put(skyOwner,AmbientSourceOffset,reinterpret_cast<uint64_t>(skyOuter.data()));
         InitializeCaptureForTest(reinterpret_cast<uint64_t>(fakeBase)); EnableSkyForTest();
         Check(!CaptureReady(), "loading world opened the SDF acquisition gate");
         const auto capture=[&](bool sky) {
@@ -529,15 +529,15 @@ int main(int argc, char** argv)
                 if (entry.path().filename().wstring().ends_with(suffix)) return entry.path();
             Check(false, "missing ambient run file"); return std::filesystem::path{};
         };
-        std::array<uint8_t,0xA0> sky{};
-        Put(sky,0x98,reinterpret_cast<uint64_t>(outer.data()));
-        std::array<uint8_t,0x698> renderer{};
+        std::array<uint8_t,AmbientSourceOffset + 8> sky{};
+        Put(sky,AmbientSourceOffset,reinterpret_cast<uint64_t>(outer.data()));
+        std::array<uint8_t,RendererExposureOffset + 8> renderer{};
         std::array<uint8_t,0x118> exposure{};
         std::array<uint8_t,0x38> exposureOuter{};
         std::array<uint8_t,0x170> exposureInner{};
         Put(sky,0x10,reinterpret_cast<uint64_t>(renderer.data()));
-        Put(renderer,0x668,reinterpret_cast<uint64_t>(sky.data()));
-        Put(renderer,0x690,reinterpret_cast<uint64_t>(exposure.data()));
+        Put(renderer,RendererSkyOffset,reinterpret_cast<uint64_t>(sky.data()));
+        Put(renderer,RendererExposureOffset,reinterpret_cast<uint64_t>(exposure.data()));
         Put(exposure,0x10,reinterpret_cast<uint64_t>(renderer.data()));
         Put(exposure,0xC0,reinterpret_cast<uint64_t>(exposureOuter.data()));
         Put(exposure,0xD0,reinterpret_cast<uint64_t>(counterOuter.data()));
@@ -590,7 +590,7 @@ int main(int argc, char** argv)
         Hr(allocator->Reset(),"ambient reset allocator"); Hr(list->Reset(allocator.Get(),nullptr),"ambient reset list");
         probe(1); Check(std::strcmp(CapturePhaseForTest(),"ready (no copy recorded)")==0,"duplicate frame captured");
         Put(constants,0x20,uint32_t{101}); Put(inner,0x168,reinterpret_cast<uint64_t>(source2.Get()));
-        Put(renderer,0x690,uint64_t{0}); // Ambient survives an unavailable exposure cache.
+        Put(renderer,RendererExposureOffset,uint64_t{0}); // Ambient survives an unavailable exposure cache.
         probe(1); Hr(list->Close(),"ambient second close"); queue->ExecuteCommandLists(1,lists); waitSample(2);
         Check(std::strcmp(CapturePhaseForTest(),"stopped")==0,"ambient limit did not stop capture");
         for(int n=0;n<10;++n) { probe(0); PollCapture(); }

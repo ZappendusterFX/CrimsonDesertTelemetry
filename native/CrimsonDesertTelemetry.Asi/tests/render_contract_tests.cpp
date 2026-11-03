@@ -172,16 +172,39 @@ int wmain(int argc, wchar_t** argv)
         memcpy(image.data+AmbientHookRvas[n]-6,AmbientDispatchSignature.data(),AmbientDispatchSignature.size());
     }
     image.Commit(AmbientSourceRvas[0],7); image.Commit(AmbientSourceRvas[1],7);
-    const std::array<uint8_t,7> sourceA{0x48,0x8B,0xAF,0x98,0,0,0}, sourceB{0x48,0x8B,0x9D,0x98,0,0,0};
+    const std::array<uint8_t,7> sourceA{0x48,0x8B,0xAF,static_cast<uint8_t>(AmbientSourceOffset),0,0,0},
+        sourceB{0x48,0x8B,0x9D,static_cast<uint8_t>(AmbientSourceOffset),0,0,0};
     memcpy(image.data+AmbientSourceRvas[0],sourceA.data(),7); memcpy(image.data+AmbientSourceRvas[1],sourceB.data(),7);
-    Check(CheckAmbientPreflight(image.Base()) == !CameraRecoveryDiagnostic,
-        "Ambient preflight disagrees with the supported/private-diagnostic contract");
+    Check(CheckAmbientPreflight(image.Base()), "valid ambient preflight rejected");
     for(auto rva : {AmbientHookRvas[0],AmbientHookRvas[1],AmbientHookRvas[0]-6,AmbientHookRvas[1]-6,
                     AmbientSourceRvas[0],AmbientSourceRvas[1]})
     {
         image.data[rva]^=1; Check(!CheckAmbientPreflight(image.Base()),"changed ambient context accepted"); image.data[rva]^=1;
     }
-    image.sections[0]=section;
+    // Restrict executable pages to the native contract itself. The independent
+    // Dispatch context can bracket Ambient in address order on newer builds.
+    const auto sceneSection = image.sections[1];
+    std::vector<std::array<uint64_t, 2>> ranges;
+    const auto addRange = [&](uint64_t rva, size_t size) {
+        ranges.push_back({rva & ~uint64_t{0xFFF}, (rva + size + 0xFFF) & ~uint64_t{0xFFF}});
+    };
+    addRange(contract::HookRva, contract::HookSignature.size());
+    for (const auto& context : contract::ContextSignatures) addRange(context.rva, context.bytes.size());
+    std::sort(ranges.begin(), ranges.end());
+    std::vector<std::array<uint64_t, 2>> merged;
+    for (const auto& range : ranges)
+        if (!merged.empty() && range[0] <= merged.back()[1]) merged.back()[1] = std::max(merged.back()[1], range[1]);
+        else merged.push_back(range);
+    Check(merged.size() + 1 <= 10, "bounded fixture section table");
+    image.nt->FileHeader.NumberOfSections = static_cast<WORD>(merged.size() + 1);
+    for (size_t i = 0; i < merged.size(); ++i)
+    {
+        image.sections[i] = section;
+        image.sections[i].VirtualAddress = static_cast<DWORD>(merged[i][0]);
+        image.sections[i].Misc.VirtualSize = static_cast<DWORD>(merged[i][1] - merged[i][0]);
+    }
+    image.sections[merged.size()] = sceneSection;
+    Check(static_cast<bool>(CheckCapturePreflight(image.Base())), "native contexts excluded by Ambient-only rejection fixture");
     Check(!CheckAmbientPreflight(image.Base()),"ambient hooks outside executable section accepted");
     if (argc == 2 || argc == 3)
     {
