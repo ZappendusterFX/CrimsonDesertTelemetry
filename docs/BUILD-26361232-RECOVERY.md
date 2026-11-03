@@ -1,6 +1,81 @@
 # Patch 2.04.05 / build 26361232 recovery — 2026-11-03, Codex
 
-## Current continuation: owner-approved complete existing-path port
+## Current continuation: integrated.1 live data; bounded refused-context diagnosis
+
+Owner reported ingame after installing integrated.1. PID3240 started11:34:28;
+installed ASI, Core, host, both CFG files and INI hashes all equal that immutable
+package. The assistant only read deployed files/API and used the existing explicit
+context-trace recorder. No deployment, settings change, game input, publication
+or physical output was performed. The plugin run is already instrumented.
+
+Live results are now separated:
+
+- Health playing, gameBuild26361232, compatibility research-exact, exact DF531A...
+  EXE hash, errornull. Camera and paired native frames progress.
+- Eight GET samples: API12739->12821; filtered capture3230->3251 (eight distinct),
+  frame15436->15512, age47/31/31/32/31/32/32/63ms. One malformed filtered record
+  is rejected in every prefix; it is not hidden or explained away.
+- Paired upstream available:1953..1984 input records, zero malformed,39..53
+  published sources within100gu during these changing ordinary-play samples.
+  These are passive decoder/capture checks, not a repeat of controlled AN/AUS.
+- Ambient available, capture388->391; ages381/86/280/466/152/353/551/221ms.
+  GI camera sky visibility0.4046..0.4792, age0..16ms, progressing scene frames.
+  Working-space/raw interpretation remains; no new shader identity, absolute lux,
+  exposure normalization or physical Hue result is claimed.
+- Physics visibility unavailable. Existing VisibilityRecorder.exe20--trace
+  finished normally,1194 API frames, API11588->12781,20s. Native52 rounds,
+  70..226 attempts each; all attempts=contextRejected, no accepted template and
+  zero completed targets. Thus caller/hook execution is proven; rejection is at
+  profile or collector selection. The old trace only copies accepted snapshots:
+  its queryProfile0 is empty storage, NOT the actually observed refused profile.
+  Never adopt0 or remove/relax the validated0x40000016 guard on this evidence.
+
+Preserved private evidence:
+- update-26361232-integrated1-live-20261103.json (full eight GET pairs).
+- update-26361232-integrated1-live-native-20261103.log.
+- update-26361232-integrated1-live-summary-20261103.json.
+- visibility-motion-20261103-113912-08513ff75ecc4ccda1da17f911e01a93/
+  summary.json, visibility.jsonl.gz and native-context.jsonl (copied original).
+- update-26361232-query-builder-20261103.json and
+  update-26361232-ray-query-callers-20261103.json: existing static-tool checks;
+  wrapper forwards world+B70 and original query/collector. Static evidence alone
+  does not identify the live rejected profile/collector.
+
+Source change is confined to the EXISTING explicit20s/500row/32MiB/max3session
+context trace. Separate profile/collector refusal counters identify the stage.
+During an active trace only, at most one refused natural context per batch stores
+query prefix0xA0 and collector prefix0x30 with read-success flags, addresses and
+observed/expected profile/vtable/hits metadata. They never become replay inputs.
+No allocation, file I/O or added physics calls occur in that callback. Raw capture
+stays idle until the same recorder --trace trigger. All existing selection,
+replay/fault, thread/lifetime, budget, freshness and output policies are unchanged.
+
+Focused physics-natural-query-observer passes with tests for idle/no raw capture,
+foreign-profile refusal, separate collector refusal, bounded first-context retention,
+unreadable memory/null metadata, no mutation or physics call and trace deadline.
+Log: update-26361232-refused-context-tests-20261103.log. Native production build
+passes /W4 /WX. The maintained package builder/expanded/ZIP validators pass.
+Actual packaged ASI equals built binary; INI byte-identical to integrated.1,
+all9 requested feature switches including both HUDs ON, one ASI/no EXE/looseJSON.
+No repeated historical game or unrelated native/managed tests were required.
+
+New immutable private package (source built with only these scoped tracked edits):
+artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.6-build26361232-integrated.2-ModManagers.zip
+SHA256 15B0EA42F0C53C8F642965E066DE994A2A5C17C2707721487B8A8EE1DEB2C811.
+ASI SHA256 4D7A5D9DE9D66380A8B843F0B016B9834651880CE46732FAF5B4D388A1A15729.
+Core SHA256 61DB298370324D90639AC9FDAC3A80904FF7601DD496C6B8A02B838BC6D3BE5B.
+Build options unchanged: -NativeBuildId26361232 -Research off -IntegratedDiagnostic
+-IniOverrides @{'Lights.Upstream'='1'}. Exact contract stays private/research;
+this ZIP is a diagnosis package, not a claimed fix for rejected physics queries.
+Actual package evidence: update-26361232-integrated2-package-check-20261103.json.
+Not installed/game-tested/published. Earlier ZIPs remain immutable.
+
+Next: owner closes the game, installs the COMPLETE integrated.2 ZIP personally,
+restarts normally and reports. Then verify deployed hashes and run the existing
+20s recorder --trace, inspect firstRejectedContext/counters before choosing any
+layout/profile fix. Do not request AN/AUS or any full historical manual retest.
+
+## Previous continuation: owner-approved complete existing-path port
 
 The owner explicitly answered yes to applying the documented Upstream, Ambient/
 GI and physics port with targeted checks and a new ZIP. This authorizes the

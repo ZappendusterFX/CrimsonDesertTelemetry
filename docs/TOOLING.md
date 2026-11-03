@@ -271,7 +271,12 @@ The plugin records its ALREADY CAPTURED query prefix, collector before/after,
 world/caller/thread and every target's result, correlated by measurementSequence.
 Output: `bin64/physics-visibility-context-<pid>-<epoch>-<tick>.jsonl`. No extra rays,
 pointer chasing, collision/filter edits or HUD policy changes. The trace is idle
-until triggered, ends after20s/500rounds/32MiB, max3sessions per process. File I/O
+until triggered, ends after20s/500rounds/32MiB, max3sessions per process.
+Private build26361232 integrated.2 also records profile/collector refusal counters
+and firstRejectedContext (one query0xA0/collector0x30 prefix per batch only while
+this same trace is active). Refused copies never become replay inputs. Failed
+reads have explicit flags/null metadata; an uncaptured accepted-profile0 is not
+an observed native profile. All acceptance guards remain unchanged. File I/O
 is outside the physics hook, after normal result publication. No INI change needed.
 This is diagnostic instrumentation, not a pristine baseline or a visibility fix.
 

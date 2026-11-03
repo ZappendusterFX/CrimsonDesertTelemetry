@@ -433,6 +433,48 @@ int main()
     RunVisibilityBatch();
     Check(calls==4&&replayFaulted&&visibilityResult.entries[0].code==3&&visibilityResult.entries[1].code==3,
         "native fault prevents every remaining target and invalidates batch");
+    // Refused contexts stay refused; raw copies require the existing trace.
+    SetupRayControl(); work = {}; work.continuous = true; work.mode = "rayfan";
+    Put(query.query, 0x14, std::uint32_t{0x40004027});
+    contextTraceCapturing = false;
+    const auto refusedQuery = query.query;
+    const auto refusedCollector = query.collector;
+    Check(!CaptureRay(worldBytes.data(), query.query.data(), query.collector.data()) &&
+        work.profileRejected == 1 && work.collectorRejected == 0 && !work.rejectedRay.reason,
+        "inactive trace adds no rejected-context raw capture and foreign profile remains refused");
+    contextTraceCapturing = true;
+    Check(!CaptureRay(worldBytes.data(), query.query.data(), query.collector.data()) &&
+        work.profileRejected == 2 && work.rejectedRay.queryCopied && work.rejectedRay.collectorCopied,
+        "active trace retains bounded first refused natural context without accepting it");
+    const auto firstRefusal = ContextTraceRecord(work, VisibilityBatch{});
+    Check(firstRefusal["firstRejectedContext"]["reason"] == "query-profile" &&
+        firstRefusal["firstRejectedContext"]["queryProfile"] == 0x40004027 &&
+        firstRefusal["firstRejectedContext"]["queryPrefixHex"].get<std::string>().size() == 0xA0 * 2 &&
+        firstRefusal["firstRejectedContext"]["collectorPrefixHex"].get<std::string>().size() == 0x30 * 2,
+        "refused context trace identifies exact profile and bounded query/collector windows");
+    Put(query.query, 0x14, VisibilityRayProfile);
+    Put(query.collector, 0, std::uint64_t{0});
+    Check(!CaptureRay(worldBytes.data(), query.query.data(), query.collector.data()) &&
+        work.collectorRejected == 1 && work.profileRejected == 2 &&
+        ContextTraceRecord(work, VisibilityBatch{})["firstRejectedContext"] == firstRefusal["firstRejectedContext"],
+        "collector refusal is counted separately and cannot overwrite first traced refusal");
+    work.rejectedRay = {};
+    Check(!CaptureRay(worldBytes.data(), query.query.data(), query.collector.data()) &&
+        ContextTraceRecord(work, VisibilityBatch{})["firstRejectedContext"]["reason"] == "collector-layout" &&
+        ContextTraceRecord(work, VisibilityBatch{})["firstRejectedContext"]["collectorVtable"] == 0,
+        "collector refusal trace exposes observed and expected layout without weakening guard");
+    work.rejectedRay = {};
+    TraceRejectedRay(0, 1, 1, "unreadable-test");
+    const auto unreadableTrace = ContextTraceRecord(work, VisibilityBatch{});
+    Check(!work.rejectedRay.queryCopied && !work.rejectedRay.collectorCopied &&
+        unreadableTrace["firstRejectedContext"]["queryProfile"].is_null() &&
+        unreadableTrace["firstRejectedContext"]["collectorVtable"].is_null() && calls == 0,
+        "unreadable refused context is explicit and never invokes physics");
+    contextTraceCapturing = false;
+    Put(query.query, 0x14, std::uint32_t{0x40004027});
+    Put(query.collector, 0, base + CollectorRva);
+    Check(query.query == refusedQuery && query.collector == refusedCollector && calls == 0,
+        "refusal diagnostics leave original query and collector unmodified and make no physics calls");
     // Context tracing is passive: serialize already captured data, never replay.
     SetupRayControl();
     VisibilityBatch traceBatch{}; traceBatch.sequence = 12345; traceBatch.count = 3;
@@ -457,15 +499,15 @@ int main()
     Check(contextTraceEvent != nullptr, "synthetic trace trigger created");
     contextTraceSessions = 0;
     PollContextTrace(1000);
-    Check(contextTraceFile == INVALID_HANDLE_VALUE, "trace stays idle without a trigger");
+    Check(contextTraceFile == INVALID_HANDLE_VALUE && !contextTraceCapturing, "trace stays idle without a trigger");
     SetEvent(contextTraceEvent); PollContextTrace(1000);
-    Check(contextTraceFile != INVALID_HANDLE_VALUE && contextTraceDeadline == 21000, "trigger arms exactly 20 seconds");
+    Check(contextTraceFile != INVALID_HANDLE_VALUE && contextTraceDeadline == 21000 && contextTraceCapturing, "trigger arms exactly 20 seconds");
     SaveContextTrace(work, traceBatch, 1001);
     Check(contextTraceRows == 1 && contextTraceBytes > 0 && calls == 0, "worker trace writes without extra rays");
     SetEvent(contextTraceEvent); PollContextTrace(2000);
     Check(contextTraceSessions == 1 && contextTraceDeadline == 21000, "active trigger cannot extend recording");
     PollContextTrace(21000);
-    Check(contextTraceFile == INVALID_HANDLE_VALUE, "trace stops at deadline");
+    Check(contextTraceFile == INVALID_HANDLE_VALUE && !contextTraceCapturing, "trace stops at deadline");
     SetEvent(contextTraceEvent); PollContextTrace(22000);
     contextTraceRows = ContextTraceMaxRows; SaveContextTrace(work, traceBatch, 22001);
     Check(contextTraceFile == INVALID_HANDLE_VALUE, "trace row bound stops recording");

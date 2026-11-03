@@ -68,7 +68,17 @@ struct Work
     std::array<std::uint8_t, 0x200> collectorAfter{};
     std::uint64_t caller{}, returnValue{};
     unsigned attempts{}, spheres{}, collectors{}, nearPlayer{};
-    unsigned contextRejected{};
+    unsigned contextRejected{}, profileRejected{}, collectorRejected{};
+    // At most one refused natural context per batch, only during the existing
+    // explicitly triggered trace. These bounded copies are never replay inputs.
+    struct RejectedRayContext
+    {
+        const char* reason{};
+        std::uint64_t world{}, query{}, collector{};
+        bool queryCopied{}, collectorCopied{};
+        std::array<std::uint8_t, 0xA0> queryPrefix{};
+        std::array<std::uint8_t, 0x30> collectorPrefix{};
+    } rejectedRay;
     bool copied{}, afterCopied{};
     bool rayQueryAfterCopied{};
     std::array<std::uint8_t, 0x100> rayQueryAfter{};
@@ -95,6 +105,7 @@ Work work;
 // Explicit developer-triggered trace, idle by default. All serialization/file I/O
 // happens in Poll AFTER normal result publication, never in the physics hook.
 HANDLE contextTraceEvent{}, contextTraceFile{INVALID_HANDLE_VALUE};
+std::atomic<bool> contextTraceCapturing{};
 std::uint64_t contextTraceDeadline{}, contextTraceBytes{};
 unsigned contextTraceRows{}, contextTraceSessions{};
 constexpr unsigned ContextTraceMaxRows = 500, ContextTraceMaxSessions = 3;
@@ -278,6 +289,15 @@ std::uint64_t __fastcall ShapeHook(void* w, void* q, void* x, void* c, void* ext
     }
     return result;
 }
+void TraceRejectedRay(std::uint64_t world, std::uint64_t query, std::uint64_t collector,
+    const char* reason)
+{
+    if (!contextTraceCapturing.load(std::memory_order_relaxed) || work.rejectedRay.reason) return;
+    auto& r = work.rejectedRay;
+    r.reason = reason; r.world = world; r.query = query; r.collector = collector;
+    r.queryCopied = Copy(query, r.queryPrefix.data(), r.queryPrefix.size());
+    r.collectorCopied = Copy(collector, r.collectorPrefix.data(), r.collectorPrefix.size());
+}
 bool CaptureRay(void* world, void* query, void* collector)
 {
     ++work.attempts;
@@ -288,14 +308,20 @@ bool CaptureRay(void* world, void* query, void* collector)
     {
         std::uint32_t profile{};
         if (!Get(q + 0x14, profile) || profile != VisibilityRayProfile)
-        { ++work.contextRejected; return false; }
+        {
+            ++work.contextRejected; ++work.profileRejected;
+            TraceRejectedRay(w, q, c, "query-profile"); return false;
+        }
     }
     if (work.mode != "rayobserve")
     {
         std::uint64_t vt{}, hits{};
         std::array<double, 3> position{};
         if (!Get(c, vt) || vt != base + CollectorRva || !Get(c + 0x20, hits) || hits != c + 0x30)
-        { ++work.contextRejected; return false; }
+        {
+            ++work.contextRejected; ++work.collectorRejected;
+            TraceRejectedRay(w, q, c, "collector-layout"); return false;
+        }
         ++work.collectors;
         if (!Get(q + 0x40, position)) return false;
         Vec3 start{};
@@ -538,6 +564,7 @@ template<std::size_t N> std::string Hex(const std::array<std::uint8_t, N>& bytes
 }
 void CloseContextTrace()
 {
+    contextTraceCapturing.store(false, std::memory_order_relaxed);
     if (contextTraceFile != INVALID_HANDLE_VALUE)
     {
         CloseHandle(contextTraceFile); contextTraceFile = INVALID_HANDLE_VALUE;
@@ -559,6 +586,7 @@ void PollContextTrace(std::uint64_t now)
     { ch::Log("Physics context trace could not open output: %lu", GetLastError()); return; }
     contextTraceDeadline = now + ContextTraceDurationMs;
     contextTraceRows = 0; contextTraceBytes = 0;
+    contextTraceCapturing.store(true, std::memory_order_relaxed);
     ch::Log("Physics context trace started for 20s: %s (no extra physics calls).", path.string().c_str());
 }
 Json ContextTraceRecord(const Work& done, const VisibilityBatch& result)
@@ -581,6 +609,20 @@ Json ContextTraceRecord(const Work& done, const VisibilityBatch& result)
         rows.push_back({{"target", p.target}, {"code", p.code}, {"samples", p.samples},
             {"clear", p.clear}, {"completed", p.completed}});
     }
+    Json rejected = nullptr;
+    if (done.rejectedRay.reason)
+    {
+        const auto& r = done.rejectedRay;
+        rejected = {{"reason", r.reason}, {"world", r.world}, {"queryAddress", r.query},
+            {"collectorAddress", r.collector}, {"queryCopied", r.queryCopied},
+            {"collectorCopied", r.collectorCopied}, {"queryPrefixHex", Hex(r.queryPrefix)},
+            {"collectorPrefixHex", Hex(r.collectorPrefix)},
+            {"queryProfile", r.queryCopied ? Json(Read<std::uint32_t>(r.queryPrefix, 0x14)) : Json(nullptr)},
+            {"collectorVtable", r.collectorCopied ? Json(Read<std::uint64_t>(r.collectorPrefix, 0)) : Json(nullptr)},
+            {"expectedCollectorVtable", base + CollectorRva},
+            {"collectorHits", r.collectorCopied ? Json(Read<std::uint64_t>(r.collectorPrefix, 0x20)) : Json(nullptr)},
+            {"expectedCollectorHits", r.collector + 0x30}};
+    }
     return {{"schemaVersion", 1}, {"pid", GetCurrentProcessId()}, {"processStart", processStart},
         {"measurementSequence", result.sequence}, {"capturedTick", done.captured},
         {"issuedTick", done.issued}, {"publishedTick", GetTickCount64()},
@@ -592,6 +634,8 @@ Json ContextTraceRecord(const Work& done, const VisibilityBatch& result)
         {"naturalReturn", done.returnValue}, {"queryPrefixHex", Hex(queryPrefix)},
         {"queryProfile", Read<std::uint32_t>(queryPrefix, 0x14)},
         {"attempts", done.attempts}, {"contextsRejected", done.contextRejected},
+        {"profilesRejected", done.profileRejected}, {"collectorsRejected", done.collectorRejected},
+        {"firstRejectedContext", std::move(rejected)},
         {"collectorBeforeHex", Hex(before)}, {"collectorAfterHex", Hex(after)},
         {"lastControlStatus", done.controlStatus ? done.controlStatus : "not-run"},
         {"complete", complete}, {"allClear", allClear}, {"blocked", blocked}, {"skipped", skipped},

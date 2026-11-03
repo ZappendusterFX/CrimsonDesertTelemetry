@@ -1,4 +1,32 @@
-# Current checkpoint — 2026-11-03, owner-approved full integration package ready
+# Current checkpoint — 2026-11-03, live feeds restored; physics refuses natural queries
+
+Owner installed integrated.1 and restarted (PID3240); all six runtime payload
+hashes match. Health=playing, exact build26361232. Camera, filtered ManyLights,
+paired upstream INPUT and Ambient/GI camera sky visibility progress live. Eight
+GET samples: filtered capture3230->3251, age31..63ms; upstream1953..1984 records,
+zero upstream malformed. Ambient388->391, age86..551ms; GI visibility age0..16ms.
+One malformed filtered record remains explicitly rejected in every sampled prefix.
+No repeated AN/AUS, controlled light response, bound-shader identity or physical
+lamp acceptance is claimed. Owner-only installation and rule9a remain in force.
+
+Remaining fault: every physics visibility result is unknown. Existing recorder
+captured1194 frames/20s; native trace52 rounds,70..226 attempts/round, every attempt
+rejected at profile/collector selection, no accepted template or completed target.
+The old trace's profile0 is empty storage, NOT an observed new query profile.
+Extend only this EXISTING explicit trace: separate refusal counters and one bounded
+rejected query/collector prefix per batch while trace is active; all acceptance,
+replay, budget and lifetime guards remain unchanged. Focused native test passes.
+
+Immutable private integrated.2 packages that diagnostic extension; all9 feature
+settings/HUDs ON, INI byte-identical to .1, research instrumentation compiled OUT.
+Builder/expanded/ZIP validators and actual ASI/config checks pass. ZIP SHA256
+15B0EA42F0C53C8F642965E066DE994A2A5C17C2707721487B8A8EE1DEB2C811.
+Details/evidence: [BUILD-26361232-RECOVERY.md](BUILD-26361232-RECOVERY.md).
+Not installed/game-tested/published by assistant. Next: owner alone installs the
+complete integrated.2 ZIP with game closed and restarts/reports; then run the
+existing recorder --trace to identify the exact rejection, no AN/AUS comparison.
+
+# Previous checkpoint — 2026-11-03, owner-approved full integration package ready
 
 Owner explicitly approved the documented combined Upstream/Ambient-GI/physics
 source port, targeted checks and ZIP after the automatic-review rejection.
