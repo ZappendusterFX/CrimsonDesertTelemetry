@@ -13,7 +13,16 @@ CDT D3D12 renderer passed an initial --openrgb screenshot smoke. Layout was then
 compacted for controls and labels. Hue Core tests158/158 and controller ABI pass.
 Final paired packages are Hue1.0.5-openrgb.2 and CDT2.2.8-openrgb.1; build CDT with
 -NativeBuildId26361232 -Research off (production acquisition, private version).
-Final hashes and exact candidate smoke are recorded after build. Owner alone
+Both paired ZIP validators and the final exact Hue ASI + CDT D3D12 --openrgb smoke
+pass; the compacted 3D screenshot was visually reviewed. CTest hue-input-ownership
+also passes. CDT ZIP is
+`artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.8-openrgb.1-ModManagers.zip`, SHA256
+`1B23E4C5A60E872F808F1D21DDA604583E13349E0FC9483076679FC63D76A27E`.
+Hue ZIP is `C:/DEV/CrimsonHue/dist/CrimsonHue-1.0.5-openrgb.2-asi-win-x64.zip`, SHA256
+`53288FC36F497B387EC3552DF13F44602EA49C6ABA240502D2BFD555C224503B`.
+Payload commits: CDT049bbed / Hue94896bb. Final image `artifacts/openrgb-room-final.png`;
+paired receipt `C:/DEV/CrimsonHue/artifacts/openrgb-room-package-receipt.json`.
+Owner alone
 installs with game closed; do not deploy, operate DMM or wait/poll for installation.
 Inherited unrelated untracked research remains preserved and unstaged. No push
 or main merge. Earlier public2.2.7 evidence remains below.
