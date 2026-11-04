@@ -71,9 +71,9 @@ active PSO/shader-identity gate. This feature cannot guarantee compatibility wit
 every future engine update or silently repair new data semantics.
 
 Historical Support-less/research-instrumentation builds keep their previous exact
-guard. The new private package is production code (`Research off`) with all normal
-features enabled and the research-status26423880 reference. Existing public releases
-and immutable packages are preserved. Only the owner installs packages.
+guard. Release2.2.8 uses production code (`Research off`) with all normal features
+enabled and the locally validated26423880 reference. Its one-time diagnostic is
+disabled. Existing packages are preserved. Only the owner installs packages.
 
 ## One-time in-game diagnostic
 
@@ -120,6 +120,10 @@ deliberately corrupted entry. Those are file-backed replay results, not installe
 game acceptance. Current evidence is under ignored `artifacts/runtime-recovery*`
 and `artifacts/light-research/runtime-recovery-*`.
 
-Package receipt, final test counts and the installation handoff are recorded in
-the current HANDOVER checkpoint. No new plugin has been installed or live-accepted
-by the assistant.
+The owner-installed recovery.2 candidate passed a forced cold run on26423880:
+all30 anchors were recovered and native guards accepted them; progressing
+light/input/Ambient feeds and complete fresh physics results were verified.
+This evidence supports the regular2.2.8 reference; no repeated AN/AUS comparison
+or arbitrary future-layout compatibility is claimed. See the
+[release validation record](releases/v2.2.8-validation.md) and HANDOVER for the
+exact package and live evidence. The assistant did not install any package.

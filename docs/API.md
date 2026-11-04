@@ -229,7 +229,7 @@ as well. A missing host results in a connection failure, not an HTTP 503.
 | `schemaVersion` | string | `1.1` with lights disabled; additive `1.5` when the current development light module is requested. Stable 2.1.10 emits 1.4. |
 | `status` | string | Sampler status; see below. |
 | `gameRunning` | boolean | Sampler's current process-presence observation, not a guarantee of playable data. |
-| `supportedBuild` | boolean or null | `null` before support is known; `false` when compatibility checks rejected the executable; `true` after a runtime was opened through either compatibility mode. On `error`, do not interpret it as successful live-data validation. |
+| `supportedBuild` | boolean or null | `null` before support is known or for a recovered session; `false` when compatibility checks rejected the executable; `true` after the ordinary tested/automatic runtime was opened. On `error`, do not interpret it as successful live-data validation. |
 | `gameBuild` | string or null | Installed Steam build ID when available, not the telemetry product version. `"unknown"` can appear in snapshots if an automatically recognized installation has no readable manifest. Null means no runtime is currently identified. |
 | `sampleRateHz` | integer | Configured target rate, not a measured delivery rate. |
 | `lastSequence` | integer or null | Last published snapshot sequence, including unavailable-state snapshots; null before the first publication. |
@@ -239,6 +239,7 @@ as well. A missing host results in a connection failure, not an HTTP 503.
 | `discoveryMilliseconds` | number or null | Reference-resolution time in milliseconds; not total game startup, executable hashing time or per-sample latency. |
 | `error` | string or null | Human-readable diagnostic; wording is not a stable machine-readable error code. |
 | `compatibility` | object or null | Executable identity and selection result for the current runtime; null before selection or after rejection/exit. See below. |
+| `recovery` | object or null | Conditional recovery status: `state`, human-readable `title` and `detail`, and `progress` (0–100 or null while waiting). A ready status requires fresh requested feeds; it is not a promise about later captures. |
 
 `compatibility.mode` is `"tested"` only for an exact, locally validated executable
 SHA-256. `"automatic"` means a different executable was accepted by unique code,
@@ -247,13 +248,20 @@ as its layout. It does **not** mean that executable received a manual in-game te
 `executableSha256` always describes the installed EXE; `executableVersion` can be
 null. This health-only object is additive metadata and is not part of snapshot schema 1.1.
 
-Automatic relocation covers historical player/camera reference layouts. It does
-not enable native lighting on an unknown EXE, and the current direct camera/scene
-layout has no automatic promotion path. `check-update <exe>` reports offline
-anchor/recovery results without enabling a candidate; see
-[update recovery](UPDATE_RECOVERY.md).
+The historical `automatic` route covers player/camera reference layouts only.
+Since2.2.8, `recovered` identifies the separate native-owned full acquisition
+recovery path, including direct camera, local lights, Ambient and physics. It
+waits for a valid game world and independently checks live native addresses before
+capture. It keeps `supportedBuild=null`; it does not promote an unknown EXE to
+manually tested. `check-update <exe>` remains an offline report that activates
+nothing. See [in-plugin recovery](RUNTIME_RECOVERY.md) and
+[offline update checks](UPDATE_RECOVERY.md).
 
 Possible `status` values:
+
+During conditional in-plugin recovery the status can also be `recovering`;
+inspect the optional `recovery` object for the current stage. Waiting for the
+game world is not an instruction to retry or repeatedly rescan.
 
 | Status | Interpretation |
 |---|---|
@@ -658,8 +666,9 @@ The [documented game build](../README.md#compatibility-and-limits) is manually v
 Historical player/camera layouts can accept other executable hashes only through
 complete unique guarded resolution and continuing runtime validation; this is
 reported as automatic compatibility. The current direct-layout/native lighting
-path remains tied to its exact validated build and rejects unknown native hook
-targets. An unchanged EXE hash does not detect every shader-only asset change;
+path also supports conditional full recovery from the validated reference, with
+independent native code/layout checks and live-world validation. Ambiguous or
+incompatible targets are refused. An unchanged EXE hash does not detect every shader-only asset change;
 no active-PSO/shader-identity gate is implemented.
 
 Camera/light telemetry has no DLSS, Streamline or NVIDIA runtime dependency.

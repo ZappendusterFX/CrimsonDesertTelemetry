@@ -1,5 +1,12 @@
 # Build26423880 recovery — 2026-11-04
 
+Current result: the owner-installed full cold recovery test passed with all30
+anchors, live native checks and progressing light/input/Ambient/physics data.
+The exact26423880 profile is now locally validated for public2.2.8; automatic
+conditional recovery is implemented. See [runtime recovery](RUNTIME_RECOVERY.md)
+and [release validation](releases/v2.2.8-validation.md). The investigation below
+preserves its earlier candidate-stage findings and package history.
+
 Owner reports an overnight update, leaves the game running and requests a combined
 recovery using existing tools, plus merging the OpenRGB branches to main. No new
 AN/AUS comparison or full historical game test is requested. Installation remains

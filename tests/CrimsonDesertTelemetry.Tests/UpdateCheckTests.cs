@@ -36,8 +36,9 @@ internal static class UpdateCheckTests
         updated.NativeCapture!.Wrapper.CommandHolderOffset = 0x800;
         Reject(() => BuildProfileValidation.Validate(updated), "New build retained the obsolete command-list holder.");
         var current = BuildDefinition.LoadAll("not-a-profile-directory").Single(d => d.SteamBuildId == "26423880");
-        Check(current.Status == "research" && !current.AllowAutomaticCompatibility && current.NativeCapture!.Support?.Anchors.Count == 11,
-            "Unmeasured current integration was promoted or lost full-product anchor coverage.");
+        Check(current.Status == "locally-validated" && current.NativeCapture!.Status == "locally-validated" &&
+            !current.AllowAutomaticCompatibility && current.NativeCapture.Support?.Anchors.Count == 11,
+            "Live-validated release reference lost its paired status or guarded full-product coverage.");
         Action<BuildDefinition>[] supportCorruptions = [
             d => d.NativeCapture!.Support = null,
             d => d.NativeCapture!.Support!.Values.Remove("PhysicsQueryProfile"),

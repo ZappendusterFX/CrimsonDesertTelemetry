@@ -4,12 +4,12 @@
   "steamBuildId": "26423880",
   "executableVersion": "1.0.0.3527",
   "executableSha256": "DC4237F21D6CE1E49F8E5D6FA89BF803FBBE6549123078EFDC393265C7BF6841",
-  "status": "research",
+  "status": "locally-validated",
   "allowAutomaticCompatibility": false,
   "nativeCapture": {
     "schemaVersion": 1,
     "contractId": "manylights-filter-26423880-v1",
-    "status": "research",
+    "status": "locally-validated",
     "requiresExactExecutable": true,
     "skyProducerRva": 62975831,
     "hookRva": 67794323,
@@ -180,8 +180,8 @@
       "pattern": "C5 FB 11 3D ?? ?? ?? ?? 44 89 3D ?? ?? ?? ??",
       "ripOffset": 4,
       "ripEnd": 8,
-      "confidence": "candidate",
-      "source": "Build26423880, 2026-11-04: exact EXE/offline relocation and bounded read-only player/camera/layout checks. Full existing-path integration candidate; installed GPU/Ambient/physics execution pending. No repeated AN/AUS or optical acceptance. See docs/BUILD-26423880-RECOVERY.md."
+      "confidence": "locally-validated",
+      "source": "Build26423880, 2026-11-04: owner-installed full cold recovery accepted all 30 anchors and live native guards; progressing player/camera, filtered/upstream lights, Ambient and nine-ray physics verified in PID29952. Exact package hashes matched. No repeated AN/AUS or optical acceptance. See docs/releases/v2.2.8-validation.md and docs/RUNTIME_RECOVERY.md."
     },
     {
       "name": "static-position-z-write",
@@ -190,8 +190,8 @@
       "pattern": "C5 FB 11 3D ?? ?? ?? ?? 44 89 3D ?? ?? ?? ??",
       "ripOffset": 11,
       "ripEnd": 15,
-      "confidence": "candidate",
-      "source": "Build26423880, 2026-11-04: exact EXE/offline relocation and bounded read-only player/camera/layout checks. Full existing-path integration candidate; installed GPU/Ambient/physics execution pending. No repeated AN/AUS or optical acceptance. See docs/BUILD-26423880-RECOVERY.md."
+      "confidence": "locally-validated",
+      "source": "Build26423880, 2026-11-04: owner-installed full cold recovery accepted all 30 anchors and live native guards; progressing player/camera, filtered/upstream lights, Ambient and nine-ray physics verified in PID29952. Exact package hashes matched. No repeated AN/AUS or optical acceptance. See docs/releases/v2.2.8-validation.md and docs/RUNTIME_RECOVERY.md."
     }
   ],
   "engineCamera": {
@@ -227,8 +227,8 @@
       "pattern": "48 8B 0D ?? ?? ?? ?? 48 8B 49 30 E8 ?? ?? ?? ?? 84 C0 75 23 49 8B 46 08 48 8B 48 68 C6 44 24 20 00",
       "ripOffset": 3,
       "ripEnd": 7,
-      "confidence": "candidate",
-      "source": "Build26423880, 2026-11-04: exact EXE/offline relocation and bounded read-only player/camera/layout checks. Full existing-path integration candidate; installed GPU/Ambient/physics execution pending. No repeated AN/AUS or optical acceptance. See docs/BUILD-26423880-RECOVERY.md."
+      "confidence": "locally-validated",
+      "source": "Build26423880, 2026-11-04: owner-installed full cold recovery accepted all 30 anchors and live native guards; progressing player/camera, filtered/upstream lights, Ambient and nine-ray physics verified in PID29952. Exact package hashes matched. No repeated AN/AUS or optical acceptance. See docs/releases/v2.2.8-validation.md and docs/RUNTIME_RECOVERY.md."
     },
     "worldSystemToActorManagerOffset": 48,
     "actorManagerToPlayerActorOffset": 80,
