@@ -8,7 +8,16 @@ This CDT change only syncs the new HUD controls, accurate node colors (no added
 grey) and clearer YOU reference. Telemetry/profiles/production INI are unchanged.
 Paired versions are Hue1.0.5-openrgb.3 / CDT2.2.8-openrgb.2; build production with
 -Research off -NativeBuildId26361232. Hue161/161 Core tests pass. Exact candidate
-controller/render/input/package validation and hashes are recorded after build.
+controller/render/input/package validation passes. Final exact Hue ASI + CDT D3D12
+--openrgb screenshot was inspected: artifacts/openrgb-color-response.png. CTest
+hue-input-ownership passes. Both package validators pass. CDT ZIP
+`artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.8-openrgb.2-ModManagers.zip`
+is1076362bytes, SHA256 `56B7ABDDF571583CBFE5BB8A9F92B69732AA5AD9FD29F1BF59F6B22C9AB78058`.
+Hue ZIP `C:/DEV/CrimsonHue/dist/CrimsonHue-1.0.5-openrgb.3-asi-win-x64.zip`
+is3047406bytes, SHA256 `E8E1BA4DD215152370F6D1B5A6356F0F055971A70BA68EE716C0EE034A7884AB`.
+Payload commits: CDT5f45cdb / Hue13d61ae. Receipt:
+`C:/DEV/CrimsonHue/artifacts/openrgb-color-20261104/package-receipt.json`.
+Hand off both for owner installation with game closed; optical acceptance pending.
 See C:/DEV/CrimsonHue/docs/OPENRGB.md for evidence/limits; no new in-game capture or
 spell test was performed. Owner installs both packages; no deployment/push/merge.
 
