@@ -1,4 +1,27 @@
-# Current checkpoint — 2026-11-04, public2.2.8 ready for authorized GitHub release
+# Current checkpoint — 2026-11-04, public2.2.8 published with Hue1.0.6
+
+Both main branches/tags pushed and stable Latest releases published on GitHub.
+CDT v2.2.8 points to1910cd91b7dc5731d325bcbf19389c7092095e90; public ZIP is the
+exact local1143204-byte archive, SHA256
+164EF5F9A19C37A7291215D169B03CC9D2526D1EDF36B3740EFDA9B33516B8AF.
+Main CI41824958429, tag CI41824959260 and Release41824959252 all succeeded;
+release workflow preserved the attached local archive. GitHub digest AND public
+download match. API latest confirms v2.2.8, draft=false/prerelease=false.
+Published12:02:54UTC. Repository About, README, changelog and guides updated.
+URL: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/tag/v2.2.8.
+Receipt: artifacts/github-2.2.8-publication-20261104-130341/receipt.json.
+
+Hue v1.0.6 also published Latest, exact3047695-byte public download verified:
+SHA25638B736A6354AE4F768F9DE548A8B7AF9B23844FB3F90E17A172AFB650A5D8C48.
+URL: https://github.com/ZappendusterFX/CrimsonHue/releases/tag/v1.0.6.
+Both releases include ZIP and SHA256SUMS. Diagnostic is empty in public CDT;
+all normal featuresON. Owner-installed recovery.2 live acceptance remains the
+game evidence; exact public archives were not installed by the assistant.
+Nexus job41825902782 skipped; NEXUS_AUTO_PUBLISH remainsfalse. No Nexus upload.
+Inherited untracked research, historical ZIPs and AGENTS/CLAUDE preserved.
+Next: hand off the two release URLs; no further test or installation requested.
+
+# Previous checkpoint — 2026-11-04, public2.2.8 ready for authorized GitHub release
 
 Owner requests release, GitHub push and updated descriptions for the paired work.
 Public2.2.8 promotes the current26423880 profile based on the owner-installed
