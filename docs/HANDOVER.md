@@ -9,6 +9,13 @@ The continuous fan's elapsed/context-age guard latches replayFaulted; later batc
 return code3 until process restart. This is a real local-light output outage,
 not proof that the timing guard caused the reported FPS/CPU change.
 
+Owner subsequently places the onset in the "Deminiss Civil War" scene. Record
+this as reported scene context, not a captured reproduction or measured cause.
+The guard measures elapsed wall time/context age, so a transient slow query or
+thread scheduling delay can latch the visibility stop; the log alone does not
+distinguish them or connect the OpenRGB disconnect to the scene. No restart has
+been reported and no further live acceptance check was performed.
+
 Passive Hue immutable snapshot confirms Live0/142, Hue still streaming identical
 neutral Ambient colors, and OpenRGB stopped with SDK connection unavailable and
 incomplete restoration for four devices. OpenRGB's underlying disconnect reason
