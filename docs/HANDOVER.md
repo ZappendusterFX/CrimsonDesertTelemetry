@@ -1,4 +1,26 @@
-# Current checkpoint — 2026-11-04, owner selects tick pause; diagnostic package preparation
+# Current checkpoint — 2026-11-04, tick diagnostic ready; owner installation handoff
+
+Private CDT 2.2.9-tick.1 is built/validated from source 3f810c0, production profile
+Research OFF / AllowResearch OFF / build26423880, Diagnostics.SimulationTicks=1.
+ZIP: artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.9-tick.1-ModManagers.zip
+(1143010 bytes), SHA256 7A7819427F468A307918D5F4BCB7699B858DA0B4ACF8B3347EA81FC950053487.
+Receipt/payload hashes: artifacts/simulation-tick-package-receipt-20261104.json;
+build and folder/ZIP validation: artifacts/simulation-tick-package-20261104.log.
+Native policy/scan/thunk 3/3, decoder and own-process MMF reader checks pass.
+No installation, live hook, game acceptance, light output or capture-pause change.
+
+Owner is freely playing; do not capture/poll a labeled state. Next action is
+OWNER ONLY: when convenient stop sync, close game, install this CDT ZIP and restart.
+No Hue package change is required for this monitor-only probe. Do not poll/wait
+for installation; resume only after owner reports it/restart. Then inspect deployed
+hashes read-only and record owner-confirmed gameplay with
+& ./scripts/Read-SimulationTickDiagnostic.ps1 -Label gameplay. A later Skills
+preview comparison checks whether this function actually stops during menus.
+All prior UI/tick evidence and implementation limits are below and in
+docs/SIMULATION_TICK_DIAGNOSTIC.md. MainMenu/Inventory signal is only a cross-check;
+the owner selected the simulation tick approach for update resilience.
+
+# Previous checkpoint — 2026-11-04, owner selects tick pause; diagnostic package preparation
 
 Inventory 19:21:56 CET: same PID 16716, three stable samples; MainMenu27D=03,
 Inventory=23, Skills=00. MainMenu therefore tracks Skills/gameplay/Inventory as

@@ -1,5 +1,17 @@
 # INI profiles and validation — 2026-09-12
 
+## Private tick diagnostic added 2026-11-04
+
+Both templates now include `[Diagnostics] SimulationTicks=0`. The explicit
+private builder switch `-SimulationTickDiagnostic` may enable it only with
+`-Research off` and the supported exact current definition. Public packages
+leave it off; research runtime refuses activation. This monitor changes no
+capture/output behavior. Validator tests cover defaults, values and builder
+restrictions; runtime menu behavior remains untested. See
+`docs/SIMULATION_TICK_DIAGNOSTIC.md`. Historical option counts below predate it.
+
+## Previous inventory
+
 This is the option inventory and test ledger, not a claim that every configuration
 has passed in the game. The previous combined template contained **60 settings**.
 Public 2.1.11 offered **31**; later candidates offered **34** after restoring

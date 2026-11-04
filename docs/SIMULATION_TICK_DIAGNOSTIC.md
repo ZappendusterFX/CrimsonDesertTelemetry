@@ -6,6 +6,14 @@ Menu UI evidence remains a cross-check, not the chosen production dependency.
 This private diagnostic is preparation for a capture pause and fixed Hue light;
 it does not implement either behavior yet.
 
+Private candidate `2.2.9-tick.1` is built from source `3f810c0`, with Research OFF
+and Diagnostics.SimulationTicks=1. Folder/ZIP validation, three native tests and
+decoder/own-process reader tests pass. Archive:
+`artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.9-tick.1-ModManagers.zip`,
+SHA256 `7A7819427F468A307918D5F4BCB7699B858DA0B4ACF8B3347EA81FC950053487`.
+Receipt: `artifacts/simulation-tick-package-receipt-20261104.json`.
+Not installed or game-tested; installation remains owner-only with game closed.
+
 ## Proven discovery, pending runtime semantics
 
 World Builder locates a movement-pump function with
