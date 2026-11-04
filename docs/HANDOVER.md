@@ -1,4 +1,26 @@
-# Current checkpoint — 2026-11-04, tick diagnostic ready; owner installation handoff
+# Current checkpoint — 2026-11-04, tick probe installed; gameplay control progresses
+
+Owner reports installing 2.2.9-tick.1 and returning to gameplay. New game PID
+32972, start 19:40:59 CET. Loaded ASI and five executable/config companions all
+match the immutable package receipt; read-only identity evidence:
+artifacts/tick-install-check-20261104-195207-7112eff963174661bdaa7ac7055149be.json.
+No assistant installation or deployment mutation occurred.
+
+Owner-labeled gameplay recording 19:52:07-10 CET completes with 47 samples, all
+fresh/observing/running, zero errors, hook RVA 0x4585370. Counter 22018 -> 22320
+over 3000 ms of publisher timestamps (~100.7 function entries/sec, NOT FPS or
+lighting rate). No recorded inactivity; progressAgeMs=0 for all observations.
+Evidence: artifacts/simulation-ticks-gameplay-20261104-195207-550-5ef478405e6342a695786d43e6fc143d.json.
+This validates a progressing gameplay control and the installed readout; it
+does not yet prove that Skills preview pauses this function.
+
+Next owner opens Skills, leaves a preview running and replies "Skills".
+Immediately run & ./scripts/Read-SimulationTickDiagnostic.ps1 -Label skills FROM
+CDT; compare counter advancement and fresh observer states against this control.
+No rebuild, extra install or waiting/polling for owner. Menu light/capture pause
+remain unimplemented until runtime semantics are established.
+
+# Previous checkpoint — 2026-11-04, tick diagnostic ready; owner installation handoff
 
 Private CDT 2.2.9-tick.1 is built/validated from source 3f810c0, production profile
 Research OFF / AllowResearch OFF / build26423880, Diagnostics.SimulationTicks=1.

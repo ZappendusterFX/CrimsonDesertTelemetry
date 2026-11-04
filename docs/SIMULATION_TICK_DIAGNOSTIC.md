@@ -14,6 +14,23 @@ SHA256 `7A7819427F468A307918D5F4BCB7699B858DA0B4ACF8B3347EA81FC950053487`.
 Receipt: `artifacts/simulation-tick-package-receipt-20261104.json`.
 Not installed or game-tested; installation remains owner-only with game closed.
 
+### First installed gameplay control — 2026-11-04
+
+The owner subsequently reports installation and restart. PID 32972 starts at
+19:40:59 CET. Read-only checks find the loaded ASI and all five executable/config
+companions equal to the receipt hashes. Evidence:
+`artifacts/tick-install-check-20261104-195207-7112eff963174661bdaa7ac7055149be.json`.
+
+Owner-confirmed gameplay 19:52:07-10 CET yields 47 fresh observing/running samples,
+no errors, RVA 0x4585370. Counter advances 22018 -> 22320 over 3000 ms of native
+publication timestamps (~100.7 function entries/sec). That is neither an FPS
+measurement nor the Hue sampling/output frequency. The reader's requested 20 Hz
+is a polling target, not an assertion that PowerShell delivered 60 samples.
+Evidence: `artifacts/simulation-ticks-gameplay-20261104-195207-550-5ef478405e6342a695786d43e6fc143d.json`.
+This is the progressing control; a separately owner-confirmed Skills-preview
+recording is next. No acquisition gating, fixed menu light or menu-semantic
+acceptance follows from this gameplay control alone.
+
 ## Proven discovery, pending runtime semantics
 
 World Builder locates a movement-pump function with
