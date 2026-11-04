@@ -20,8 +20,23 @@ Ambient hook byte preflight passes. Offline full check28matched, authored layout
 unverified, activates=false, exact-research status. No repeated AN/AUS, GPU-buffer/
 new-shader or new installed physics acceptance. Target candidate is production
 code, Research off, all9 features ON,2.2.8-build26423880-integrated.1 with Hue1.0.5.
-Packaging and final receipt follow. Public2.2.7 and its defaults remain unchanged.
-No install or release tag; owner alone installs and reports before live acceptance.
+Final ZIP1076680bytes, payload942a0f2:
+artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.8-build26423880-integrated.1-ModManagers.zip,
+SHA2560D616AA5ADE1144F8B7C5C1FE9411E10160B07049F8268BB7ECBE22FC38B1F80.
+Builder/folder/ZIP checks pass; actual embedded Core has research status, auto=false,
+7contexts/11support anchors and research-exact route. After aligning final byte
+windows, all6 affected native tests pass again. Exact EXE/hash/all-context/Ambient,
+final79 managed, isolated HTTP/WS and actual Hue1.0.5 shared D3D12 --openrgb smoke
+pass. Final screenshot artifacts/openrgb-main-26423880.png visually inspected.
+Passive final read:19/19 exact contexts, collector12-slot shape and player/camera/
+orientation pass. No new hook/physics execution claimed. PID6340 loads CDT but no
+Hue ASI/CLR; bin64 has no Hue ASI. Both handoff ZIPs are needed. No current Hue UI
+or settings snapshot was obtained. Paired receipt and SHA256SUMS are under
+C:/DEV/CrimsonHue/artifacts/package-1.0.5-paired-26423880-20261104.json and
+C:/DEV/CrimsonHue/dist/CrimsonHue-1.0.5-paired-26423880-SHA256SUMS.txt.
+Public2.2.7/defaults and old ZIPs remain unchanged. Source main push authorized;
+no release tag/asset or installation. Owner alone installs/restarts and reports;
+then use existing combined feed check/visibility trace once. Do not poll for it.
 
 # Previous checkpoint — 2026-11-04, OpenRGB light-response controls
 

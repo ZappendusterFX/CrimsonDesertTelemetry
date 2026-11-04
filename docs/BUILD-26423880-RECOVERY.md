@@ -84,9 +84,23 @@ mismatches. This was an artifact-reporting mistake, not four changed live entrie
 use selected TtWorldCastRay and the final exact-profile report for guard acceptance.
 All raw reports are preserved.
 
-Managed79/79 and Hue161/161 tests passed initially. Native/package validation is
-recorded in the current HANDOVER after completion. Target paired packages:
+Final passive exact-profile check:19/19 contexts match live memory; collector
+12-slot shape and player/camera/orientation pass. This supersedes the comparison
+error above. PID6340 loads CDT but no Hue ASI/CLR; bin64 has no Hue ASI.
+
+Managed79/79, Hue161/161 and native40/40 pass. After final byte-window alignment,
+all6 affected native tests pass again. Exact EXE hash/all-context/Ambient checks,
+both exact folder/ZIP validators, exact Hue controller/shared D3D12 OpenRGB HUD
+smoke and isolated HTTP/WS API smoke pass. Screenshot visually inspected.
+Validated paired packages:
 CDT2.2.8-build26423880-integrated.1, production code with general research compiled
 out, exact research contract/all9 features ON; Hue1.0.5 with optional OpenRGB.
 No public release tag or asset publication is requested/performed. Installed
 acquisition and the latest OpenRGB color appearance remain pending owner feedback.
+
+CDT ZIP1076680bytes, SHA256
+0D616AA5ADE1144F8B7C5C1FE9411E10160B07049F8268BB7ECBE22FC38B1F80,
+payload942a0f2. Hue ZIP3047043bytes, SHA256
+CC71230E2E0577C3FBF6A56A37F10826263072DB848D2ED7AEF07BEB6A2B118B,
+payload0513fbd. Receipt:
+C:/DEV/CrimsonHue/artifacts/package-1.0.5-paired-26423880-20261104.json.
