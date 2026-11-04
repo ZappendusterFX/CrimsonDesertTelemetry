@@ -18,7 +18,10 @@ internal sealed record TelemetryHealth(
     int DiscoveredCopies,
     double? DiscoveryMilliseconds,
     string? Error,
-    CompatibilityInfo? Compatibility = null);
+    CompatibilityInfo? Compatibility = null,
+    RecoveryStatus? Recovery = null);
+
+internal sealed record RecoveryStatus(string State, string Title, string Detail, int? Progress = null);
 
 internal sealed class TelemetryServerState(JsonSerializerOptions jsonOptions, int sampleRateHz, string schemaVersion,
     LightSmoothingOptions? smoothingOptions = null)
@@ -141,6 +144,7 @@ internal sealed class TelemetryServerState(JsonSerializerOptions jsonOptions, in
                 DiscoveredCopies = discoveredCopies,
                 DiscoveryMilliseconds = discoveryMilliseconds,
                 Error = error,
+                Recovery = !gameRunning || status is "stopped" or "waiting-for-game" ? null : _health.Recovery,
                 Compatibility = !gameRunning || supportedBuild == false ? null : _health.Compatibility
             };
             if (status != "playing")
@@ -160,6 +164,11 @@ internal sealed class TelemetryServerState(JsonSerializerOptions jsonOptions, in
     public void SetCompatibility(CompatibilityInfo compatibility)
     {
         lock (_gate) _health = _health with { Compatibility = compatibility };
+    }
+
+    public void SetRecovery(RecoveryStatus? recovery)
+    {
+        lock (_gate) _health = _health with { Recovery = recovery };
     }
 
     public void Publish(TelemetrySnapshot snapshot, int discoveredCopies, double? discoveryMilliseconds)
@@ -182,9 +191,10 @@ internal sealed class TelemetryServerState(JsonSerializerOptions jsonOptions, in
             {
                 Status = snapshot.Game.State,
                 GameRunning = gameRunning,
+                Recovery = !gameRunning ? null : _health.Recovery,
                 // Private exact-hash diagnostics publish data but are not a
                 // declaration that the game build is publicly supported.
-                SupportedBuild = _health.Compatibility?.Mode == "research-exact" ? null : true,
+                SupportedBuild = _health.Compatibility?.Mode is "research-exact" or "recovered" ? null : true,
                 GameBuild = snapshot.Game.Build,
                 LastSequence = snapshot.Sequence,
                 LastCapture = snapshot.CapturedAt,

@@ -264,6 +264,10 @@ int TraceCameraCopies(string[] commandArgs)
 
 int Serve(string[] commandArgs)
 {
+    var recoveryFlags = commandArgs.Count(argument => argument.Equals("--native-recovery", StringComparison.OrdinalIgnoreCase));
+    if (recoveryFlags > 1) return UsageError("--native-recovery may appear only once.");
+    var nativeRecovery = recoveryFlags == 1;
+    commandArgs = commandArgs.Where(argument => !argument.Equals("--native-recovery", StringComparison.OrdinalIgnoreCase)).ToArray();
     var privateExactCount = commandArgs.Count(argument =>
         argument.Equals("--private-exact-build", StringComparison.OrdinalIgnoreCase));
     if (privateExactCount > 1) return UsageError("--private-exact-build may appear only once.");
@@ -282,11 +286,11 @@ int Serve(string[] commandArgs)
     var rateHz = positional.Length >= 2 ? int.Parse(positional[1]) : 60;
     if (port is < 1024 or > 65535 || rateHz is < 1 or > 240)
         return UsageError("serve expects [port; 1024-65535] [rate-hz; 1-240].");
-    return RunServer(port, rateHz, lightOptions, smoothing, privateExact);
+    return RunServer(port, rateHz, lightOptions, smoothing, privateExact, nativeRecovery);
 }
 
 int RunServer(int port, int rateHz, LightOptions lightOptions, LightSmoothingOptions smoothing,
-    bool privateExact)
+    bool privateExact, bool nativeRecovery)
 {
     using var cancellation = new CancellationTokenSource();
     using var timerResolution = WindowsTimerResolution.RequestFor(rateHz);
@@ -338,7 +342,7 @@ int RunServer(int port, int rateHz, LightOptions lightOptions, LightSmoothingOpt
         app.Map("/v1/lights/visible/stream", context => StreamWebSocket(context, state, cancellation.Token, visible: true));
 
         Console.Error.WriteLine($"Listening on http://127.0.0.1:{port} at {rateHz} Hz.");
-        var samplingTask = Task.Run(() => SampleContinuously(state, rateHz, lightOptions, privateExact, cancellation.Token),
+        var samplingTask = Task.Run(() => SampleContinuously(state, rateHz, lightOptions, privateExact, nativeRecovery, cancellation.Token),
             cancellation.Token);
         try
         {
@@ -428,7 +432,7 @@ async Task WaitForWebSocketClose(WebSocket socket, CancellationToken cancellatio
     }
 }
 
-async Task SampleContinuously(TelemetryServerState state, int rateHz, LightOptions lightOptions, bool privateExact,
+async Task SampleContinuously(TelemetryServerState state, int rateHz, LightOptions lightOptions, bool privateExact, bool nativeRecovery,
     CancellationToken cancellationToken)
 {
     long sequence = 0;
@@ -438,7 +442,7 @@ async Task SampleContinuously(TelemetryServerState state, int rateHz, LightOptio
         try
         {
             state.SetHealth("waiting-for-game", false, null, null, 0, null, null);
-            try { runtime = OpenRuntime(lightOptions, privateExact); }
+            try { runtime = await OpenRuntimeWithRecovery(state, lightOptions, privateExact, nativeRecovery, cancellationToken); }
             catch (InvalidOperationException)
             {
                 await Task.Delay(1000, cancellationToken);
@@ -451,13 +455,14 @@ async Task SampleContinuously(TelemetryServerState state, int rateHz, LightOptio
                 continue;
             }
 
+            if (runtime is null) continue;
             state.SetCompatibility(runtime.Compatibility);
             var initialPlayer = await WaitForPlayerPosition(runtime, state,
                 () => ToUnavailableSnapshot(runtime, sequence++, "loading", "player-unavailable"),
                 cancellationToken);
             if (initialPlayer is null) continue;
             var player = initialPlayer.Value;
-            state.SetHealth("discovering", true, true, runtime.GameBuild, 0, null, null);
+            state.SetHealth("discovering", true, runtime.PubliclySupported, runtime.GameBuild, 0, null, null);
             var tracker = runtime.Camera;
             var discoveryMilliseconds = tracker.ReferenceResolutionMilliseconds;
             var tickTicks = Math.Max(1, Stopwatch.Frequency / rateHz);
@@ -485,14 +490,17 @@ async Task SampleContinuously(TelemetryServerState state, int rateHz, LightOptio
                         lights, runtime.SupportsLights, SchemaFor(lightOptions));
                     state.Publish(snapshot, tracker.AddressCount, discoveryMilliseconds);
                     // Only an untested build leaves Sky null now, so the reason fits.
-                    state.PublishSky(runtime.Sky?.Capture() ?? SkyAmbientReader.Unavailable("unsupported-build"));
+                    var sky = runtime.Sky?.Capture() ?? SkyAmbientReader.Unavailable("unsupported-build");
+                    state.PublishSky(sky);
+                    runtime.RecoveryMonitor?.Observe(lights, sky, state);
                 }
                 catch (Exception exception) when (exception is InvalidDataException or Win32Exception)
                 {
+                    runtime.RecoveryMonitor?.Pause(state);
                     if (state.Health.Status != "loading")
                         state.Publish(ToUnavailableSnapshot(runtime, sequence++, "loading", "required-telemetry-unavailable"),
                             tracker.AddressCount, discoveryMilliseconds);
-                    state.SetHealth("loading", true, true, runtime.GameBuild,
+                    state.SetHealth("loading", true, runtime.PubliclySupported, runtime.GameBuild,
                         tracker.AddressCount, discoveryMilliseconds, exception.Message);
                 }
 
@@ -535,7 +543,7 @@ async Task<(float X, float Y, float Z)?> WaitForPlayerPosition(RuntimeContext ru
         {
             if (state.Health.Status != "loading")
                 state.Publish(createLoadingSnapshot(), 0, null);
-            state.SetHealth("loading", true, true, runtime.GameBuild,
+            state.SetHealth("loading", true, runtime.PubliclySupported, runtime.GameBuild,
                 0, null, exception.Message);
             await Task.Delay(250, cancellationToken);
         }
@@ -543,26 +551,49 @@ async Task<(float X, float Y, float Z)?> WaitForPlayerPosition(RuntimeContext ru
     return null;
 }
 
-RuntimeContext OpenRuntime(LightOptions lightOptions = default, bool privateExact = false)
+async Task<RuntimeContext?> OpenRuntimeWithRecovery(TelemetryServerState state, LightOptions options,
+    bool privateExact, bool nativeRecovery, CancellationToken cancellation)
 {
     var process = GameDiscovery.FindRunningProcess()
         ?? throw new InvalidOperationException("Crimson Desert is not running.");
     try
     {
+        var preparation = await RecoveryHost.PrepareAsync(process, LoadDefinitions(), state, cancellation, nativeRecovery);
+        if (process.HasExited) { process.Dispose(); return null; }
+        var runtime = OpenRuntime(options, privateExact, preparation?.Build, process,
+            preparation?.Position, preparation?.WorldAddress);
+        if (preparation is not null)
+            runtime.RecoveryMonitor = new(preparation.RequestedFeatures, preparation.CacheHit);
+        return runtime;
+    }
+    catch { process.Dispose(); throw; }
+}
+
+RuntimeContext OpenRuntime(LightOptions lightOptions = default, bool privateExact = false,
+    ResolvedBuild? preparedBuild = null, Process? preparedProcess = null,
+    StaticPositionAddresses? preparedPosition = null, ulong? preparedWorld = null)
+{
+    var process = preparedProcess ?? GameDiscovery.FindRunningProcess()
+        ?? throw new InvalidOperationException("Crimson Desert is not running.");
+    try
+    {
         var executable = process.MainModule?.FileName
             ?? throw new InvalidOperationException("The Crimson Desert executable path is unavailable.");
-        var resolved = ResolveBuild(executable, privateExact);
+        var resolved = preparedBuild ?? ResolveBuild(executable, privateExact);
         var definition = resolved.Definition;
         if (resolved.Compatibility.Mode == "automatic")
             Console.Error.WriteLine($"Untested executable accepted by automatic compatibility checks " +
                 $"(reference layout {resolved.Compatibility.ReferenceBuild}). Runtime validation remains active.");
         if (resolved.Compatibility.Mode == "research-exact")
             Console.Error.WriteLine("PRIVATE UNVALIDATED exact-build integration test. Not a supported release.");
-        // Only an exact-hash, explicitly private research launch may exercise
-        // candidate player anchors; all signature and live pointer guards remain active.
-        var allowResearchCandidate = resolved.Compatibility.Mode == "research-exact";
-        var addresses = StaticPositionProbe.Resolve(process, executable, definition, allowResearchCandidate);
-        var orientation = PlayerOrientationReader.Resolve(process, executable, definition, allowResearchCandidate);
+        // Private exact profiles and a completed runtime recovery may exercise
+        // candidate anchors. Recovery supplied these addresses only after its
+        // file, live-world and independent native checks; no general bypass.
+        var allowResearchCandidate = resolved.Compatibility.Mode is "research-exact" or "recovered";
+        var addresses = preparedPosition ?? StaticPositionProbe.Resolve(process, executable, definition, allowResearchCandidate);
+        var orientation = preparedWorld is { } world
+            ? PlayerOrientationReader.FromResolvedAddress(world, definition.PlayerRoot!, allowResearchCandidate)
+            : PlayerOrientationReader.Resolve(process, executable, definition, allowResearchCandidate);
         var reader = new ReadOnlyProcess(process);
         try
         {
@@ -571,7 +602,7 @@ RuntimeContext OpenRuntime(LightOptions lightOptions = default, bool privateExac
             var camera = new EngineCameraReader(reader,
                 checked((ulong)process.MainModule!.BaseAddress.ToInt64()), cameraDefinition);
             EngineLightReader? lights = null;
-            var exactLightProfile = resolved.Compatibility.Mode is "tested" or "research-exact";
+            var exactLightProfile = resolved.Compatibility.Mode is "tested" or "research-exact" or "recovered";
             if (lightOptions.Enabled && exactLightProfile && definition.EngineLights is { } lightDefinition)
                 lights = new EngineLightReader(reader,
                     checked((ulong)process.MainModule!.BaseAddress.ToInt64()), lightDefinition);
@@ -806,6 +837,7 @@ sealed class RuntimeContext(
     public BuildDefinition Definition { get; } = resolved.Definition;
     public string GameBuild { get; } = resolved.GameBuild;
     public CompatibilityInfo Compatibility { get; } = resolved.Compatibility;
+    public bool? PubliclySupported => Compatibility.Mode is "research-exact" or "recovered" ? null : true;
     public StaticPositionAddresses PositionAddresses { get; } = positionAddresses;
     public PlayerOrientationReader? Orientation { get; } = orientation;
     public EngineCameraReader Camera { get; } = camera;
@@ -813,6 +845,7 @@ sealed class RuntimeContext(
     public RenderLightReader? Rendered { get; } = rendered;
     public SourceVisibilityClient? Visibility { get; } = visibility;
     public PhysicsVisibilityClient? PhysicsVisibility { get; } = physicsVisibility;
+    public RecoveryLiveMonitor? RecoveryMonitor { get; set; }
     /// <summary>
     /// The sky reader attaches on any exactly tested build. It used to require build
     /// 25116796 by name, which silently killed the ambient feed on 25246367 even
@@ -827,7 +860,7 @@ sealed class RuntimeContext(
     /// refused the executable. Those answers are accurate, where a hardcoded build
     /// name could only ever go stale at the next game update.
     /// </summary>
-    public SkyAmbientReader? Sky { get; } = resolved.Compatibility.Mode is "tested" or "research-exact"
+    public SkyAmbientReader? Sky { get; } = resolved.Compatibility.Mode is "tested" or "research-exact" or "recovered"
         ? new SkyAmbientReader(process.Id, process.StartTime.ToFileTimeUtc(),
             resolved.Definition.NativeCapture?.SkyProducerRva ?? SkyAmbientReader.SkyProducerRva) : null;
     public LightOptions LightOptions { get; } = lightOptions;
@@ -843,7 +876,7 @@ sealed class RuntimeContext(
     public PlayerOrientationSnapshot? ReadOrientation((float X, float Y, float Z) player)
     {
         var value = Orientation?.Read(Reader, player);
-        if (Compatibility.Mode == "automatic" && value is null)
+        if (Compatibility.Mode is "automatic" or "recovered" && value is null)
             throw new InvalidDataException("Automatic compatibility requires a valid player-root type, basis and " +
                 $"position: {OrientationFailureReason}");
         return value;

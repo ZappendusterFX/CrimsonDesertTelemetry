@@ -4,11 +4,14 @@ This archive enables the complete current product configuration in one game
 run: local HTTP/WebSocket telemetry, raw and smoothed lights, ambient, source
 visibility, status notices, the corner HUD and fullscreen light overlay.
 
-The game build profile remains RESEARCH. This private package allows only its
-exact executable SHA-256; native hooks also verify exact instruction bytes and
-runtime data contracts. Successful launch does not establish that every feature
-works. Each feed reports unavailable or an error if its own validation fails.
-The health endpoint labels compatibility as research-exact, not tested.
+The reference game profile remains RESEARCH. On its exact executable the health
+endpoint reports research-exact. Packages with complete recovery metadata can
+also adapt to unchanged-layout address shifts after a game update: the plugin
+waits for live player/camera data, searches once, validates code roles and live
+bytes, then checks fresh captures. The HUD shows progress or a specific failure.
+Such sessions report recovered, never tested. Cached addresses are rechecked.
+Changed engine layouts or shader semantics can still require a mod update.
+Each feed reports unavailable if its own runtime validation fails.
 
 Close the game before replacing the ASI via your mod manager. Keep the previous
 package for rollback. Do not upload this archive to GitHub, Nexus or another

@@ -138,6 +138,15 @@ internal static class RecoveryHostTests
         monitor.Observe(Lights(3), Sky(3), state);
         Check(state.Health.Recovery?.State != "ready", "Loading retained an earlier partial acceptance window.");
 
+        state = State(); monitor = new RecoveryLiveMonitor(7, false);
+        monitor.Observe(Lights(1), Sky(1), state); monitor.Observe(Lights(2), Sky(2), state);
+        monitor.Pause(state);
+        Check(state.Health.Recovery?.State == "waiting-for-world", "Loading did not pause the recovery status.");
+        monitor.Observe(Lights(3), Sky(3), state);
+        Check(state.Health.Recovery?.State != "ready", "Loading retained the old live acceptance window.");
+        monitor.Observe(Lights(4), Sky(4), state); monitor.Observe(Lights(5), Sky(5), state);
+        Check(state.Health.Recovery?.State == "ready", "A fresh window did not complete after loading.");
+
         // Requested physics cannot borrow an old, partial or unknown measurement.
         foreach (var visibility in new[] {
             Visibility("unknown", 0, 9, 1), Visibility("clear", 10000, 9, 1),
@@ -178,6 +187,9 @@ internal static class RecoveryHostTests
             "Recovery health did not retain its neutral JSON shape.");
         state.SetRecovery(null);
         Check(state.Health.Recovery is null, "Explicit status clear failed.");
+        state.SetRecovery(new("failed", "Recovery stopped", "Fixture failure."));
+        state.SetHealth("waiting-for-game", false, null, null, 0, null, null);
+        Check(state.Health.Recovery is null, "A stopped process retained a stale recovery warning.");
     }
 
     private static TelemetryServerState State()

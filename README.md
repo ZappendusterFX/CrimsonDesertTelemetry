@@ -1,9 +1,9 @@
 # Crimson Desert Telemetry
 
-Main includes the OpenRGB companion HUD and the exact-build26423880 recovery
-candidate. Use CDT `2.2.8-build26423880-integrated.1` with CrimsonHue1.0.5 for owner
-testing; current installed acquisition is pending. This is ahead of the public
-2.2.7 release. [Recovery and combined update checks](docs/BUILD-26423880-RECOVERY.md).
+Main includes the OpenRGB companion HUD and conditional in-plugin update recovery.
+The private `2.2.8-recovery.1` candidate uses build26423880 as its reference and
+pairs with CrimsonHue1.0.5. Owner installation and game acceptance are pending;
+public 2.2.7 is unchanged. [Automatic recovery and its limits](docs/RUNTIME_RECOVERY.md).
 
 **Live light, player, camera and local ambient data for Crimson Desert, with HTTP/WebSocket APIs, fullscreen light markers and a 3D radar.**
 
@@ -269,7 +269,7 @@ The external host alone can read player/camera and supported authored lights. **
 
 ## Compatibility and limits
 
-The new package targets **Crimson Desert patch 2.04.05** on Steam for Windows.
+The public 2.2.7 package targets **Crimson Desert patch 2.04.05** on Steam for Windows.
 Technical identity: EXE file version `1.0.0.3479`, Steam build ID `26361232`,
 and the exact validated EXE SHA-256. The file version is not the public game
 patch version. Older
@@ -282,7 +282,15 @@ Native capture validates the EXE, hook instructions and surrounding caller/bindi
 dotnet run --project .\src\CrimsonDesertTelemetry.Cli -- check-update 'C:\path\to\CrimsonDesert.exe'
 ```
 
-The report **does not enable an unknown build**. Historical basic-telemetry layouts have guarded automatic relocation, but the current direct-camera/ManyLights path is not automatically promoted. Future engine or shader-only asset changes can still require an update. See the [update recovery reference](docs/UPDATE_RECOVERY.md).
+The report **does not enable an unknown build**. The new recovery candidate also
+contains a separate automatic runtime path: an unknown EXE or failed instruction
+guard requests discovery once, waits for a valid player and progressing camera,
+checks the complete acquisition contract, and displays its progress in the HUD.
+Saved addresses are keyed by EXE and template hashes and revalidated on later
+starts. Compatibility is labelled `recovered`, never `tested`. This handles
+address relocation within the existing engine layout; changed layouts, register
+roles, physics semantics or shader-only asset changes can still need a mod update.
+See [runtime recovery](docs/RUNTIME_RECOVERY.md) and the [manual recovery reference](docs/UPDATE_RECOVERY.md).
 
 Important boundaries:
 

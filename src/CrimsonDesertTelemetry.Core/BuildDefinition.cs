@@ -168,8 +168,8 @@ public sealed class NativeCaptureDefinition
     public NativeShaderEvidence? ShaderEvidence { get; set; }
     public NativeSupportDefinition? Support { get; set; }
 }
-// Build-specific acquisition anchors share the exact-EXE definition. They are
-// offline recovery evidence, never authorization to enable an unknown executable.
+// Acquisition anchors share the reference definition. Offline matches alone do
+// not authorize hooks: runtime recovery adds role, live-world and native checks.
 public sealed class NativeSupportDefinition
 {
     public Dictionary<string, uint> Values { get; set; } = [];

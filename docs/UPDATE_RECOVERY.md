@@ -1,12 +1,18 @@
 # Update recovery — current direct-camera / ManyLights path
 
-Current recovery: [build26423880](BUILD-26423880-RECOVERY.md). Its exact definition
-now carries Ambient/GI/exposure/physics anchors as well as ManyLights. The existing
-check-update checks all of them in one disk-only report; CMake emits the native
-constants from the same definition. Research status stays explicit and does not
-enable a normal build or install anything. The plugin checks the11 acquisition
-contexts together before installing game hooks. No unknown-build runtime scan,
-result cache or automatic native activation has been added.
+Current implementation: [conditional runtime recovery](RUNTIME_RECOVERY.md), based
+on the [build26423880 reference](BUILD-26423880-RECOVERY.md). The plugin now requests
+its own complete address recovery only on an unknown EXE or failed startup guard.
+The shipped host performs the existing file-backed searches, waits for a validated
+live world, and hands a bounded candidate to independent native validation. Cache,
+progress and terminal failure handling are included. No external recovery tool or
+download is needed for unchanged-layout address shifts. The baseline's research
+status is preserved; recovered is not a tested-build promotion.
+
+The remainder preserves the manual workflow and historical reference addresses.
+Its old exact-build-only restrictions describe the previous path; runtime recovery
+is the narrowly validated exception described above. Do not use historical offsets
+as defaults or repeat a full manual investigation before inspecting recovery status.
 
 Assistant reference, not user homework. Start here after a game update, not at the
 oldest fire handover. This recipe and its three reused archive tools travel with
@@ -175,7 +181,9 @@ test runner's `--replay-sky <ambient-derived-candidate.json>` option. Shared WAR
 tests cover either first producer, direct/compute queues, real submission fences
 and feed isolation. Do not rediscover these facts after an update.
 
-The current update-check CLI does not relocate the new ambient signatures or
-verify bound shaders. EXE identity does not detect all shader-only asset changes.
+The offline update checker now includes the full acquisition anchor set when the
+reference contains Support metadata. The runtime resolver adds role/unwind checks
+for ambiguous signatures. Neither verifies bound shaders: EXE identity does not
+detect all shader-only asset changes.
 Before promoting a new profile verify producer/context bytes, resource layout,
 paired scene frame, shader packing/body and a short live combined-feed check.

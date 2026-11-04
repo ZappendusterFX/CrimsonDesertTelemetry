@@ -22,6 +22,8 @@ public sealed class EngineCameraReader
     private TimeSpan _lastProgress;
 
     public int AddressCount => _lastChain is null ? 0 : 1;
+    /// <summary>The last successfully decoded buffer frame, not the scene object's counter.</summary>
+    public uint? LastFrameNumber => _lastChain is null ? null : _lastCounter;
     public double ReferenceResolutionMilliseconds { get; }
 
     public EngineCameraReader(IReadOnlyProcessMemory reader, ulong moduleBase,

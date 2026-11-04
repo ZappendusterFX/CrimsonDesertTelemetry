@@ -20,6 +20,10 @@ if (args.Length != 0)
 
 var tests = new (string Name, Action Run)[]
 {
+    ("recovery handshake rejects malformed identity and state", RecoveryHostTests.Handshake),
+    ("recovery waits for a stable progressing world", RecoveryHostTests.WorldReadiness),
+    ("recovery completion requires fresh requested captures", RecoveryHostTests.LiveReadiness),
+    ("recovery status retains honest health metadata", RecoveryHostTests.HealthStatus),
     ("sky SH math, color inverse and raw preservation", SkyAmbientTests.MathAndRaw),
     ("sky bridge protocol, producer identity and freshness", SkyAmbientTests.Protocol),
     ("camera visibility block, fallback rule and estimate staleness", SkyAmbientTests.Visibility),
