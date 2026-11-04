@@ -11,6 +11,9 @@ internal static class RecoveryHostTests
 
     public static void Handshake()
     {
+        using var standalone = System.Diagnostics.Process.GetCurrentProcess();
+        Check(RecoveryHost.PrepareAsync(standalone, [], State(), CancellationToken.None)
+            .GetAwaiter().GetResult() is null, "A standalone reader entered native recovery without bootstrap opt-in.");
         var header = Header();
         var request = NativeRecoveryBridge.DecodeHeader(header, Pid, Born);
         Check(request.State == 1 && request.RequestedFeatures == 15 && request.ContractId == "fixture-contract" &&

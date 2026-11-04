@@ -14,6 +14,9 @@ internal static class RecoveryHost
         IReadOnlyList<BuildDefinition> definitions, TelemetryServerState state, CancellationToken cancellation,
         bool requiredHandshake = false)
     {
+        // Bootstrap opts its own host into the rendezvous. An independent CLI/API
+        // reader (including transport tests) must never consume another host's request.
+        if (!requiredHandshake) return null;
         NativeRecoveryBridge? bridge = null;
         var transferred = false;
         try
@@ -31,7 +34,6 @@ internal static class RecoveryHost
                     catch (InvalidDataException) when (startup.Elapsed < TimeSpan.FromSeconds(3)) { }
                     if (request is { State: not 0 }) break;
                 }
-                else if (!requiredHandshake && startup.Elapsed > TimeSpan.FromSeconds(2)) return null; // older ASI / standalone API
                 await Task.Delay(100, cancellation);
             }
             if (process.HasExited) return null;
