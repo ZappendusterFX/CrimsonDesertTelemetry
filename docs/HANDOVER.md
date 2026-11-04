@@ -1,4 +1,19 @@
-# Current checkpoint — 2026-11-04, independent output HUD candidate complete
+# Current checkpoint — 2026-11-04, candidate installation confirmed by owner
+
+Owner reported in-game after installation. Read-only loaded-module hashes matched
+both exact candidate ASIs (CDT2.2.10-outputs.1/Hue1.0.8-outputs.1); local neutral
+API health playing/schema1.6/gameRunning/supportedBuild true. This confirms loaded
+packages and API availability, not real lamp/three-output or input acceptance.
+No assistant installation or deployed-file changes.
+
+Owner then closed game for the authorized import of three existing Tuya lamps
+and keys into Hue's current-user protected settings. Import/readback succeeded;
+no private credentials passed through CDT, no physical lamp commands. Existing
+25% Tuya limit and selection preserved. See Hue docs/HANDOVER.md for details.
+Next owner step is restart and verify Tuya LAN inventory; no new packages needed.
+Do not wait/poll for restart. Controller Skills bug remains unresolved.
+
+# Previous checkpoint — 2026-11-04, independent output HUD candidate complete
 
 Owner requested Hue/OpenRGB independence plus Tuya as third backend, including
 all three concurrently. Hue implements output workers/configuration; CDT hosts
