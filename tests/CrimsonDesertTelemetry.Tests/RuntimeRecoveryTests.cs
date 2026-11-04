@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text;
+using System.Diagnostics;
 using CrimsonDesertTelemetry.Core;
 
 internal static class RuntimeRecoveryTests
@@ -12,18 +13,22 @@ internal static class RuntimeRecoveryTests
     {
         var reference = Template();
         var messages = new List<RecoveryProgress>();
+        var firstWatch = Stopwatch.StartNew();
         var readiness = RuntimeRecovery.ResolveReadiness(executable, reference, cacheDirectory, p =>
         { messages.Add(p); Console.WriteLine($"{p.Completed}/{p.Total} {p.Phase}: {p.Detail}"); });
         Check(readiness.Definition.NativeCapture is null && readiness.Definition.EngineLights is null,
             "Readiness phase exposed native acquisition before the live gate.");
         var result = RuntimeRecovery.ResolveNative(readiness, reference, cacheDirectory, p =>
         { messages.Add(p); Console.WriteLine($"{p.Completed}/{p.Total} {p.Phase}: {p.Detail}"); });
+        firstWatch.Stop();
         Check(result.Anchors.Count == 30 && !result.Definition.AllowAutomaticCompatibility,
             "Recovery lost guards or promoted the reference allowlist.");
         Check(result.Definition.Status == reference.Status && reference.ExecutableSha256 == Template().ExecutableSha256,
             "Recovery promoted or mutated reference profile.");
+        var cachedWatch = Stopwatch.StartNew();
         var next = RuntimeRecovery.ResolveReadiness(executable, reference, cacheDirectory);
         var second = RuntimeRecovery.ResolveNative(next, reference, cacheDirectory);
+        cachedWatch.Stop();
         Check(next.CacheHit && second.CacheHit, "Verified per-EXE cache was not reused.");
         Check(JsonSerializer.Serialize(result.Definition) == JsonSerializer.Serialize(second.Definition),
             "Cache changed the recovered contract.");
@@ -47,6 +52,8 @@ internal static class RuntimeRecoveryTests
         }
         finally { File.WriteAllText(cache, original); }
         Console.WriteLine(JsonSerializer.Serialize(new { result.ExecutableSha256, result.TemplateFingerprint,
+            Timing = new { FirstMilliseconds = firstWatch.Elapsed.TotalMilliseconds, FirstUsedCache = result.CacheHit,
+                CachedMilliseconds = cachedWatch.Elapsed.TotalMilliseconds },
             result.Anchors, Native = result.Definition.NativeCapture, Camera = result.Definition.EngineCamera }));
         Console.WriteLine("PASS full runtime recovery, cached guard replay and corrupted-cache fallback; file-only, no live activation.");
         return 0;
