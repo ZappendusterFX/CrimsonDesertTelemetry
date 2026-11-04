@@ -1,4 +1,41 @@
-# Current checkpoint — 2026-11-04, menu.2 HUD editing and pause-notice fix
+# Current checkpoint — 2026-11-04, Skills stall persists despite menu.2
+
+Owner reports original Skills-menu stutter/rapid hover clicks remain. Menu lighting
+must not be called a fix. OpenRGB/Razer attribution remains withdrawn. Exact seven
+deployed executable/config payload hashes match both menu.2 packages, same game
+PID34860/start20:31:15. Receipt: artifacts/menu2-deployed-check-20261104.json.
+
+20:51-20:55 CET passive readings: activity paused/epoch4/acquisitionPaused=true;
+Hue active fixed menu light on both outputs. This was unlabelled observation, not
+a controlled hover reproduction. Hue artifact skills-persist-state-20261104-205148.jsonl.
+3sec CPU sample:10.828 CPU seconds/3.061wallsec across16logical processors;
+artifacts/skills-persist-cpu-20261104-205344.json. No frame/input/stack measurement.
+
+Input agent derived globals from matching release COFF objects and uniquely matched
+full relocation-masked functions against exact menu.2 ASI, then guarded live RPM
+with process identity/diskhash/code. Three immediate samples20:55:23: panel hidden,
+capture=drainingPanel=waitingForRelease=0, all press/release masks empty. No active
+HUD input lock in this observation. artifacts/menu2-input-review-20261104 contains
+coff-anchor-evidence.json and live-input-195523-322.json. No memory writes/suspension.
+Modulator MMF has seq0/overrideCount0/lastUpdateTick0: no active GPU modifications.
+
+Source review: native new capture/rays are gated, but ExecuteHook still takes render
+SRW twice and spatial acquireMutex twice per submission even paused; worker uses
+those locks every5ms. Spatial pre-submit lock does no useful production work.
+CaptureFilter still calls Modulate after paused Record returns, currently dormant.
+Present/HUD remains active. These are remaining costs/possible contention, NOT
+measured causes. Hidden Hue UI/JSON refresh10/20Hz and paused neutral feeds continue;
+no unbounded loop, synthetic clicks or blocking Hue render-thread call found.
+No runtime edit/new package warranted yet. Existing30s capture has no Input/Present
+or thread evidence, so repeating the same light-only recording is insufficient.
+
+Next owner action: reproduce Skills issue, Stop lighting sync, hide Hue HUD, hover
+same skill; report whether clicking/stutter remains. Stop leaves CDT hooks loaded
+while ending output tasks. Then target CPU/wait-stack evidence or aggregate native
+lock wait/self-time excluding original game calls, never per-call logging. End turn
+for owner action, no polling or assistant installation.
+
+# Previous checkpoint — 2026-11-04, menu.2 HUD editing and pause-notice fix
 
 Owner installed menu.1, reports changed/dark menu light and screenshot
 "Light data is unavailable" while briefly testing Skills. PID34048 start20:17:04.
