@@ -1,4 +1,23 @@
-# Current checkpoint — 2026-11-04, skill-window capture shows repeated bridge-stale
+# Current checkpoint — 2026-11-04, owner isolates menu stalls to Hue's OpenRGB output
+
+Owner clarifies that skill-menu usability itself collapses and repeated menu
+sounds occur; the recorded bridge-stale clears alone do not explain this. Owner
+reports normal behavior with OpenRGB off. Hue's passive 18:04:17 CET snapshot
+confirms Hue streaming and fresh CDT Live 14/127 while OpenRGB enabled=false /
+sending=false. OpenRGB.exe remains running; no SDK connection active. Evidence:
+C:/DEV/CrimsonHue/artifacts/openrgb-menu-off-20261104-180417/probe.jsonl.
+This narrows the trigger to active OpenRGB output/device interaction without
+proving a specific device, driver or library bug. No new CDT acquisition change.
+
+Owner notes skill-preview scenes in the menu, a plausible additional-light source
+only if present in the captured engine feed; screenshot alone does not prove it.
+Hue owns further SDK/device isolation. The absent saved Razer placement is not
+selected from current inventory and does not prove duplicate writes. First owner
+test excludes Sony DualSense only, retaining other selections, then enables RGB
+and tries the menu. No assistant output/game/settings/deployment changes; stop at
+the handoff and do not poll for owner action.
+
+# Previous checkpoint — 2026-11-04, skill-window capture shows repeated bridge-stale
 
 Owner gave go; composed Hue recorder completed 30s at 17:52:55-17:53:25 CET,
 game PID 34956. Captured 1,788 raw / 1,786 Ambient envelopes and 149 passive Hue
