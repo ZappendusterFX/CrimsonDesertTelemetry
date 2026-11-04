@@ -115,6 +115,12 @@ internal static class RuntimeRecoveryTests
             var readiness = RuntimeRecovery.ResolveReadiness(changedCaller.Path, changedCaller.Reference);
             Reject(() => RuntimeRecovery.ResolveNative(readiness, changedCaller.Reference), "Changed physics virtual slot accepted.");
         }
+        using (var changedTarget = new Fixture())
+        {
+            changedTarget.Call(0x10000 + 0x1603 + 8, 0x2500); changedTarget.Save();
+            var readiness = RuntimeRecovery.ResolveReadiness(changedTarget.Path, changedTarget.Reference);
+            Reject(() => RuntimeRecovery.ResolveNative(readiness, changedTarget.Reference), "Unrelated post-dispatch callee accepted.");
+        }
     }
 
     // Small PE with real production guard bytes, unrelated section names and an
@@ -177,6 +183,11 @@ internal static class RuntimeRecoveryTests
             Anchor("PhysicsShape", 0x2300); Function(0x2300, 0x2500, "TtWorldCastShape", 0x2380);
             Anchor("PhysicsCollectorMethod", 0x2500); Function(0x2500, 0x2700);
             Anchor("ExposureDispatch", 0x3200); Function(0x3000, 0x3400, "AdaptExposure", 0x3080);
+            Function(0x7000, 0x7100); Put(0x7000, [0xC3]);
+            Call(0x10000 + native.HookRva - native.ContextSignatures[0].Rva + 8, 0x7000);
+            Call(sourceA + anchors["AmbientHookA"].Rva - anchors["AmbientSourceA"].Rva + 3, 0x7000);
+            Call(sourceB + anchors["AmbientHookB"].Rva - anchors["AmbientSourceB"].Rva + 3, 0x7000);
+            Call(0x3200 + 21, 0x7000);
             Anchor("PhysicsShapeCaller", 0x6000); Function(0x5F00, 0x6200);
             Anchor("PhysicsRayCaller", 0x6000 - 843); Function(0x5B00, 0x5E00);
             Put(0x6000 - 34, "48 8B 01 4C 8B 90 F0 01 00 00 48 8B 85 B0 00 00 00 48 89 44 24 20 4D 8B CF 4D 8B C4 49 8B D5 41 FF D2");
@@ -212,6 +223,11 @@ internal static class RuntimeRecoveryTests
         }
         public void Put(ulong rva, string pattern) => Put(rva, pattern.Split(' ').Select(t => t is "?" or "??" ? (byte)0x11 : Convert.ToByte(t, 16)).ToArray());
         public void Put(ulong rva, byte[] value) => value.CopyTo(bytes, At(rva));
+        public void Call(ulong rva, ulong target)
+        {
+            Put(rva, [0xE8]);
+            U32(At(rva + 1), unchecked((uint)((long)target - (long)(rva + 5))));
+        }
         private void PutQ(ulong rva, ulong value) => Q(At(rva), value);
         private static int At(ulong rva) => checked((int)(rva < 0x21000 ? rva - 0x1000 + 0x400 : rva < 0x34000 ? rva - 0x30000 + 0x20400 : rva - 0x40000 + 0x24400));
         private void Section(int index, string name, uint rva, uint size, uint raw, uint flags)

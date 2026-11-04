@@ -232,6 +232,22 @@ public static class RuntimeRecovery
         var collector = Support("PhysicsCollectorMethod", () => image.FindFunction(Source("PhysicsCollectorMethod").RelocationPattern, "collector method"));
         Support("ExposureDispatch", () => image.FindNamedFunction(Source("ExposureDispatch").RelocationPattern, "AdaptExposure", atEntry: false),
             rva => image.MatchesNamedFunctionAt(rva, Source("ExposureDispatch").RelocationPattern, "AdaptExposure", atEntry: false));
+        ulong CallTarget(ulong rva, int instructionOffset)
+        {
+            var call = image.ReadCode(rva + (ulong)instructionOffset, 5);
+            var target = checked((long)rva + instructionOffset + 5 + BitConverter.ToInt32(call, 1));
+            if (call[0] != 0xE8 || target <= 0 || !image.SameUnwindFunction((ulong)target, (ulong)target, firstIsEntry: true))
+                throw new InvalidDataException("Post-dispatch helper is not a guarded unwind entry.");
+            _ = image.ReadCode((ulong)target, 1);
+            return (ulong)target;
+        }
+        // All four production paths call the same command helper after Dispatch.
+        // Masking a rel32 address must not permit them to drift to unrelated code.
+        var helper = CallTarget(native.HookRva, 8);
+        if (CallTarget(Anchor("AmbientHookA").Rva, 3) != helper ||
+            CallTarget(Anchor("AmbientHookB").Rva, 3) != helper ||
+            CallTarget(Anchor("ExposureDispatch").Rva, 21) != helper)
+            throw new InvalidDataException("Post-dispatch helper targets disagree across the four acquisition paths.");
         var shapeCaller = Support("PhysicsShapeCaller", () => image.FindFunction(Source("PhysicsShapeCaller").RelocationPattern, "natural shape caller"));
         var rayCaller = Support("PhysicsRayCaller", () => Relative(shapeCaller, Source("PhysicsShapeCaller").Rva, Source("PhysicsRayCaller").Rva, 0x4000),
             rva => rva == Relative(shapeCaller, Source("PhysicsShapeCaller").Rva, Source("PhysicsRayCaller").Rva, 0x4000));
@@ -341,6 +357,11 @@ public static class RuntimeRecovery
             File.Move(temporary, path, overwrite: true);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { /* Cache is optional, never activation authority. */ }
-        finally { if (temporary is not null && File.Exists(temporary)) try { File.Delete(temporary); } catch (IOException) { } }
+        finally
+        {
+            if (temporary is not null && File.Exists(temporary))
+                try { File.Delete(temporary); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        }
     }
 }
