@@ -37,5 +37,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native build failed.' }
       - name: Native contract, capture and UI regression tests
         run: ctest --test-dir build/native-package -C Release --output-on-failure
+      - name: Conditional recovery contract and progress UI
+        shell: pwsh
+        run: |
+          # The preserved public baseline has no full recovery metadata. Exercise
+          # the new contract separately without promoting its research profile.
+          cmake -S native/CrimsonDesertTelemetry.Asi -B build/native-recovery-ci -A x64 -DCDT_RESEARCH=OFF -DCDT_NATIVE_BUILD_ID=26423880 -DCDT_ALLOW_RESEARCH_NATIVE=ON
+          if ($LASTEXITCODE -ne 0) { throw 'Recovery configure failed.' }
+          cmake --build build/native-recovery-ci --config Release --target CrimsonDesertTelemetryRuntimeRecoveryTests CrimsonDesertTelemetryGraphicsSmoke -- /m:2
+          if ($LASTEXITCODE -ne 0) { throw 'Recovery build failed.' }
+          ctest --test-dir build/native-recovery-ci -C Release --output-on-failure -R '^(runtime-recovery-contract|recovery-ui-d3d12)$'
+          if ($LASTEXITCODE -ne 0) { throw 'Recovery checks failed.' }
       - name: Publish portable CLI
         run: dotnet publish .\src\CrimsonDesertTelemetry.Cli -c Release -r win-x64 --self-contained false -o .\artifacts\win-x64

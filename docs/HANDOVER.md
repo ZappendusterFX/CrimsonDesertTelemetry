@@ -1,4 +1,44 @@
-# Current checkpoint — 2026-11-04, build26423880 complete-path recovery on main
+# Current checkpoint — 2026-11-04, conditional in-plugin recovery ready for owner install
+
+Owner explicitly requested automatic full-path recovery only when necessary,
+after real game data exists, with clear progress. Implemented in CDT; Hue code
+unchanged. See [RUNTIME_RECOVERY.md](RUNTIME_RECOVERY.md) for lifecycle and limits.
+Known EXE/guards use the ordinary path; unknown/failed guards request one native-
+owned recovery. The shipped host resolves minimal player/camera readiness, then
+all30 anchors after8 progressing frames over1s; native independently checks the
+complete relocated contract before hooks. Per-EXE/template address cache is
+revalidated, not an allowlist. Loading resets live acceptance. Status/progress
+is in the shared HUD/notices and health.recovery; recovered is never tested.
+Standalone CLI/API readers cannot take ownership of native recovery. A missing
+matching host receives a bounded failure; menus wait for valid data without
+repeated scans. Field/register/profile/shader-semantic changes are not guessed.
+
+Validation:85/85 managed,42/42 native, isolated HTTP/WS smoke, actual shared D3D12
+progress/failure screenshots inspected. Additional real-EXE named-role/unwind
+preflight passed. Legacy26361232 native ASI and archived-path test build/pass.
+Preserved26423880 and26361232 EXEs each recover all30 anchors from one264 template;
+cold/cache times4.04/1.15s and3.28/0.98s, excluding live-world waits. Corrupt-cache
+fallback and ambiguity/context/callee/profile/load/freshness mutations pass.
+CI now has a separate264 recovery contract/UI step; new remote CI not run/pushed.
+
+Immutable owner-install ZIP: artifacts/mod-manager/
+CrimsonDesertTelemetry-v2.2.8-recovery.1-ModManagers.zip,1132626bytes, payload e71d64d,
+SHA25624D6AB73C6E34540A5051531584FF5A26F0327DC6E34875BB26175AF88CD0506.
+Production implementation, Research OFF, all normal features/HUDs ON, baseline
+research26423880. Builder/self-test/folder/ZIP checks pass; exact packaged Core
+2.2.8.0 has RuntimeRecovery,7contexts/11support anchors and autoallowlist=false.
+Receipt artifacts/runtime-recovery-package-20261104.json; SHA256SUMS besideZIP.
+Pair with unchanged C:/DEV/CrimsonHue/dist/CrimsonHue-1.0.5-asi-win-x64.zip.
+All source work committed locally on main; no new GitHub push/tag/asset/Nexus
+publication, no installed package or live hook acceptance. Older ZIPs/public2.2.7
+and unrelated untracked research remain preserved. AGENTS/CLAUDE byte-identical.
+
+Next: hand off the new CDT ZIP (supersedes earlier integrated.1) to the owner.
+Owner alone installs with game closed. End turn; no polling or waiting. Resume
+targeted combined feeds/visibility acceptance only after owner installation/restart
+report. Exact264 should take the normal quick path, not show an unnecessary search.
+
+# Previous checkpoint — 2026-11-04, build26423880 complete-path recovery on main
 
 GitHub main pushed through ce16f13; CI41806973251 succeeded (managed/API/package
 and native/UI checks). CI's default native target remains the validated26361232;
