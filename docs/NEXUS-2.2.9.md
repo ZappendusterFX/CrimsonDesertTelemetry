@@ -18,7 +18,7 @@ not independently verified Nexus field limits.
 | fileName | 34 |
 | summary | 173 |
 | fileDescription | 204 |
-| shortChangelog | 224 |
+| shortChangelog | 228 |
 | changelog | 489 |
 
 ## Mod title
