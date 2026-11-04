@@ -139,8 +139,8 @@ for one version duplicates the text on the page.
 * **Version strings** must match `^[a-zA-Z0-9.-]+$`, max 50 characters. A semver
   build suffix such as `1.2.1+abc` is rejected. `1.2.1-preview.1` is fine.
 * **File names** must match `^[a-zA-Z0-9 _'().-]+$`, max 50 characters.
-* **100 MiB** is the single part upload limit. The current package is under 1 MiB;
-  if it ever crosses 100 MiB, the multipart flow has to be implemented — the
+* **100 MiB** is the single part upload limit. Check the archive size before each
+  upload; if it crosses 100 MiB, the multipart flow has to be implemented — the
   module raises a clear error rather than silently truncating.
 * **MD5 becomes mandatory on 2026-12-01.** The module already sends the hex digest
   in the create-upload body and the base64 digest in the `Content-MD5` header, so
