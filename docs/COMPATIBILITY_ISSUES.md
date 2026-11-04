@@ -1,5 +1,46 @@
 # Current compatibility reports
 
+## Ahplla — save loading / offshore DLC area, reviewed 2026-11-04
+
+Owner relays an intermittent crash while loading a save and entering an offshore
+DLC area; the third attempt succeeded. Five supplied component logs are preserved
+unchanged under `Messages/Ahplla/` (Git-ignored). Their only internal dated entries
+are from 2026-11-03 around 20:40:45; the files do not identify which attempt they
+represent. No game crash log, dump, installed ASI hash or exact CDT/game version
+was supplied.
+
+Measured findings:
+
+- Native initialization rejects an EXE SHA256 different from its expected build
+  26361232. This is the pre-runtime-recovery message; it matches the older code
+  path preserved in v2.2.7, which returns before starting capture on rejection.
+  The expected build label does not identify the user's actual EXE or CDT version.
+- The native file nevertheless ends with playable-world arming and recurring
+  ManyLights capture ready. Exactly 702 NUL bytes occupy offsets 429 through 1130
+  (zero-based), before that tail. File size is 1763 bytes; SHA256 is
+  `DCFF0BE233F2B4CA93BD286E7882A9E9B55BCC8EB5FBAD8B5A7493D9B91690B1`.
+- Bootstrap reports another owner of the port-27311 bootstrap mutex at
+  20:40:45.163, then a host launch at 20:40:46.554. That establishes competing
+  bootstrap attempts, not duplicate ASI files or their process identities.
+- Overlay reports two completed D3D12/SDR initialization sequences and telemetry
+  ready. The supplied files contain no exception address, graphics failure code
+  or failing thread.
+
+Interpretation: overlapping writers/truncation or otherwise mixed log contents
+are plausible. Native logging uses a fixed filename opened with `fopen(...,"w")`;
+the native singleton is process-scoped, whereas the bootstrap mutex is per port.
+Neither the NUL gap nor the bootstrap line alone proves the source of the mixed
+contents or the crash. Do not interpret the capture tail as a guard bypass, or
+identify this as the historical Streamline/arming failure without crash evidence.
+
+A game update can explain the EXE rejection. Today's separately validated and
+published 2.2.8 already covers build26423880 and conditional runtime recovery;
+these older logs do not establish a new regression in that release or prove it
+fixes the reported crash. No code/package change or additional test is justified
+by these files alone. If the crash recurs with the current package, preserve the
+failed attempt's game log/dump and exact installed CDT/EXE identity before changing
+code. No immediate owner action or repeated game test requested.
+
 ## Two current Nexus reports — 2026-09-13
 
 Source: <https://www.nexusmods.com/crimsondesert/mods/3374?tab=posts>.

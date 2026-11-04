@@ -1,4 +1,21 @@
-# Current checkpoint — 2026-11-04, public2.2.8 published with Hue1.0.6
+# Current checkpoint — 2026-11-04, Ahplla's older crash logs reviewed
+
+Owner relays intermittent save/offshore-DLC crashes on Nov3, third attempt worked.
+Five unchanged logs in Messages/Ahplla contain no dump/game crash log or exact
+installed identities. See COMPATIBILITY_ISSUES.md for measured offsets/hash and
+source comparison. Native log rejects EXE against expected26361232, then has a
+702-byte NUL gap and capture-ready tail; bootstrap reports competing port27311
+ownership. Contents cannot establish one coherent run, duplicate installed ASIs,
+a guard bypass or the crash cause. Actual user EXE/CDT version remains unknown.
+
+Owner notes yesterday's game update is the compatibility work completed today.
+Published2.2.8 already covers validated26423880 plus conditional recovery; these
+older logs justify no new fix and do not prove the reported crash is fixed.
+Docs only; originals, code, immutable releases and installations unchanged.
+Next: no immediate action/test requested. If it recurs with current2.2.8, obtain
+the failed attempt's game log/dump and installed identities before changing code.
+
+# Previous checkpoint — 2026-11-04, public2.2.8 published with Hue1.0.6
 
 Both main branches/tags pushed and stable Latest releases published on GitHub.
 CDT v2.2.8 points to1910cd91b7dc5731d325bcbf19389c7092095e90; public ZIP is the
