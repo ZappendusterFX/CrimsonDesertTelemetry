@@ -93,7 +93,7 @@ endforeach()
 # Both builds ship physics_probe.cpp, whose query approach is informed by World Builder.
 file(READ "${CDT_ROOT}/licenses/WorldBuilder-MIT.txt" worldbuilder_license)
 file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/THIRD-PARTY-NOTICES.txt"
-    "\nWorld Builder / cdmodkit - physics query selection and layout\n${worldbuilder_license}\n")
+    "\nWorld Builder / cdmodkit - physics query selection/layout and simulation tick discovery\n${worldbuilder_license}\n")
 
 set(CDT_CONSOLE_SOURCES
     src/console/breakpoint.cpp src/console/console.cpp src/console/debugcmd.cpp
@@ -103,6 +103,7 @@ set(CDT_CONSOLE_SOURCES
 # relaxing warnings for newly integrated production code.
 set_source_files_properties(${CDT_CONSOLE_SOURCES} PROPERTIES COMPILE_OPTIONS "/WX-;/wd4996")
 add_library(cdt_instruments STATIC src/instruments.cpp src/build_guard.cpp src/runtime_recovery.cpp
+    src/simulation_tick_probe.cpp src/simulation_tick_thunk.asm
     src/render_bridge.cpp src/render_capture.cpp src/light_modulator.cpp src/modulator_bridge.cpp src/filter_thunk.asm src/ambient_thunk.asm
     ${CDT_RESEARCH_SOURCES} ${CDT_CONSOLE_SOURCES})
 target_compile_features(cdt_instruments PUBLIC cxx_std_20)
@@ -302,6 +303,25 @@ target_compile_options(CrimsonDesertTelemetryFilterThunkTests PRIVATE "$<$<COMPI
 target_link_libraries(CrimsonDesertTelemetryFilterThunkTests PRIVATE minhook)
 add_test(NAME render-filter-thunk COMMAND CrimsonDesertTelemetryFilterThunkTests)
 set_tests_properties(render-filter-thunk PROPERTIES TIMEOUT 15)
+add_executable(CrimsonDesertTelemetrySimulationTickTests tests/simulation_tick_test.cpp)
+target_compile_features(CrimsonDesertTelemetrySimulationTickTests PRIVATE cxx_std_20)
+target_compile_options(CrimsonDesertTelemetrySimulationTickTests PRIVATE /W4 /WX /permissive-)
+add_test(NAME simulation-tick-policy COMMAND CrimsonDesertTelemetrySimulationTickTests)
+set_tests_properties(simulation-tick-policy PROPERTIES TIMEOUT 10)
+add_executable(CrimsonDesertTelemetrySimulationTickScanTests tests/simulation_tick_scan_tests.cpp)
+target_compile_features(CrimsonDesertTelemetrySimulationTickScanTests PRIVATE cxx_std_20)
+target_include_directories(CrimsonDesertTelemetrySimulationTickScanTests PRIVATE src)
+target_compile_options(CrimsonDesertTelemetrySimulationTickScanTests PRIVATE /W4 /WX /permissive-)
+add_test(NAME simulation-tick-scan COMMAND CrimsonDesertTelemetrySimulationTickScanTests)
+set_tests_properties(simulation-tick-scan PROPERTIES TIMEOUT 10)
+add_executable(CrimsonDesertTelemetrySimulationTickThunkTests tests/simulation_tick_thunk_tests.cpp
+    tests/thunk_fixture.asm src/simulation_tick_thunk.asm)
+target_compile_features(CrimsonDesertTelemetrySimulationTickThunkTests PRIVATE cxx_std_20)
+target_compile_definitions(CrimsonDesertTelemetrySimulationTickThunkTests PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(CrimsonDesertTelemetrySimulationTickThunkTests PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:/W4;/WX;/permissive->")
+target_link_libraries(CrimsonDesertTelemetrySimulationTickThunkTests PRIVATE minhook)
+add_test(NAME simulation-tick-thunk COMMAND CrimsonDesertTelemetrySimulationTickThunkTests)
+set_tests_properties(simulation-tick-thunk PROPERTIES TIMEOUT 20)
 add_executable(CrimsonDesertTelemetryAmbientThunkTests tests/ambient_thunk_tests.cpp
     tests/thunk_fixture.asm src/ambient_thunk.asm)
 target_compile_features(CrimsonDesertTelemetryAmbientThunkTests PRIVATE cxx_std_20)

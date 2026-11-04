@@ -258,3 +258,27 @@ indicator is a tick-age heuristic, not an explicit engine pause field. Its
 specific tick has not been compared during this test, and normal host polling
 must not be mistaken for that simulation tick. No need to reject pause as a
 product criterion; the remaining task is validating a reliable observation.
+
+### Inventory and the selected tick approach
+
+Owner-confirmed Inventory at 19:21:56 CET, same PID 16716, gives three stable
+samples with no rejected roots: MainMenu 27D=03, InventoryEquipment=23,
+SkillTree=00. Thus MainMenu follows Skills -> gameplay -> Inventory as
+03 -> 00 -> 03; Inventory retains its higher bit while low bits change 20 -> 23.
+Evidence: `artifacts/menu-state-inventory-20261104-192156-026-c32803a39a2a4a06a988771778936eac.json`
+and independent `artifacts/menu-shared-tabs-comparison-20261104-1922.txt`.
+This covers the observed tabs; it does not establish a universal pause flag.
+
+The owner explicitly states pause and menus are one-to-one and prefers World
+Builder's tick approach because of update resilience. That is the selected path;
+stop requesting further UI transitions merely to enumerate every menu. Owner
+is now freely playing; no further labeled live recordings without a new handoff.
+
+Further offline checking found the same World Builder pump signature uniquely
+at function starts in three preserved builds (25477059, 26361232, 26423880),
+with identical first 28 bytes at different RVAs. Its counter is mod-owned and
+requires a hook, not a ready-to-read game-global. CDT now has an opt-in, exact-
+build diagnostic entry counter and independent 500 ms inactivity policy. The
+production menu-light/capture-pause integration remains pending runtime evidence.
+See `docs/SIMULATION_TICK_DIAGNOSTIC.md` and
+`artifacts/worldbuilder-tick-20261104/FINDINGS.md` for implementation and limits.

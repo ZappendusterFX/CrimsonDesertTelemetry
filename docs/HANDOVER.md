@@ -1,4 +1,32 @@
-# Current checkpoint — 2026-11-04, Skills control bits clear on gameplay return
+# Current checkpoint — 2026-11-04, owner selects tick pause; diagnostic package preparation
+
+Inventory 19:21:56 CET: same PID 16716, three stable samples; MainMenu27D=03,
+Inventory=23, Skills=00. MainMenu therefore tracks Skills/gameplay/Inventory as
+03/00/03. Owner confirms menu iff paused, prefers World Builder's tick approach,
+and is now freely playing. Do NOT request more UI toggles or record labeled data
+without a new owner handoff. No installation or live hooks performed.
+
+WB pump pattern has one unwind-start match with identical first 28 bytes in
+three preserved builds (25477059, 26361232, 26423880), at different addresses.
+The counter is hook-owned, not a game-global. Evidence: artifacts/worldbuilder-tick-20261104/.
+New optional production-only Diagnostics.SimulationTicks default 0; private
+builder switch -SimulationTickDiagnostic requires prerelease, explicit Research off,
+current exact definition. Runtime additionally checks exact EXE/contexts, unique
+signature, full executable prefix and unwind identity. Entry thunk only counts,
+independent worker publishes a 128-byte PID/start-bound mapping at most 20 Hz.
+No lighting output/acquisition gating yet. See docs/SIMULATION_TICK_DIAGNOSTIC.md.
+
+Native policy/scan/thunk tests 3/3 pass; thunk tests 80000 concurrent calls and
+GPR/XMM/RFLAGS/stack/unwind preservation. Decoder tests and own-process MMF reader
+test pass; no game process opened by those tests. Logs: artifacts/simulation-tick-
+tests-20261104.log, simulation-tick-reader-test-20261104.log and
+simulation-tick-reader-review-20261104/test.log. Initial build had only a scanner
+fixture narrowing warning under /WX, fixed with uint8_t zero; second build passes.
+Final unwind end-bound guard is included for the upcoming package build.
+Next: build/validate fresh 2.2.9-tick.1 with -Research off -SimulationTickDiagnostic,
+then owner-only installation handoff. No polling for installation/restart.
+
+# Previous checkpoint — 2026-11-04, Skills control bits clear on gameplay return
 
 Owner confirmed gameplay; v3 capture at 19:17:12 CET, same PID 16716/start time,
 three stable samples, no rejected roots, 13328 bytes/sample. Control byte 27D

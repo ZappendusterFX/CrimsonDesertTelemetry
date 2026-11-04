@@ -25,7 +25,10 @@ param(
     [switch]$DiagnosticHud,
     # Explicit, consumed-once cold recovery test; never remove or falsify the
     # reference EXE/profile to exercise the normal recovery path.
-    [string]$RecoveryTestOnce = ''
+    [string]$RecoveryTestOnce = '',
+    # Private monitor-only simulation tick diagnostic on the currently supported
+    # exact executable. Does not pause capture or change lighting output.
+    [switch]$SimulationTickDiagnostic
 )
 
 function Resolve-RecoveryTestToken([string]$Token, [string]$PackageVersion,
@@ -56,6 +59,32 @@ function Resolve-RecoveryTestToken([string]$Token, [string]$PackageVersion,
         throw 'RecoveryTestOnce requires a reference with complete native recovery metadata.'
     }
     return $normalized
+}
+
+function Resolve-SimulationTickDiagnostic([bool]$Enabled, [string]$PackageVersion,
+    [string]$ResearchMode, [string]$BuildId, [object]$Definition, [hashtable]$Overrides) {
+    if ($null -eq $Overrides) { $Overrides = @{} }
+    $expected = if ($Enabled) { '1' } else { '0' }
+    foreach ($key in @($Overrides.Keys)) {
+        if (($key -split '\.', 2)[-1] -ine 'SimulationTicks') { continue }
+        if ($key -ine 'Diagnostics.SimulationTicks' -or [string]$Overrides[$key] -cne $expected) {
+            throw 'Use -SimulationTickDiagnostic to enable Diagnostics.SimulationTicks; conflicting or unqualified INI overrides are refused.'
+        }
+    }
+    if (-not $Enabled) { return $false }
+    if ($PackageVersion -notmatch '-' -or $ResearchMode -ne 'off') {
+        throw 'SimulationTickDiagnostic requires a private prerelease and explicit -Research off.'
+    }
+    # This diagnostic has one measured native context. A different/research
+    # profile must never make an unrelated executable look supported.
+    if ($BuildId -ne '26423880' -or $null -eq $Definition -or
+        $Definition.steamBuildId -ne $BuildId -or $Definition.status -ne 'locally-validated' -or
+        $Definition.executableSha256 -ine 'DC4237F21D6CE1E49F8E5D6FA89BF803FBBE6549123078EFDC393265C7BF6841' -or
+        $Definition.nativeCapture.status -ne 'locally-validated' -or
+        $Definition.nativeCapture.requiresExactExecutable -ne $true) {
+        throw 'SimulationTickDiagnostic requires the supported exact-build 26423880 executable and native definition.'
+    }
+    return $true
 }
 
 $ErrorActionPreference = 'Stop'
@@ -108,10 +137,22 @@ if ($RecoveryTestOnce) {
     if (-not $IniOverrides) { $IniOverrides = @{} }
     $IniOverrides['Compatibility.RecoveryTestOnce'] = $RecoveryTestOnce
 }
+$simulationDefinition = $null
+if ($SimulationTickDiagnostic) {
+    $simulationDefinitionPath = Join-Path $repoRoot "definitions\build-$NativeBuildId.json"
+    if (-not (Test-Path -LiteralPath $simulationDefinitionPath)) { throw "Missing simulation tick diagnostic profile: $simulationDefinitionPath" }
+    $simulationDefinition = Get-Content -LiteralPath $simulationDefinitionPath -Raw | ConvertFrom-Json
+}
+if (Resolve-SimulationTickDiagnostic ([bool]$SimulationTickDiagnostic) $Version $Research $NativeBuildId $simulationDefinition $IniOverrides) {
+    if (-not $IniOverrides) { $IniOverrides = @{} }
+    $IniOverrides['Diagnostics.SimulationTicks'] = '1'
+}
 $iniTemplate = Join-Path $repoRoot $(if ($researchEnabled) {
     'packaging\mod-manager\CrimsonDesertTelemetry.research.ini'
 } else { 'packaging\mod-manager\CrimsonDesertTelemetry.ini' })
-$readmeTemplate = Join-Path $repoRoot $(if ($IntegratedDiagnostic) {
+$readmeTemplate = Join-Path $repoRoot $(if ($SimulationTickDiagnostic) {
+    'packaging\mod-manager\README.simulation-ticks.txt'
+} elseif ($IntegratedDiagnostic) {
     'packaging\mod-manager\README.integrated-diagnostic.txt'
 } elseif ($DiagnosticHud) {
     'packaging\mod-manager\README.hud-diagnostic.txt'

@@ -1,5 +1,18 @@
 # Tooling — what exists on this machine and how to invoke it
 
+## Optional simulation tick diagnostic
+
+`scripts/Read-SimulationTickDiagnostic.ps1 -Label gameplay` (or `skills`) reads
+only the private tick probe's per-process mapping. It defaults to three seconds
+at 20 Hz, validates publication/identity/freshness and writes a unique artifact.
+It needs the owner-installed diagnostic package and a newly confirmed game state.
+Do not run it while waiting for installation or while the owner freely plays.
+Build with a fresh private version, `-Research off -SimulationTickDiagnostic`;
+normal packages leave `Diagnostics.SimulationTicks=0`. See
+`docs/SIMULATION_TICK_DIAGNOSTIC.md`. Synthetic decoder check:
+`tests/scripts/Test-SimulationTickDiagnostic.ps1`; native CTest names start
+`simulation-tick-`. No capture pause or Hue menu output is implemented by this probe.
+
 For both assistants. Written because several of these cost real time to rediscover.
 Paths are machine-specific; verify before relying on a version number.
 

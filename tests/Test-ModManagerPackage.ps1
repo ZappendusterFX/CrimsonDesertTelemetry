@@ -33,6 +33,7 @@ function Get-ProfileRules([ValidateSet('production', 'research')][string]$Profil
     # This validates a package's requested settings, not runtime availability.
     $rules = @{
         Compatibility = @{ RecoveryTestOnce = 'recovery-token' }
+        Diagnostics = @{ SimulationTicks = 'simulation-ticks' }
         Server = @{ Enabled = 'bool'; Port = 'int:1024:65535'; SampleRateHz = 'int:1:240' }
         Notifications = @{ Enabled = 'bool'; DurationMilliseconds = 'int:5000:10000' }
         CrimsonHue = @{ Enabled = 'bool' }
@@ -100,6 +101,11 @@ function Assert-IniConfiguration([string]$Ini, [ValidateSet('production', 'resea
         if ($rule[0] -eq 'bool') {
             if ($value -cnotmatch '^[01]$') { throw "$section.$key must be 0 or 1." }
         }
+        elseif ($rule[0] -eq 'simulation-ticks') {
+            if ($value -cnotmatch '^[01]$' -or ($ProfileName -eq 'research' -and $value -ne '0')) {
+                throw "$section.$key must be 0 or 1 in production code and 0 in research builds."
+            }
+        }
         elseif ($rule[0] -eq 'filename') {
             # Explorer joins these names to the game directory, deletes its command
             # file and replaces its result file. Require distinct local filenames.
@@ -130,6 +136,8 @@ function Assert-IniConfiguration([string]$Ini, [ValidateSet('production', 'resea
     foreach ($requiredSection in $rules.Keys) {
         # Added after 2.2.8-recovery.1. Old packages/INIs retain default disabled.
         if ($requiredSection -eq 'Compatibility' -and -not $sections.ContainsKey($requiredSection)) { continue }
+        # Private monitor opt-in added after 2.2.8; absent in old packages = OFF.
+        if ($requiredSection -eq 'Diagnostics' -and -not $sections.ContainsKey($requiredSection)) { continue }
         if ($requiredSection -eq 'CrimsonHue' -and -not $sections.ContainsKey($requiredSection)) { continue } # old INIs use optional discovery
         # New private opt-in; old research packages remain valid with default OFF.
         if ($requiredSection -eq 'Experimental' -and -not $sections.ContainsKey($requiredSection)) { continue }
@@ -282,6 +290,15 @@ ResultFile=inject_result.txt
 '@
     $researchIni = $productionIni + "`n" + $researchTail
     Assert-IniConfiguration $researchIni 'research'
+    $diagnosticSection = "`n[Diagnostics]`nSimulationTicks=0`n"
+    Assert-IniConfiguration ($productionIni + $diagnosticSection) 'production'
+    Assert-IniConfiguration ($productionIni + $diagnosticSection.Replace('SimulationTicks=0', 'SimulationTicks=1')) 'production'
+    Assert-IniConfiguration ($researchIni + $diagnosticSection) 'research'
+    Assert-Rejected { Assert-IniConfiguration ($researchIni + $diagnosticSection.Replace('SimulationTicks=0', 'SimulationTicks=1')) 'research' } 'A research package enabled the simulation tick hook.'
+    foreach ($invalidTickValue in @('2', '-1', 'true', '01', '')) {
+        Assert-Rejected { Assert-IniConfiguration ($productionIni + $diagnosticSection.Replace('SimulationTicks=0', "SimulationTicks=$invalidTickValue")) 'production' } 'An invalid simulation tick switch was accepted.'
+    }
+    Assert-Rejected { Assert-IniConfiguration ($productionIni + "`n[Diagnostics]`n") 'production' } 'An incomplete diagnostics section was accepted.'
     Assert-IniConfiguration ($researchIni + "`n[Compatibility]`nRecoveryTestOnce=`n") 'research'
     Assert-Rejected { Assert-IniConfiguration ($researchIni + "`n[Compatibility]`nRecoveryTestOnce=$testToken`n") 'research' } 'A forced production recovery test was accepted in research instrumentation.'
     Assert-IniConfiguration ($researchIni.Replace('EnableConsole=0', 'EnableConsole=1').Replace('SpatialProbe=0', 'SpatialProbe=1')) 'research'
@@ -370,9 +387,51 @@ ResultFile=inject_result.txt
     Assert-Rejected { Resolve-RecoveryTestToken '' '2.2.8-recovery.2' $true 'off' $recoveryDefinition $matchingOverride } 'An INI-only override bypassed the explicit diagnostic parameter.'
     Assert-Rejected { Resolve-RecoveryTestToken $testToken '2.2.8-recovery.2' $true 'off' $recoveryDefinition @{ 'Compatibility.RecoveryTestOnce' = 'ABCDEF1234567890ABCDEF1234567890' } } 'A conflicting diagnostic token override was accepted.'
     Assert-Rejected { Resolve-RecoveryTestToken $testToken '2.2.8-recovery.2' $true 'off' $recoveryDefinition @{ 'RecoveryTestOnce' = $testToken } } 'An unqualified token override was accepted.'
+    $simulationFunction = $builderAst.Find({ param($node)
+        $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Resolve-SimulationTickDiagnostic'
+    }, $false)
+    if ($null -eq $simulationFunction) { throw 'Simulation tick package guard is missing.' }
+    . ([scriptblock]::Create($simulationFunction.Extent.Text))
+    $simulationDefinition = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\definitions\build-26423880.json') -Raw | ConvertFrom-Json
+    if (Resolve-SimulationTickDiagnostic $false '2.2.8' 'auto' '26423880' $null $null) {
+        throw 'A normal public package unexpectedly enables simulation tick monitoring.'
+    }
+    if (Resolve-SimulationTickDiagnostic $false '2.2.8-private.1' 'off' '26423880' $null @{ 'Diagnostics.SimulationTicks' = '0' }) {
+        throw 'An explicit OFF override unexpectedly enables simulation tick monitoring.'
+    }
+    if (-not (Resolve-SimulationTickDiagnostic $true '2.2.8-simulation.1' 'off' '26423880' $simulationDefinition $null)) {
+        throw 'The supported private exact-build simulation tick diagnostic was rejected.'
+    }
+    if (-not (Resolve-SimulationTickDiagnostic $true '2.2.8-simulation.1' 'off' '26423880' $simulationDefinition @{ 'Diagnostics.SimulationTicks' = '1' })) {
+        throw 'A matching qualified simulation tick override was rejected.'
+    }
+    Assert-Rejected { Resolve-SimulationTickDiagnostic $true '2.2.8' 'off' '26423880' $simulationDefinition $null } 'A public package enabled simulation tick monitoring.'
+    foreach ($mode in @('auto', 'on')) {
+        Assert-Rejected { Resolve-SimulationTickDiagnostic $true '2.2.8-simulation.1' $mode '26423880' $simulationDefinition $null } 'Implicit/research instrumentation enabled simulation tick monitoring.'
+    }
+    foreach ($packageVersion in @('2.2.8', '2.2.8-simulation.1')) {
+        Assert-Rejected { Resolve-SimulationTickDiagnostic $false $packageVersion 'off' '26423880' $simulationDefinition @{ 'Diagnostics.SimulationTicks' = '1' } } 'A raw INI override bypassed the explicit simulation tick switch.'
+    }
+    Assert-Rejected { Resolve-SimulationTickDiagnostic $true '2.2.8-simulation.1' 'off' '26423880' $simulationDefinition @{ 'SimulationTicks' = '1' } } 'An unqualified simulation tick override was accepted.'
+    Assert-Rejected { Resolve-SimulationTickDiagnostic $true '2.2.8-simulation.1' 'off' '26423880' $simulationDefinition @{ 'Diagnostics.SimulationTicks' = '0' } } 'A conflicting simulation tick override was accepted.'
+    Assert-Rejected { Resolve-SimulationTickDiagnostic $true '2.2.8-simulation.1' 'off' '26361232' $simulationDefinition $null } 'A different native build enabled the measured simulation tick diagnostic.'
+    Assert-Rejected { Resolve-SimulationTickDiagnostic $true '2.2.8-simulation.1' 'off' '26423880' $null $null } 'A missing native definition enabled simulation tick monitoring.'
+    foreach ($changedField in @('build', 'hash', 'status', 'native-status', 'exact')) {
+        $changedDefinition = $simulationDefinition | ConvertTo-Json -Depth 100 | ConvertFrom-Json
+        switch ($changedField) {
+            'build' { $changedDefinition.steamBuildId = '26361232' }
+            'hash' { $changedDefinition.executableSha256 = 'A' * 64 }
+            'status' { $changedDefinition.status = 'research' }
+            'native-status' { $changedDefinition.nativeCapture.status = 'research' }
+            'exact' { $changedDefinition.nativeCapture.requiresExactExecutable = $false }
+        }
+        Assert-Rejected { Resolve-SimulationTickDiagnostic $true '2.2.8-simulation.1' 'off' '26423880' $changedDefinition $null } "A mismatched diagnostic definition ($changedField) was accepted."
+    }
     foreach ($template in @('CrimsonDesertTelemetry.ini', 'CrimsonDesertTelemetry.research.ini')) {
         $templateIni = Get-Content -LiteralPath (Join-Path $PSScriptRoot "..\packaging\mod-manager\$template") -Raw
         if ($templateIni -notmatch '(?m)^RecoveryTestOnce=\r?$') { throw 'A default INI does not leave the recovery test disabled.' }
+        if ($templateIni -notmatch '(?m)^SimulationTicks=0\r?$') { throw 'A default INI does not leave simulation tick monitoring disabled.' }
+        Assert-IniConfiguration $templateIni $(if ($template -like '*.research.ini') { 'research' } else { 'production' })
     }
     Write-Output 'PASS package profiles, nondefault settings, bounds and companion-file regression cases (in-memory only)'
 }

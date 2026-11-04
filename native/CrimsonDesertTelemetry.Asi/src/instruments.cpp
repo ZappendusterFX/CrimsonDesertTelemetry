@@ -8,6 +8,7 @@
 #include "sky_bridge.h"
 #include "spatial_probe.h"
 #include "physics_probe.h"
+#include "simulation_tick_probe.h"
 #include "runtime_contract.generated.h"
 #include "runtime_recovery.h"
 #include "overlay.h"
@@ -126,7 +127,13 @@ void RunImpl(HANDLE stopEvent)
     }
     const bool captureEnabled = GetPrivateProfileIntW(L"Lights", L"Enabled", 0, iniPath.c_str()) != 0 &&
         GetPrivateProfileIntW(L"Lights", L"ManyLights", 1, iniPath.c_str()) != 0;
-    if (!requested && !captureEnabled)
+    // Optional private diagnostic only: never use this observation to gate capture yet.
+#if CDT_RESEARCH
+    constexpr bool simulationTickRequested = false;
+#else
+    const bool simulationTickRequested = GetPrivateProfileIntW(L"Diagnostics", L"SimulationTicks", 0, iniPath.c_str()) != 0;
+#endif
+    if (!requested && !captureEnabled && !simulationTickRequested)
     {
         render::PublishStatus(render::Status::Stopped);
         overlay::ClearLocalFault("native-capture");
@@ -350,8 +357,13 @@ void RunImpl(HANDLE stopEvent)
     recovery.Complete((!captureEnabled || capturing) && upstreamStarted &&
         (!ambientRequested || (spatialStarted && skyBridge && !sky::FailureCode())) &&
         (!physicsRecoveryRequested || physicsStarted));
+    const bool simulationTickStarted = simulationTickRequested && verified && exactContexts &&
+        simulation_tick_probe::Start(ch::g_game.moduleBase);
+    if (simulationTickRequested && !simulationTickStarted)
+        ch::Log("Simulation tick diagnostic unavailable; exact-build/context and unique function guards are required. Lighting remains independent.");
     while (WaitForSingleObject(stopEvent, 5) == WAIT_TIMEOUT)
     {
+        if (simulationTickStarted) simulation_tick_probe::Poll();
         if(spatialStarted) spatial::Poll();
         if(physicsStarted) physics::Poll();
 #if CDT_RESEARCH
@@ -373,6 +385,7 @@ void RunImpl(HANDLE stopEvent)
 #if CDT_RESEARCH
     if(sourceVisibilityBridge) source_visibility::Close();
 #endif
+    if(simulationTickRequested) simulation_tick_probe::Stop();
     if(physicsStarted) physics::Stop();
     if(spatialStarted) spatial::Stop();
     if (capturing) render::StopCapture();
@@ -389,6 +402,7 @@ void Run(HANDLE stopEvent)
     try { RunImpl(stopEvent); }
     catch (...)
     {
+        simulation_tick_probe::Stop();
         ch::Log("Native instrumentation worker failed unexpectedly; capture cannot continue.");
         render::PublishStatus(render::Status::Fault, ERROR_UNHANDLED_EXCEPTION);
         sky::PublishStatus(render::Status::Fault, ERROR_UNHANDLED_EXCEPTION);
@@ -398,6 +412,7 @@ void Run(HANDLE stopEvent)
 }
 bool OwnsCodeAddress(uint64_t address)
 {
+    if (simulation_tick_probe::OwnsCodeAddress(address)) return true;
     if (physics::OwnsCodeAddress(address)) return true;
     return render::OwnsCodeAddress(address) || spatial::OwnsCodeAddress(address);
 }
