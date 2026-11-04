@@ -1,4 +1,48 @@
-# Current checkpoint — 2026-11-04, menu-mode packages ready; owner installation next
+# Current checkpoint — 2026-11-04, menu.2 HUD editing and pause-notice fix
+
+Owner installed menu.1, reports changed/dark menu light and screenshot
+"Light data is unavailable" while briefly testing Skills. PID34048 start20:17:04.
+All seven executable/config payload hashes match receipt. Health playing/errornull
+and activity running/epoch5 at20:21:51. Later passive Hue snapshot also streams
+fresh gameplay. Raw tick file labelled gameplay at20:22:51 actually shows paused
+(epoch6); owner was freely toggling menus, so this is NOT a controlled gameplay
+label or ABA proof. See artifacts/menu1-observation-interpretation-20261104.json
+and menu1-install-and-gameplay-20261104-202251.json in CDT. Do not claim a false
+pause or full acceptance from those samples. Host/native logs were buffered/empty.
+
+Exact notification cause reproduced: overlay LightNotice treated intentional
+simulation-paused/awaiting-post-resume-capture as a generic error before loading
+silence. Fix keeps those unavailable states quiet, recognizes waiting-for-simulation,
+and preserves independent real host/native/invalid-data errors. Overlay CTest PASS.
+
+USER CORRECTION: menu color/brightness must be editable in HUD. Do NOT automatically
+change defaults or migrate saved choices to gold. Final implementation keeps old
+20% warm-white defaults and existing settings; adds visible color picker + hex,
+brightness, Save menu lighting and OPTIONAL Gold preset (80%, RGB1/.65/.08).
+The temporary automatic-default proposal was reverted before packaging.
+Core/defaults remain unchanged; the temporary180-test gold-migration run does NOT
+represent the final implementation. Packaged controller smoke checks the explicit
+gold command, invalid-preset refusal, reset and preservation of gameplay tuning.
+
+Source commits: Hue c6f739f, CDT d6bb601. Both fresh packages built and folder/ZIP
+validated, production/Research OFF, nativebuild26423880, Pause1/Diagnostics0:
+- C:/DEV/CrimsonHue/dist/CrimsonHue-1.0.7-menu.2-asi-win-x64.zip
+  SHA256 A622D9874A25528718BA6EB12CDAA5D619CC80C1E6D0AC45F5FCFA368F0CCEBB
+- C:/DEV/CrimsonDesertTelemetry/artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.9-menu.2-ModManagers.zip
+  SHA256 0C172812F161B3EAA6B35543E2BD6F0D6A9B52621C983A535CCB4817EB6F4EF8
+Build logs: artifacts/menu2-package-20261104.log in each repository. No assistant
+installation or user-settings change. menu.2 is not yet owner-installed/game-tested.
+Exact packaged controller and shared D3D12 HUD smoke PASS; final image inspected:
+CDT artifacts/menu2-overlay-20261104/lighting.png. Receipt with payload hashes:
+CDT artifacts/menu2-package-receipt-20261104.json.
+
+Next OWNER ONLY: stop sync, close game, install both menu.2 ZIPs, restart; use
+Ctrl+Shift+H > Lighting > Menu lighting to set color/brightness or click Gold preset,
+then Save menu lighting. End turn at handoff, no waiting/polling. Only after owner
+reports installation/restart resume acceptance. Skills-stutter and physical lamp
+behavior remain owner acceptance; no need for further menu-offset discovery.
+
+# Previous checkpoint — 2026-11-04, menu-mode packages ready; owner installation next
 
 Implemented fixed menu light plus actual native/managed acquisition pause.
 CDT source f76e59b; Hue controller 1db8c17, shared panel 71903f1 (included in CDT).
