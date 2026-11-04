@@ -1,4 +1,30 @@
-# Current checkpoint — 2026-11-04, skill-window recorder prepared, awaiting go
+# Current checkpoint — 2026-11-04, skill-window capture shows repeated bridge-stale
+
+Owner gave go; composed Hue recorder completed 30s at 17:52:55-17:53:25 CET,
+game PID 34956. Captured 1,788 raw / 1,786 Ambient envelopes and 149 passive Hue
+UI samples (zero rejected), all jobs completed. 29 performance samples include one
+explicit GPU-counter timeout; no Present/FPS or optical measurement. Evidence:
+C:/DEV/CrimsonHue/artifacts/skill-window-20261104-175254-16527d2443fa4098882048038332a44b/.
+
+Offline outage-analysis.json finds six local bridge-stale episodes / 94 unavailable
+raw envelopes. First at +6.546s; largest distinct-capture receive gap 1.012s with
+only one capture-sequence advance / two engine-counter advances. RenderLightReader
+marks native capture age >500ms unavailable; Hue clears both backends, confirmed
+by ten passive snapshots with eight black Hue colors and output-cleared status,
+then resumes on fresh captures. Ambient separately unavailable in 12 envelopes.
+All 1,788 game states remain playing. Camera/player geometry and actual mixer
+configuration stay stable after initial camera movement; no automatic menu timing.
+
+332 unique local captures. Visibility has only pending/stale/budget reasons, no
+physics-stopped-restart-required; native log is byte-identical before/after. The
+permanent timing latch and OpenRGB disconnect from the prior session did not recur
+in this trace. Capture/engine stalls, not a proven camera-transform or color error,
+are the next diagnostic target; root cause/menu causality remains unproven. No
+native trace signal, extra game calls, code/settings or installation changes.
+Next: report completed recording/freshness-clear mechanism. No new owner action
+needed; preserve evidence for any later scoped implementation request.
+
+# Previous checkpoint — 2026-11-04, skill-window recorder prepared, awaiting go
 
 Owner reports erratic LightSync in the game's skill window and requests preparation
 of a 30-second recording. VisibilityRecorder now has optional --lighting (retain
