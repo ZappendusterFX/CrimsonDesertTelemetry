@@ -12,7 +12,8 @@ decoder/own-process reader tests pass. Archive:
 `artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.9-tick.1-ModManagers.zip`,
 SHA256 `7A7819427F468A307918D5F4BCB7699B858DA0B4ACF8B3347EA81FC950053487`.
 Receipt: `artifacts/simulation-tick-package-receipt-20261104.json`.
-Not installed or game-tested; installation remains owner-only with game closed.
+At build time it was not installed or game-tested; the subsequent owner
+installation and runtime evidence are recorded below.
 
 ### First installed gameplay control — 2026-11-04
 
@@ -61,6 +62,14 @@ Mapping v2 keeps the 128-byte layout and all existing offsets: flags bit2 means
 acquisition paused, bit3 pause control enabled; offset96 is uint64 captureEpoch,
 offset104 uint64 resumedAtTickMs. Diagnostic readers support v1 and v2. New
 monitor-only packages explicitly set Pause.Enabled=0; research keeps it disabled.
+
+The paired private menu packages are now built and validated: CDT2.2.9-menu.1
+and Hue1.0.7-menu.1, production/Research OFF. Source CDT f76e59b, Hue1db8c17;
+shared panel71903f1 is bundled into CDT. Hue177/177, CDT94/94, native4/4 focused
+tests and exact packaged controller/shared-renderer smoke pass. See HANDOVER
+and artifacts/menu-package-receipt-20261104.json for immutable paths/hashes.
+Owner installation, real-lamp behavior and Skills-stutter improvement remain
+pending. The previous tick-only ABA comparison is not acceptance of the fix.
 
 ## Proven discovery, pending runtime semantics
 

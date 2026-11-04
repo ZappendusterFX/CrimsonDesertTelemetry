@@ -1,24 +1,45 @@
-# Current checkpoint — 2026-11-04, tick ABA confirmed; menu mode implementation
+# Current checkpoint — 2026-11-04, menu-mode packages ready; owner installation next
 
-Owner-confirmed gameplay -> Skills preview -> gameplay, PID32972/start unchanged:
-47 fresh samples per capture. Counter 22018->22320, then25475 constant while
-observer publications advance, then26707->27001. All error0; return capture
-19:55:26-29 CET proves immediate resumed progress. Evidence in CDT artifacts:
-simulation-ticks-gameplay-20261104-195526-618-02e6f6ae1df54f2ab18907f18ea8cd1a.json.
-This validates the selected tick signal for Skills; it does not yet prove the
-stutter fix, every menu or physical output. Owner confirms menus iff paused.
+Implemented fixed menu light plus actual native/managed acquisition pause.
+CDT source f76e59b; Hue controller 1db8c17, shared panel 71903f1 (included in CDT).
+20 Hz independent observer, pause after 500 ms without simulation progress;
+epoch boundaries drain/discard obsolete GPU/physics work. Original game queries
+still execute exactly once. Neutral /v1/activity and /v1/activity/stream control
+Hue/OpenRGB fixed color (warm white, 20% times master), fresh-data resume and
+500 ms blend. Color/brightness/reset in Lighting > Menu lighting. Demo stays dry.
+Unknown/stale activity cannot hold menu output. Research remains unchanged/OFF.
 
-Implementation in progress: independent20Hz tick observation; production
-Pause.Enabled=1 gates new native/managed light, sky/GI and physics acquisition;
-epochs discard obsolete results while in-flight GPU work drains. Neutral
-/v1/activity and /v1/activity/stream feed Hue's fixed configurable menu color.
-Fresh post-resume data and a bounded blend restore gameplay. Research remains
-unchanged; old activity endpoints unavailable retain existing safe behavior.
+Immutable paired ZIPs, both folder/ZIP validated:
+- C:/DEV/CrimsonHue/dist/CrimsonHue-1.0.7-menu.1-asi-win-x64.zip
+  SHA256 62F23FE3EA2296D21ECB600EF38C157F18DC88D1452863D7B13468EBC074E227
+- C:/DEV/CrimsonDesertTelemetry/artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.9-menu.1-ModManagers.zip
+  SHA256 348C5392788C342888BD1EE31ABC0EC2EF46C2A4634BE95882221E46BD5F77DB
+CDT production profile: build26423880, Research OFF, Pause.Enabled=1,
+Diagnostics.SimulationTicks=0. Receipt and payload hashes in CDT
+artifacts/menu-package-receipt-20261104.json; build logs in each repo's
+artifacts/menu-package-20261104.log. No assistant installation/deployment changes.
 
-Owner is freely playing. Do not capture labeled states or alter installations.
-Next finish automated/synthetic tests, commit, build fresh paired private menu
-packages and hand them to OWNER for installation with game closed. Never poll
-for that action. No deployed package changes or game test of menu mode yet.
+Validation: Hue177/177, CDT94/94, native4/4 focused CTest (Physics201checks),
+exact packaged Hue controller and shared D3D12 renderer smoke PASS; final image
+CDT artifacts/menu-overlay-20261104/lighting-final.png inspected. No game/lamp
+acceptance of these packages yet; do not claim the Skills stall is fixed.
+
+Tick signal already measured with owner-installed CDT2.2.9-tick.1:
+gameplay -> Skills preview -> gameplay, PID32972/start unchanged, 47 fresh
+samples each. Counters22018->22320, 25475 constant with observer alive,
+26707->27001. Last return19:55:26-29 CET; evidence in CDT
+artifacts/simulation-ticks-gameplay-20261104-195526-618-02e6f6ae1df54f2ab18907f18ea8cd1a.json.
+Owner confirms menus iff paused. Do not ask for more UI-offset/menu discovery.
+
+NEXT OWNER ONLY: Stop sync, close game, install both paired ZIPs and restart.
+End turn at handoff; do not wait/poll for installation. After owner reports it,
+read-only compare deployed ASI/managed/config hashes with receipt, then record
+owner-confirmed gameplay using CDT scripts/Read-SimulationTickDiagnostic.ps1
+-Label gameplay and GET http://127.0.0.1:27311/v1/activity. Subsequent owner Skills
+handoff checks state=paused/acquisitionPaused=true, fixed light and whether
+stutters/rapid hover sounds are gone; gameplay return checks fresh resume.
+Keep new-package acceptance distinct from the old tick-only ABA evidence.
+
 # Previous checkpoint — 2026-11-04, tick diagnostic ready; owner installation handoff
 
 Private CDT 2.2.9-tick.1 is built/validated from source 3f810c0, production profile
