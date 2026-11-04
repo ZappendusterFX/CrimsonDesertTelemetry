@@ -1,4 +1,28 @@
-# Current checkpoint — 2026-11-04, Skills stall persists despite menu.2
+# Current checkpoint — 2026-11-04, controller-only Skills symptom; plausible game issue
+
+Owner clarifies bug is ONLY WITH CONTROLLER and suggests Crimson Desert itself.
+Stop-LightSync comparison is NOT confirmed by this clarification. Focused source
+review finds no shipping controller backend/synthetic input or demonstrated input
+mode switch; hidden panel forwards HID once. Prior capture/drain=false observation
+does not exclude transient mouse-hover vs controller selection interference.
+
+First-person reports read2026-11-04:
+- https://www.reddit.com/r/CrimsonDesert/comments/1thh8m7/issue_with_skill_tree_on_controller/
+  Controller Skills selection flickers between nodes; one fullscreen-over-borderless
+  workaround report, unverified locally.
+- https://www.reddit.com/r/CrimsonDesert/comments/1xk2xz7/lag_in_the_skills_menu/
+  Severe Skills-only lag with otherwise normal play; multiple respondents.
+- https://www.reddit.com/r/CrimsonDesert/comments/1xl1wev/problems_with_the_skill_tree/
+  Lag switching skills plus erratic analog selection.
+- https://www.nexusmods.com/crimsondesert/mods/3466 author offers partial lag fix
+  and optional recompressed previews; stated2.02/2.03 support is not current-build
+  validation. No download/install/recommendation as verified solution.
+Game/controller cause now has external corroborating symptoms, not local proof.
+No speculative native/input fix/package. Optional owner fullscreen-vs-borderless
+trial only; no settings changes or polling. Do not label menu-light feature a
+stutter fix, and do not reinstate withdrawn OpenRGB attribution.
+
+# Previous checkpoint — 2026-11-04, Skills stall persists despite menu.2
 
 Owner reports original Skills-menu stutter/rapid hover clicks remain. Menu lighting
 must not be called a fix. OpenRGB/Razer attribution remains withdrawn. Exact seven
