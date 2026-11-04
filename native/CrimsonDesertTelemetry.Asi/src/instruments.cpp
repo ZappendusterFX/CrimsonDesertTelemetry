@@ -156,7 +156,6 @@ void RunImpl(HANDLE stopEvent)
     }
     const bool ambientRequested = GetPrivateProfileIntW(L"Ambient", L"Enabled", 0, iniPath.c_str()) != 0;
     if (ambientRequested && exactContexts && !render::CheckAmbientPreflight(moduleBase)) exactContexts = false;
-    const bool recoveryNeeded = !verified || !exactContexts;
     const bool physicsRecoveryRequested = GetPrivateProfileIntW(L"SourceVisibility", L"Enabled", 0, iniPath.c_str()) != 0;
     const uint32_t requestedFeatures = (captureEnabled?1u:0u)|(upstreamRequested?2u:0u)|
         (ambientRequested?4u:0u)|(physicsRecoveryRequested?8u:0u);
@@ -168,9 +167,28 @@ void RunImpl(HANDLE stopEvent)
 #else
     constexpr bool recoverySupported = native_contract::support::Available;
 #endif
+    recovery::DiagnosticRequest diagnostic;
+    if constexpr (recoverySupported)
+    {
+        std::array<wchar_t,34> token{};
+        const auto count=GetPrivateProfileStringW(L"Compatibility",L"RecoveryTestOnce",L"",
+            token.data(),static_cast<DWORD>(token.size()),iniPath.c_str());
+        std::string failure;
+        if(!recovery::ReadDiagnosticRequest(std::wstring_view(token.data(),count),diagnostic,failure))
+        {
+            ch::Log("One-time recovery test refused: %s",failure.c_str());
+            overlay::SetLocalFault("native-capture","Recovery test configuration is invalid",failure);
+            return;
+        }
+        if(count)
+            ch::Log(diagnostic.force
+                ? "One-time recovery test armed: exact-build fast path is skipped; cold discovery and all live guards remain required."
+                : "One-time recovery test was already consumed; using ordinary executable and context checks.");
+    }
+    const bool recoveryNeeded = !verified || !exactContexts || diagnostic.force;
     if (recoverySupported)
     {
-        if (!recovery.Initialize(executableHash,recoveryNeeded,requestedFeatures))
+        if (!recovery.Initialize(executableHash,recoveryNeeded,requestedFeatures,diagnostic))
         {
             overlay::SetLocalFault("native-capture", "Recovery communication unavailable",
                 "The per-process compatibility channel could not initialize. Native game hooks remain disabled.");
@@ -188,7 +206,9 @@ void RunImpl(HANDLE stopEvent)
                 "Native hooks remain disabled. Install a package containing automatic update recovery for this game layout.");
             return;
         }
-        ch::Log("Executable or code context changed: requesting one conditional in-game address recovery.");
+        ch::Log(diagnostic.force
+            ? "Starting explicitly requested one-time recovery test; reference values and EXE identity remain intact."
+            : "Executable or code context changed: requesting one conditional in-game address recovery.");
         if (!recovery.WaitAndApply(stopEvent)) return;
         overlay::ClearLocalFault("native-capture");
     }

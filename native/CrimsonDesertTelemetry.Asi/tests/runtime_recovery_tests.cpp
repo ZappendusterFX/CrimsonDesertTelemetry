@@ -26,6 +26,40 @@ std::string Hex(std::span<const unsigned char> bytes)
 }
 template<class T> void Put(void* destination,size_t offset,const T& value)
 { std::memcpy(static_cast<unsigned char*>(destination)+offset,&value,sizeof(value)); }
+void DiagnosticRequestTests()
+{
+    using cdt::recovery::ReadDiagnosticRequest;
+    cdt::recovery::DiagnosticRequest diagnostic;
+    std::string error;
+    Check(ReadDiagnosticRequest(L"",diagnostic,error,L"relative")&&!diagnostic.force&&error.empty(),"disabled diagnostic touched storage");
+    for(const auto invalid:{L"0",L"0123456789abcdef0123456789abcdeff00",L"0123456789abcdef0123456789abcdefg",
+        L"../3456789abcdef0123456789abcdef0",L"00000000000000000000000000000000"})
+        Check(!ReadDiagnosticRequest(invalid,diagnostic,error)&&!diagnostic.force&&!error.empty(),"malformed diagnostic token accepted");
+    constexpr auto token=L"0123456789abcdef0123456789abcdef";
+    Check(!ReadDiagnosticRequest(token,diagnostic,error,L"relative")&&!diagnostic.force&&!error.empty(),"relative diagnostic storage accepted");
+    std::array<wchar_t,MAX_PATH> temp{},unique{};
+    Check(GetTempPathW(static_cast<DWORD>(temp.size()),temp.data())>0,"read diagnostic test temp path");
+    Check(GetTempFileNameW(temp.data(),L"CDT",0,unique.data())!=0,"reserve isolated diagnostic test directory");
+    Check(DeleteFileW(unique.data())&&CreateDirectoryW(unique.data(),nullptr),"create isolated diagnostic test directory");
+    const std::filesystem::path root=unique.data();
+    const auto product=root/L"CrimsonDesertTelemetry",directory=product/L"RecoveryTests";
+    const auto marker=directory/L"0123456789ABCDEF0123456789ABCDEF.done";
+    Check(ReadDiagnosticRequest(token,diagnostic,error,root)&&diagnostic.force&&error.empty(),"fresh diagnostic did not arm");
+    const std::array<std::uint8_t,16> bytes{0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF,0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF};
+    Check(diagnostic.token==bytes,"diagnostic token bytes differ");
+    Check(GetFileAttributesW(product.c_str())==INVALID_FILE_ATTRIBUTES,"native arming created marker storage before world readiness");
+    Check(ReadDiagnosticRequest(token,diagnostic,error,root)&&diagnostic.force,"re-reading armed token consumed it");
+    Check(CreateDirectoryW(product.c_str(),nullptr)&&CreateDirectoryW(directory.c_str(),nullptr),"create diagnostic marker fixture");
+    const auto file=CreateFileW(marker.c_str(),GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr);
+    Check(file!=INVALID_HANDLE_VALUE,"create consumed diagnostic fixture");CloseHandle(file);
+    Check(ReadDiagnosticRequest(token,diagnostic,error,root)&&!diagnostic.force&&error.empty(),"consumed token forced recovery again");
+    Check(ReadDiagnosticRequest(L"0123456789ABCDEF0123456789ABCDEF",diagnostic,error,root)&&!diagnostic.force,"token casing bypassed one-shot marker");
+    Check(DeleteFileW(marker.c_str())&&CreateDirectoryW(marker.c_str(),nullptr),"create invalid marker fixture");
+    Check(!ReadDiagnosticRequest(token,diagnostic,error,root)&&!diagnostic.force&&!error.empty(),"directory was accepted as diagnostic marker");
+    Check(RemoveDirectoryW(marker.c_str()),"remove invalid marker fixture");
+    Check(ReadDiagnosticRequest(token,diagnostic,error,root)&&diagnostic.force,"unclaimed token did not stay armed");
+    Check(RemoveDirectoryW(directory.c_str())&&RemoveDirectoryW(product.c_str())&&RemoveDirectoryW(root.c_str()),"remove isolated diagnostic test directories");
+}
 struct Fixture
 {
     static constexpr std::uint32_t Size=0x7800000;
@@ -133,6 +167,7 @@ struct Fixture
 }
 int wmain(int argc,wchar_t** argv)
 {
+    DiagnosticRequestTests();
     if(!contract::support::Available) {std::cout<<"PASS archived contract does not enable runtime recovery\n";return 0;}
     if(argc>1)
     {
@@ -218,11 +253,15 @@ int wmain(int argc,wchar_t** argv)
     // No graphics hooks or game writes: exercise the actual IPC object/header
     // and cancellation using this test process, then a submitted invalid message.
     const auto name=L"Local\\CrimsonDesertTelemetry.Recovery."+std::to_wstring(GetCurrentProcessId());
-    const auto header=[&](std::uint32_t expected) {
+    const auto header=[&](std::uint32_t expected,const cdt::recovery::DiagnosticRequest& diagnostic=cdt::recovery::DiagnosticRequest{}) {
         const auto mapping=OpenFileMappingW(FILE_MAP_ALL_ACCESS,FALSE,name.c_str());Check(mapping!=nullptr,"open native-created handshake");
         auto* view=static_cast<unsigned char*>(MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,65536));Check(view!=nullptr,"map handshake");
-        std::uint32_t magic{},state{},features{};std::memcpy(&magic,view,4);std::memcpy(&state,view+12,4);std::memcpy(&features,view+224,4);
+        std::uint32_t magic{},state{},features{},version{},diagnosticFlag{};std::memcpy(&magic,view,4);std::memcpy(&state,view+12,4);std::memcpy(&features,view+224,4);
+        std::memcpy(&version,view+4,4);std::memcpy(&diagnosticFlag,view+232,4);
         Check(magic==0x52544443&&state==expected&&features==15,"wrong handshake header/state/features");
+        Check(version==(diagnostic.force?2u:1u)&&diagnosticFlag==(diagnostic.force?1u:0u),"wrong diagnostic handshake version/flag");
+        const auto token=diagnostic.force?diagnostic.token:std::array<std::uint8_t,16>{};
+        Check(std::equal(token.begin(),token.end(),view+240),"wrong diagnostic handshake token");
         return std::pair{mapping,view};
     };
     {
@@ -241,5 +280,23 @@ int wmain(int argc,wchar_t** argv)
         Check(InterlockedCompareExchange(reinterpret_cast<volatile LONG*>(view+12),0,0)==4,"rejected handoff did not publish terminal state");
         UnmapViewOfFile(view);CloseHandle(mapping);
     }
-    std::cout<<"PASS complete shifted contract, identity/layout/code/caller/collector/scene rejection and one-time activation\n";
+    {
+        cdt::recovery::DiagnosticRequest diagnostic;diagnostic.force=true;
+        cdt::recovery::Handoff invalid;Check(!invalid.Initialize(f.digest,true,15,diagnostic),"empty forced token was published");
+        diagnostic.token[0]=0xA5;diagnostic.token[15]=0xEF;
+        Check(!invalid.Initialize(f.digest,false,15,diagnostic),"diagnostic was allowed to skip recovery");
+        cdt::recovery::Handoff handoff;Check(handoff.Initialize(f.digest,true,15,diagnostic),"diagnostic handoff initialization");
+        const auto [mapping,view]=header(1,diagnostic);
+        const auto stop=CreateEventW(nullptr,TRUE,TRUE,nullptr);Check(stop!=nullptr,"diagnostic stop event");
+        Check(!handoff.WaitAndApply(stop),"cancelled diagnostic activated recovery");CloseHandle(stop);
+        UnmapViewOfFile(view);CloseHandle(mapping);
+    }
+    {
+        // Consumed token metadata must not leak into an ordinary recovery after
+        // another game update: normal hash/context validation remains active.
+        cdt::recovery::DiagnosticRequest consumed;consumed.token[0]=0xA5;
+        cdt::recovery::Handoff handoff;Check(handoff.Initialize(f.digest,true,15,consumed),"ordinary recovery after consumed diagnostic");
+        const auto [mapping,view]=header(1);UnmapViewOfFile(view);CloseHandle(mapping);
+    }
+    std::cout<<"PASS complete shifted contract, identity/layout/code/caller/collector/scene rejection, one-time activation and cold-test handshake\n";
 }

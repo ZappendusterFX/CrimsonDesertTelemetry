@@ -132,6 +132,52 @@ Json Parse(std::string_view payload)
 }
 }
 
+bool ReadDiagnosticRequest(std::wstring_view token,DiagnosticRequest& request,std::string& failure,
+    const std::filesystem::path& localAppDataForTest)
+{
+    request={};failure.clear();
+    if(token.empty()) return true;
+    if(token.size()!=32) {failure="RecoveryTestOnce must be an empty value or a nonzero 32-digit hexadecimal token.";return false;}
+    std::wstring normalized;normalized.reserve(32);
+    constexpr wchar_t digits[]=L"0123456789ABCDEF";
+    for(size_t i=0;i<token.size();++i)
+    {
+        const auto c=token[i];
+        const int value=c>=L'0'&&c<=L'9'?c-L'0':c>=L'a'&&c<=L'f'?c-L'a'+10:c>=L'A'&&c<=L'F'?c-L'A'+10:-1;
+        if(value<0) {failure="RecoveryTestOnce contains a non-hexadecimal character.";return false;}
+        normalized+=digits[value];
+        request.token[i/2]=static_cast<std::uint8_t>((request.token[i/2]<<4)|value);
+    }
+    if(std::all_of(request.token.begin(),request.token.end(),[](auto value){return value==0;}))
+    {failure="RecoveryTestOnce must not be the all-zero token.";return false;}
+    try
+    {
+        auto directory=localAppDataForTest;
+        if(directory.empty())
+        {
+            std::array<wchar_t,32768> local{};
+            const auto length=GetEnvironmentVariableW(L"LOCALAPPDATA",local.data(),static_cast<DWORD>(local.size()));
+            if(length==0||length>=local.size()) {failure="LOCALAPPDATA is unavailable for the one-time recovery test.";return false;}
+            directory=std::filesystem::path(local.data());
+        }
+        if(!directory.is_absolute()) {failure="The recovery-test storage path is not absolute.";return false;}
+        const auto marker=directory/L"CrimsonDesertTelemetry"/L"RecoveryTests"/(normalized+L".done");
+        const auto attributes=GetFileAttributesW(marker.c_str());
+        if(attributes!=INVALID_FILE_ATTRIBUTES)
+        {
+            if(attributes&(FILE_ATTRIBUTE_DIRECTORY|FILE_ATTRIBUTE_REPARSE_POINT))
+            {failure="The recovery-test marker is not a regular file.";return false;}
+            return true;
+        }
+        const auto error=GetLastError();
+        if(error!=ERROR_FILE_NOT_FOUND&&error!=ERROR_PATH_NOT_FOUND)
+        {failure="The one-time recovery-test marker could not be checked (Windows error "+std::to_string(error)+").";return false;}
+        request.force=true;
+        return true;
+    }
+    catch(const std::exception& error) {failure=std::string("Recovery-test storage could not be checked: ")+error.what();return false;}
+}
+
 bool ValidateAndApply(std::string_view payload,std::uint64_t moduleBase,std::uint32_t processId,
     std::uint64_t processStart,const std::array<unsigned char,32>& executableHash,std::string& failure)
 {
@@ -292,8 +338,10 @@ Handoff::~Handoff()
     if(view_) UnmapViewOfFile(view_);
     if(mapping_) CloseHandle(mapping_);
 }
-bool Handoff::Initialize(const std::array<unsigned char,32>& executableHash,bool needed,std::uint32_t requestedFeatures)
+bool Handoff::Initialize(const std::array<unsigned char,32>& executableHash,bool needed,std::uint32_t requestedFeatures,
+    const DiagnosticRequest& diagnostic)
 {
+    if(diagnostic.force&&(!needed||std::all_of(diagnostic.token.begin(),diagnostic.token.end(),[](auto value){return value==0;}))) return false;
     if(!native_contract::support::Available) return !needed;
     const auto name=L"Local\\CrimsonDesertTelemetry.Recovery."+std::to_wstring(GetCurrentProcessId());
     mapping_=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,Capacity,name.c_str());
@@ -301,9 +349,15 @@ bool Handoff::Initialize(const std::array<unsigned char,32>& executableHash,bool
     view_=static_cast<unsigned char*>(MapViewOfFile(mapping_,FILE_MAP_ALL_ACCESS,0,0,Capacity));
     if(!view_) return false;
     const auto born=StartTime();if(!born) return false;
-    std::memset(view_,0,Capacity);Put(view_,0,Magic);Put(view_,4,1u);Put(view_,8,Capacity);
+    std::memset(view_,0,Capacity);Put(view_,0,Magic);Put(view_,4,diagnostic.force?2u:1u);Put(view_,8,Capacity);
     Put(view_,20,GetCurrentProcessId());Put(view_,24,born);
     Put(view_,224,requestedFeatures&15u);
+    diagnostic_=diagnostic.force;
+    if(diagnostic_)
+    {
+        Put(view_,232,1u);
+        std::memcpy(view_+240,diagnostic.token.data(),diagnostic.token.size());
+    }
     executableHash_=executableHash;
     const auto baseline=Hex(native_contract::ExecutableSha256),actual=Hex(executableHash);
     std::memcpy(view_+32,baseline.data(),64);std::memcpy(view_+96,actual.data(),64);
@@ -316,7 +370,9 @@ bool Handoff::WaitAndApply(HANDLE stopEvent)
     if(!view_) return false;
     const auto initialState=State(view_);
     if(initialState!=1&&initialState!=2&&initialState!=4) return false;
-    overlay::SetRecoveryStatus("waiting-for-world","Game update detected","Waiting for a loaded game before checking compatibility.",-1);
+    overlay::SetRecoveryStatus("waiting-for-world",diagnostic_?"One-time recovery test":"Game update detected",
+        diagnostic_?"Waiting for a loaded game before testing the complete recovery path. All validation remains active.":
+            "Waiting for a loaded game before checking compatibility.",-1);
     const auto started=GetTickCount64();std::uint64_t acknowledgedAt{};bool cleared=false;
     while(WaitForSingleObject(stopEvent,250)==WAIT_TIMEOUT)
     {
@@ -331,7 +387,7 @@ bool Handoff::WaitAndApply(HANDLE stopEvent)
             if(!acknowledged&&now-started>=30000)
             {
                 SetState(view_,4);
-                overlay::SetRecoveryStatus("failed","Recovery host did not respond",
+                overlay::SetRecoveryStatus("failed",diagnostic_?"Recovery test host did not respond":"Recovery host did not respond",
                     "Install the complete matching telemetry package and restart the game. Native game hooks remain disabled.",-1);
                 ch::Log("Runtime recovery handshake timed out before host acknowledgement; no native game hooks installed.");
                 return false;
@@ -340,7 +396,8 @@ bool Handoff::WaitAndApply(HANDLE stopEvent)
         }
         if(state==4)
         {
-            std::string detail="Automatic recovery could not verify this game update. Native hooks remain disabled.";
+            std::string detail=diagnostic_?"The one-time recovery test could not verify the loaded game. Native hooks remain disabled.":
+                "Automatic recovery could not verify this game update. Native hooks remain disabled.";
             try {
                 const auto length=Get<std::uint32_t>(view_,16);
                 if(length&&length<=Capacity-HeaderBytes) {
@@ -348,7 +405,7 @@ bool Handoff::WaitAndApply(HANDLE stopEvent)
                     if(!error.empty()) detail=error.substr(0,512);
                 }
             }catch(...){}
-            overlay::SetRecoveryStatus("failed","Game update requires a mod update",detail,-1);
+            overlay::SetRecoveryStatus("failed",diagnostic_?"Recovery test stopped":"Game update requires a mod update",detail,-1);
             ch::Log("Runtime recovery refused: %s",detail.c_str());return false;
         }
         if(state!=2) {SetState(view_,4);return false;}
@@ -360,11 +417,12 @@ bool Handoff::WaitAndApply(HANDLE stopEvent)
         if(State(view_)!=2||length!=Get<std::uint32_t>(view_,16)||payload.empty()||
             std::memcmp(payload.data(),view_+HeaderBytes,payload.size())!=0)
         {SetState(view_,4);return false;}
-        overlay::SetRecoveryStatus("activating","Checking recovered addresses","Verifying the loaded game code and scene before starting telemetry.",90);
+        overlay::SetRecoveryStatus("activating",diagnostic_?"Validating the recovery test":"Checking recovered addresses",
+            "Verifying the loaded game code and scene before starting telemetry.",90);
         std::string failure;
         if(!ValidateAndApply(payload,reinterpret_cast<std::uint64_t>(GetModuleHandleW(nullptr)),GetCurrentProcessId(),StartTime(),executableHash_,failure))
         {
-            SetState(view_,4);overlay::SetRecoveryStatus("failed","Game update could not be verified",failure,-1);
+            SetState(view_,4);overlay::SetRecoveryStatus("failed",diagnostic_?"Recovery test validation failed":"Game update could not be verified",failure,-1);
             ch::Log("Runtime recovery validation refused before hooks: %s",failure.c_str());return false;
         }
         ch::Log("Runtime recovery accepted complete guarded address contract; starting existing capture paths.");
@@ -377,6 +435,7 @@ void Handoff::Complete(bool success)
     if(!view_||State(view_)!=2) return;
     SetState(view_,success?3u:4u);
     if(success) overlay::ClearRecoveryStatus();
-    else overlay::SetRecoveryStatus("failed","Recovered telemetry could not start","Address checks passed, but a required native data source could not initialize. Check the native log.",-1);
+    else overlay::SetRecoveryStatus("failed",diagnostic_?"Recovery test could not start telemetry":"Recovered telemetry could not start",
+        "Address checks passed, but a required native data source could not initialize. Check the native log.",-1);
 }
 }
