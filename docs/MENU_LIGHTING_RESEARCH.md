@@ -70,3 +70,71 @@ The startup CaptureReady event is one-shot and must not be repurposed as pause.
 The hidden Hue-panel input review found no demonstrated synthetic-click cause;
 hover sounds alone are not proof of injected button events. Runtime acceptance
 of any eventual implementation remains separate from these source/offline checks.
+
+## Intended behavior and focused validation
+
+Owner asks how to proceed on2026-11-04. Work starts with Skills and Pause and
+extends only to menu classes whose active-state semantics have been checked.
+The presence of a UI object, or a generic enabled bit used by ordinary HUD
+elements, is insufficient. This is not a promise that every menu is covered.
+
+1. Prepare a bounded read-only observer for the relevant UI instance/state, with
+   the current EXE and live type identity checked. Reuse existing game roots if
+   possible instead of repeatedly scanning the heap or adding a live hook.
+2. Compare gameplay, menu entry, several skill previews and return to gameplay.
+   The signal must stay menu-active while preview effects run, then clear on
+   actual exit. Repeat a distinct menu before treating common-base behavior as
+   general. A stale/unreadable pointer must produce unknown, never menu/gameplay
+   by guess. Ask for owner transitions only when this observer is ready.
+3. Once proven, implement the producer's native acquisition gates plus a fresh
+   neutral status. Continue only the lightweight state/liveness observation and
+   completion of in-flight GPU work while acquisition is paused.
+4. In Hue, use a configurable fixed menu color/brightness, respect existing
+   output limits, preserve stream ownership and keep Demo output-free. Retain
+   the connection instead of repeated stale black/restore/reconnect transitions.
+5. On verified exit, invalidate old light/visibility history, acquire fresh
+   gameplay data, then blend back to normal mapping. Bound the wait for fresh
+   data and retain explicit handling of disconnect, game exit and ownership loss.
+
+First acceptance is narrow: correct menu entry/exit, no normal acquisition while
+paused, no reuse of preview/pre-menu samples after exit, and whether the owner's
+stutter/hover-sound symptom actually improves. Correct constant lamp output alone
+does not prove that the game's stall is fixed. No new packages or production
+menu-state contract should be based solely on a guessed object field.
+
+## Prepared read-only observer
+
+`scripts/Read-MenuStateCandidates.ps1` uses the offline-derived CommonRoot event
+subscription path: globalRVA0x71BDF48 -> pointer+0xB0 -> event pointer+0xA38,
+32-byte entries at event+0x40, count/capacity at+0x48/+0x4C. Registration callback
+RVA0x1022660 and exact vtables filter six real menu-root types. This is a candidate
+live lookup, not yet validated against the running game. Root fields through
+0xC1 are sufficient for the first comparison, so each root read is only0xC2bytes.
+
+Offline registration evidence: `artifacts/menu-instance-20261104-1833/`.
+Field evidence: `artifacts/menu-state-fields-20261104-183416/FINDINGS.md` and
+`focused-field-evidence.json`. B9 is initialized toTRUE and changes child tags;
+stateA8 and bytesBA/BC remain opaque until a controlled menu comparison.
+
+```powershell
+# Already passed; opens no process:
+& ./scripts/Read-MenuStateCandidates.ps1 -ValidateOnly
+& ./tests/scripts/Test-MenuStateCandidates.ps1
+# Only after the owner confirms the corresponding game state:
+& ./scripts/Read-MenuStateCandidates.ps1 -Label gameplay
+& ./scripts/Read-MenuStateCandidates.ps1 -Label skills
+# On another owner-confirmed return, use gameplay again (fresh output each time).
+```
+
+Default3samples100ms apart; each has maximum1024handler entries/64matching roots,
+1MiB byte budget and1s read-issuance budget (checked between reads, not an OS read
+timeout). Exact EXE hash, four live code guards and six first-vtable-method checks
+precede instance reads. Registry chain/header/entries are checked again afterwards.
+Changed/unreadable/absent candidates cannot establish menu-open or menu-closed.
+Fresh exclusive JSON keeps partial failures and the owner-supplied label; it never
+claims automatic detection or an atomic view of mutable game memory.
+
+Offline guard verification and synthetic fixtures passed, including foreign-type
+filtering, field widths, registry changes, oversized-vector refusal before array
+read, and null chains. Logs are `synthetic-check.log` and `offline-validation.log`
+in the instance artifact folder. No live process opened during preparation.

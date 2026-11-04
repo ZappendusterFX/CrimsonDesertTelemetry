@@ -1,4 +1,41 @@
-# Current checkpoint — 2026-11-04, OpenRGB diagnosis withdrawn; menu acquisition bypass requested
+# Current checkpoint — 2026-11-04, targeted menu-state observer preparation
+
+Owner asks how to implement menu lighting. Continue automatic menu detection work,
+not the withdrawn OpenRGB/Razer diagnosis. No package installation/restart has
+been reported; this is new read-only research, not reset-package acceptance.
+
+Offline current-build analysis identifies a CommonRoot registration path:
+globalRVA71BDF48 -> +B0 -> +A38 event, with32-byte handler records. The bounded
+candidate observer is ready; live layout/instances are NOT yet validated.
+Evidence: artifacts/menu-instance-20261104-1833/. Skills/Pause/Inventory share
+CommonRoot -> UIBaseScriptObject -> IUIScriptObject; WorldMap inserts UIMapManager.
+Root+A8 is a state-ID with BA/BC gates. B9 startsTRUE and changes child tags;
+do not mistake it for menu-open. Prepared observer reads only0xC2bytes per root.
+Focused field evidence: artifacts/menu-state-fields-20261104-183416/FINDINGS.md
+and focused-field-evidence.json; broad disassembly is NOT full-path proof.
+
+Desired sequence: verified menu -> pause new native acquisition, keep fixed Hue
+color and connection; verified exit -> discard old captures, acquire fresh data,
+blend back. Observe only until gameplay/Skills/gameplay comparison establishes
+semantics. See docs/MENU_LIGHTING_RESEARCH.md for bounded validation and limits.
+No production menu flag, game call/write/hook or installation performed.
+
+Ready: scripts/Read-MenuStateCandidates.ps1 (helper MenuStateCandidates.psm1).
+-ValidateOnly passes exact preserved EXE/four code ranges/six vtables; synthetic
+tests/scripts/Test-MenuStateCandidates.ps1 passes matching/foreign roots, opaque
+widths, registry-change detection, oversized-list rejection-before-read and null
+chain. Logs in menu-instance artifact folder. No live process opened this turn.
+Default3samples100ms apart, maximum1024subscriptions/64matching roots,1MiB read
+budget and1s issuance budget per sample (not a hard OS timeout), exclusive JSON.
+Registry recheck is best effort, never an atomic snapshot or open/closed verdict.
+
+Next: owner stays in normal gameplay without a game menu and replies "Spiel".
+Then run FROM CDT: & ./scripts/Read-MenuStateCandidates.ps1 -Label gameplay
+No rebuild or further preflight on their reply. Report result and hand off Skills
+entry, then a separate gameplay-return read; LightSync may remain off throughout.
+Never wait/poll for the owner. No reset-package install needed for this research.
+
+# Previous checkpoint — 2026-11-04, OpenRGB diagnosis withdrawn; menu acquisition bypass requested
 
 Owner retracts the apparent OpenRGB-off/Razer-disabled recovery: the skill menu
 still hangs with Hue alone, with rapid repeated hover sounds when the skill preview

@@ -364,6 +364,16 @@ bounded unwind ranges, not complete cross-range control flow or runtime unpackin
 
 ### Deployment and comparisons
 
+For the prepared game-menu state comparison, use
+`scripts/Read-MenuStateCandidates.ps1 -Label gameplay` or `-Label skills` only after
+the owner confirms that state. `-ValidateOnly` checks the preserved26423880 EXE
+without opening a process; synthetic fixtures are
+`tests/scripts/Test-MenuStateCandidates.ps1`. The observer follows a bounded UI
+subscription list, not a heap scan, and reports opaque candidate fields rather
+than an open/closed verdict. Exact code/type guards and before/after consistency
+checks are required. See [menu research](MENU_LIGHTING_RESEARCH.md). Owner transitions
+are separate handoffs; no waiting or polling for a menu action.
+
 - DMM: `C:\Modding\CrimsonDesert\DMM\DMM.exe`. The user installs the WHOLE ZIP
   from `scripts/Build-ModManagerPackage.ps1 -Version <new-version>` through DMM;
   outputs are in `artifacts/mod-manager/`. Close the game before ASI replacement.
