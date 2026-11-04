@@ -1,4 +1,20 @@
-# Current checkpoint — 2026-11-04, owner isolates menu stalls to Hue's OpenRGB output
+# Current checkpoint — 2026-11-04, menu recovers with connected Razer RGB output disabled
+
+Owner reports disabling the "second Razer Blackwidow" resolves the menu problem.
+Hue's passive 18:07:46 CET snapshot, same PID 34956, confirms OpenRGB sending to
+three targets (GPU/DualSense/G502), connected 134-LED Razer disabled. Its absent
+saved identity remains enabled but is not targeted; duplicate UI names do not
+establish duplicate physical writes. DualSense remains active, superseding that
+earlier isolation proposal. Hue streams and CDT reports Live 14/127, capture
+22777 age 62ms. Evidence in Hue artifacts/openrgb-razer-disabled-20261104-180746/.
+
+Working owner selection isolates the connected Razer RGB interaction as a suspect;
+precise hardware/driver/SDK cause and the relation to capture stalls remain open.
+No new CDT fix, game/output/settings/deployment actions or further test. Hue owns
+any later backend fix. Preserve the working selection; no assistant reenabling or
+polling, and no need for another owner action to finish this check.
+
+# Previous checkpoint — 2026-11-04, owner isolates menu stalls to Hue's OpenRGB output
 
 Owner clarifies that skill-menu usability itself collapses and repeated menu
 sounds occur; the recorded bridge-stale clears alone do not explain this. Owner
