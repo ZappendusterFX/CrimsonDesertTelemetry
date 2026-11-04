@@ -73,20 +73,22 @@ internal static class SimulationActivityTests
     {
         var state = new TelemetryServerState(Json, 60, "1.6");
         using var stream = state.SubscribeActivity();
-        var tick = Environment.TickCount64;
         state.BeginActivitySession("A");
-        state.PublishActivity("A", new("running", "progress", tick, false, true, 1));
+        // Each synthetic publisher transition needs a fresh heartbeat. Cold JSON
+        // serialization between transitions may exceed the 350 ms expiry window.
+        state.PublishActivity("A", new("running", "progress", Environment.TickCount64, false, true, 1));
         var snapshot = new TelemetrySnapshot("1.6", 1, DateTimeOffset.UtcNow, new("fixture", "playing"),
             new("game-unit", "right", "y"), [], null, null, null, null);
         state.Publish(snapshot, 0, null, 1);
         Check(state.Latest is not null, "Running telemetry was rejected.");
-        state.PublishActivity("A", new("paused", "idle", tick, true, true, 2));
+        state.PublishActivity("A", new("paused", "idle", Environment.TickCount64, true, true, 2));
         Check(state.Latest is null && state.LatestSmoothed.UnavailableReason == "simulation-paused" &&
             state.LatestVisible.UnavailableReason == "simulation-paused" && state.LatestSky.Reason == "simulation-paused",
             "Pause retained old raw, smoothed, visible or ambient data.");
         state.Publish(snapshot, 0, null, 1);
         Check(state.Latest is null, "An in-flight pre-pause publication was accepted.");
-        state.PublishActivity("A", new("running", "progress", tick, false, true, 3, tick));
+        var resumedAt = Environment.TickCount64;
+        state.PublishActivity("A", new("running", "progress", resumedAt, false, true, 3, resumedAt));
         state.Publish(snapshot, 0, null, 1);
         Check(state.Latest is null, "An old capture epoch was relabelled after resume.");
         state.Publish(snapshot with { Sequence = 2 }, 0, null, 3);
@@ -101,9 +103,9 @@ internal static class SimulationActivityTests
         }
         var before = state.LatestActivity.Sequence;
         state.BeginActivitySession("B");
-        state.PublishActivity("A", new("paused", "idle", tick, true, true, 2));
+        state.PublishActivity("A", new("paused", "idle", Environment.TickCount64, true, true, 2));
         Check(state.LatestActivity.State == "unknown", "An old process session revived pause.");
-        state.PublishActivity("B", new("paused", "idle", tick - 1000, true, true, 2));
+        state.PublishActivity("B", new("paused", "idle", Environment.TickCount64 - 1000, true, true, 2));
         Check(state.LatestActivity is { State: "unknown", AcquisitionPaused: false } &&
             state.LatestActivity.Sequence > before, "A new session reset host sequence or retained stale pause.");
     }
