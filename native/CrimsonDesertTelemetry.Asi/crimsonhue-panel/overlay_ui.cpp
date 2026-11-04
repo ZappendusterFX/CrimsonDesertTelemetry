@@ -43,6 +43,14 @@ void OpenRgbControls(const Json& view) {
     if (ImGui::SliderFloat("Output limit", &brightness, 0, 100, "%.0f%%"))
         Command({{"action", "openRgb"}, {"key", "brightness"}, {"value", brightness / 100}});
     }
+    float radius = room.value("sourceRadiusDegrees", 90.f);
+    if (ImGui::SliderFloat("Light coverage", &radius, 1, 180, "%.0f deg"))
+        Command({{"action", "openRgb"}, {"key", "sourceRadius"}, {"value", radius}});
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Broader coverage lets nearby devices receive effects outside a narrow point-light direction.");
+    float background = room.value("backgroundAmount", .25f) * 100;
+    if (ImGui::SliderFloat("Background light", &background, 0, 100, "%.0f%%"))
+        Command({{"action", "openRgb"}, {"key", "background"}, {"value", background / 100}});
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Share of the common background setting. Lower values keep local colors clearer.");
     ImGui::SeparatorText("Devices");
     const auto devices = room.value("devices", Json::array());
     if (devices.empty()) Wrap("Start OpenRGB's SDK server and click Read devices.");
@@ -67,6 +75,7 @@ void OpenRgbControls(const Json& view) {
         bool changed = ImGui::SliderFloat("Left / right", &xyz[0], -1, 1, "%.2f");
         changed |= ImGui::SliderFloat("Back / front", &xyz[1], -1, 1, "%.2f");
         changed |= ImGui::SliderFloat("Height", &xyz[2], -1, 1, "%.2f");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Height relative to your viewpoint. Desk devices can naturally be below this reference.");
         if (changed) RgbPosition(rgbSelected, xyz);
         if (Button("In front of monitor")) RgbPosition(rgbSelected, {0, 1, 0});
     }
@@ -117,7 +126,7 @@ void OpenRgbRoom(const Json& view) {
     draw->AddText(screen, IM_COL32(175,205,230,255), "SCREEN / FRONT");
     draw->AddCircleFilled(project(0,0,0),5,IM_COL32(225,230,240,255));
     const auto seat = project(0,0,-.15f);
-    draw->AddText(seat,IM_COL32(160,175,195,255),"YOUR SEAT");
+    draw->AddText(seat,IM_COL32(160,175,195,255),"YOU");
     static std::string dragging;
     static std::array<float,3> start{}, live{};
     static ImVec2 mouseStart{};
@@ -154,7 +163,8 @@ void OpenRgbRoom(const Json& view) {
         const auto rgb=d.value("rgb",Json::object());
         line({xyz[0],xyz[1],-1},xyz,IM_COL32(90,110,135,160));
         const bool enabled=d.value("enabled",false);
-        const auto color=enabled ? ImGui::ColorConvertFloat4ToU32({.15f+.85f*rgb.value("x",0.f),.15f+.85f*rgb.value("y",0.f),.15f+.85f*rgb.value("z",0.f),1}) : IM_COL32(50,55,65,255);
+        // Show the actual calculated color. The outline keeps black points visible.
+        const auto color=enabled ? ImGui::ColorConvertFloat4ToU32({rgb.value("x",0.f),rgb.value("y",0.f),rgb.value("z",0.f),1}) : IM_COL32(50,55,65,255);
         draw->AddCircleFilled(point,9,color);
         draw->AddCircle(point,key==rgbSelected?13.f:10.f,key==rgbSelected?IM_COL32(50,220,210,255):IM_COL32(150,165,185,255),0,2);
         if (key==rgbSelected) {

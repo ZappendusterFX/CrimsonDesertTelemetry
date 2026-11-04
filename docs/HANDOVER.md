@@ -1,4 +1,18 @@
-# Current checkpoint — 2026-11-04, shared OpenRGB 3D panel test
+# Current checkpoint — 2026-11-04, OpenRGB light-response controls
+
+Owner reports grey OpenRGB and weak lightning response alongside blue Hue. Hue's
+live-state diagnosis/replay attributes this to its narrow shared30deg footprint
+plus neutral fill at normal desk positions. Hue branch adds independent OpenRGB
+coverage90deg/background25% defaults, unchanged source RGB and shared Hue behavior.
+This CDT change only syncs the new HUD controls, accurate node colors (no added
+grey) and clearer YOU reference. Telemetry/profiles/production INI are unchanged.
+Paired versions are Hue1.0.5-openrgb.3 / CDT2.2.8-openrgb.2; build production with
+-Research off -NativeBuildId26361232. Hue161/161 Core tests pass. Exact candidate
+controller/render/input/package validation and hashes are recorded after build.
+See C:/DEV/CrimsonHue/docs/OPENRGB.md for evidence/limits; no new in-game capture or
+spell test was performed. Owner installs both packages; no deployment/push/merge.
+
+# Previous checkpoint — 2026-11-04, shared OpenRGB 3D panel test
 
 Owner requests an OpenRGB HUD section in CrimsonHue for selecting available SDK
 devices and placing them in 3D. Hue branch codex/openrgb-parallel-preview adds the
