@@ -1,4 +1,36 @@
-# Current checkpoint — 2026-11-04, one-time cold recovery test ready for owner install
+# Current checkpoint — 2026-11-04, owner-installed cold recovery passed in game
+
+Owner installed recovery.2 and reported ingame, very fast check and passed.
+Read-only verification confirms PID29952/build26423880 uses the exact packaged
+ASI, Core, host and INI hashes. Health is playing, compatibility=recovered,
+recovery ready/100/Recovery test passed, supportedBuild=null and error=null.
+Native explicitly skipped the exact-build shortcut; host consumed token
+4B0FEA8E34CA412191D7F28D8B776B24 after valid world data and started cold discovery.
+All30 anchors were written1.943s after consumption; complete native contract
+accepted and recurring capture ready by3.926s. These are filesystem/log timing
+bounds, not a per-stage benchmark. No recovery errors in captured logs.
+
+Existing integrated one-pass check passed raw/smoothed/Ambient HTTP and WebSocket
+feeds. Samples8910->8918 have progressing captures2287->2289/frames12689->12695.
+Latest sampled filtered lights:50; upstream:822input records/230sources with
+223 known nine-ray results (3clear/220blocked);7 remain unknown. Light age32ms,
+Ambient129ms, smoothed39ms and visible42ms; player/camera/orientation present.
+This is current-build in-game acquisition/physics evidence, not a repeated
+AN/AUS comparison or proof of arbitrary future layouts. No game actions needed.
+
+Evidence: artifacts/runtime-recovery-live-20261104-123059-996.json,
+runtime-recovery-live-feeds-20261104-123059-996.json and
+runtime-recovery-live-logs-20261104-123251-697-pid29952/audit.json plus log/marker/
+cache snapshots. Original immutable package receipt remains a build-time record.
+Token now consumed; ordinary next-launch behavior is covered by tests but a
+second live launch was not requested. No source/package change required.
+CrimsonHue ASI is absent from the current module list, so this does not accept
+combined Hue/OpenRGB output. No assistant installation, new push or publication.
+
+Next: report successful full cold recovery; normal later launches need no INI
+edit. Do not force another test or claim all future updates are compatible.
+
+# Previous checkpoint — 2026-11-04, one-time cold recovery test ready for owner install
 
 Owner authorized deliberately exercising recovery on the current known EXE.
 Chose an explicit one-time diagnostic; correct EXE hash/profile/addresses remain
