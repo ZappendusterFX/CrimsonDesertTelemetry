@@ -85,6 +85,13 @@ internal static class RuntimeRecoveryTests
             var cached = RuntimeRecovery.ResolveReadiness(fixture.Path, fixture.Reference, fixture.Cache);
             Check(cached.CacheHit && RuntimeRecovery.ResolveNative(cached, fixture.Reference, fixture.Cache).CacheHit,
                 "Complete synthetic cache did not replay.");
+            // A forced in-game diagnostic must actually search, even when a valid
+            // result already exists. It can still refresh that cache afterwards.
+            var cold = RuntimeRecovery.ResolveReadiness(fixture.Path, fixture.Reference, cacheDirectory: null);
+            var searched = RuntimeRecovery.ResolveNative(cold, fixture.Reference, fixture.Cache);
+            Check(!cold.CacheHit && !searched.CacheHit && searched.Anchors.Count == 30 &&
+                JsonSerializer.Serialize(searched.Definition) == JsonSerializer.Serialize(result.Definition),
+                "Forced cold search reused cached addresses or changed the guarded contract.");
             var path = Directory.GetFiles(fixture.Cache, "*.json").Single();
             File.WriteAllText(path, File.ReadAllText(path).Insert(1, "\"Version\":1,"));
             Check(!RuntimeRecovery.ResolveReadiness(fixture.Path, fixture.Reference, fixture.Cache).CacheHit,

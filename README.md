@@ -1,9 +1,11 @@
 # Crimson Desert Telemetry
 
 Main includes the OpenRGB companion HUD and conditional in-plugin update recovery.
-The private `2.2.8-recovery.1` candidate uses build26423880 as its reference and
+The private `2.2.8-recovery.2` test candidate uses build26423880 as its reference and
 pairs with CrimsonHue1.0.5. Owner installation and game acceptance are pending;
-public 2.2.7 is unchanged. [Automatic recovery and its limits](docs/RUNTIME_RECOVERY.md).
+public 2.2.7 is unchanged. This candidate arms one full in-game recovery test even
+on the known EXE; subsequent starts use ordinary compatibility checks.
+[Automatic recovery, the one-time test and its limits](docs/RUNTIME_RECOVERY.md).
 
 **Live light, player, camera and local ambient data for Crimson Desert, with HTTP/WebSocket APIs, fullscreen light markers and a 3D radar.**
 

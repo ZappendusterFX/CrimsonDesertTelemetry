@@ -41,6 +41,77 @@ internal static class RecoveryHostTests
             var invalid = (byte[])header.Clone(); mutation(invalid);
             Reject(() => NativeRecoveryBridge.DecodeHeader(invalid, Pid, Born), "Invalid recovery contract string accepted.");
         }
+        var diagnostic = Header();
+        Put(diagnostic, 4, NativeRecoveryBridge.DiagnosticVersion);
+        Put(diagnostic, 232, 1);
+        var token = "0123456789ABCDEF0123456789ABCDEF";
+        Convert.FromHexString(token).CopyTo(diagnostic, 240);
+        var test = NativeRecoveryBridge.DecodeHeader(diagnostic, Pid, Born);
+        Check(test.DiagnosticTest && test.DiagnosticToken == token, "One-time test token was lost in the handshake.");
+        foreach (var mutation in new Action<byte[]>[] {
+            bytes => Put(bytes, 4, NativeRecoveryBridge.Version),
+            bytes => Put(bytes, 12, 5),
+            bytes => Put(bytes, 232, 0), bytes => Put(bytes, 232, 2),
+            bytes => Array.Clear(bytes, 240, 16) })
+        {
+            var invalid = (byte[])diagnostic.Clone(); mutation(invalid);
+            Reject(() => NativeRecoveryBridge.DecodeHeader(invalid, Pid, Born), "A malformed or legacy diagnostic handshake was accepted.");
+        }
+        var stray = Header(); stray[240] = 1;
+        Reject(() => NativeRecoveryBridge.DecodeHeader(stray, Pid, Born), "Normal handshake accepted a stray diagnostic token.");
+    }
+
+    public static void OneTimeDiagnostic()
+    {
+        const string token = "0123456789abcdef0123456789abcdef";
+        var root = Path.Combine(Path.GetTempPath(), "cdt-recovery-test-" + Guid.NewGuid().ToString("N"));
+        var marker = RecoveryDiagnosticTest.MarkerPath(token, root);
+        Check(marker.EndsWith("0123456789ABCDEF0123456789ABCDEF.done", StringComparison.Ordinal) &&
+            !File.Exists(marker), "Inspecting a test request consumed it before a live attempt.");
+        var originalLocalAppData = Environment.GetEnvironmentVariable("LOCALAPPDATA");
+        try
+        {
+            Environment.SetEnvironmentVariable("LOCALAPPDATA", root);
+            Check(RecoveryDiagnosticTest.MarkerPath(token) == marker,
+                "Managed and native diagnostic storage disagree for redirected LOCALAPPDATA.");
+            Environment.SetEnvironmentVariable("LOCALAPPDATA", "relative-path");
+            Reject(() => RecoveryDiagnosticTest.MarkerPath(token), "Relative native-compatible environment root accepted.");
+            Environment.SetEnvironmentVariable("LOCALAPPDATA", null);
+            Reject(() => RecoveryDiagnosticTest.MarkerPath(token), "Missing native-compatible environment root accepted.");
+        }
+        finally { Environment.SetEnvironmentVariable("LOCALAPPDATA", originalLocalAppData); }
+        try
+        {
+            foreach (var invalid in new[] { "", "../escape", new string('0', 32), new string('A', 31), new string('G', 32), new string('A', 33) })
+                Reject(() => RecoveryDiagnosticTest.MarkerPath(invalid, root), "Malformed/path-bearing diagnostic token accepted.");
+            Reject(() => RecoveryDiagnosticTest.MarkerPath(token, "relative-path"), "Relative diagnostic cache root accepted.");
+            RecoveryDiagnosticTest.Consume(token, Pid, Born, new string('B', 64), root);
+            var first = File.ReadAllBytes(marker);
+            using var receipt = JsonDocument.Parse(first);
+            Check(receipt.RootElement.GetProperty("state").GetString() == "attempt-started" &&
+                receipt.RootElement.GetProperty("processId").GetInt32() == Pid,
+                "Diagnostic consumption falsely claimed success or lost process provenance.");
+            var refused = false;
+            try { RecoveryDiagnosticTest.Consume(token.ToUpperInvariant(), Pid + 1, Born + 1, new string('C', 64), root); }
+            catch (IOException) { refused = true; }
+            Check(refused && first.AsSpan().SequenceEqual(File.ReadAllBytes(marker)),
+                "An already consumed test was repeated or its receipt was overwritten.");
+            var state = State();
+            var monitor = new RecoveryLiveMonitor(7, false, diagnostic: true);
+            for (ulong sequence = 1; sequence <= 3; sequence++) monitor.Observe(Lights(sequence), Sky(sequence), state);
+            Check(state.Health.Recovery is { State: "ready", Title: "Recovery test passed" } &&
+                state.Health.Recovery.Detail.Contains("one-time test is consumed", StringComparison.Ordinal),
+                "A forced test was not clearly identified as such on completion.");
+        }
+        finally
+        {
+            if (File.Exists(marker)) File.Delete(marker);
+            var tests = Path.GetDirectoryName(marker)!;
+            if (Directory.Exists(tests)) Directory.Delete(tests);
+            var product = Path.GetDirectoryName(tests)!;
+            if (Directory.Exists(product)) Directory.Delete(product);
+            if (Directory.Exists(root)) Directory.Delete(root);
+        }
     }
 
     public static void WorldReadiness()

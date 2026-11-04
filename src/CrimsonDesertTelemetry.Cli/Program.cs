@@ -563,7 +563,7 @@ async Task<RuntimeContext?> OpenRuntimeWithRecovery(TelemetryServerState state, 
         var runtime = OpenRuntime(options, privateExact, preparation?.Build, process,
             preparation?.Position, preparation?.WorldAddress);
         if (preparation is not null)
-            runtime.RecoveryMonitor = new(preparation.RequestedFeatures, preparation.CacheHit);
+            runtime.RecoveryMonitor = new(preparation.RequestedFeatures, preparation.CacheHit, preparation.DiagnosticTest);
         return runtime;
     }
     catch { process.Dispose(); throw; }

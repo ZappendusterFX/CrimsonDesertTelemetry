@@ -75,6 +75,39 @@ guard. The new private package is production code (`Research off`) with all norm
 features enabled and the research-status26423880 reference. Existing public releases
 and immutable packages are preserved. Only the owner installs packages.
 
+## One-time in-game diagnostic
+
+The owner can test the entire recovery path on the known current executable,
+without deleting or falsifying its profile. Normal INIs contain an empty
+`[Compatibility] RecoveryTestOnce=`. A private test package can supply a fresh
+nonzero 32-hex token through `Build-ModManagerPackage.ps1 -RecoveryTestOnce TOKEN`;
+the builder requires an integrated private diagnostic, production code and a full
+Support reference. Releases cannot accidentally inherit this switch.
+
+With an unused token, the native worker bypasses only the known-build shortcut.
+The host ignores the address cache for this attempt, still waits for the existing
+live-world gate, then atomically writes
+`%LOCALAPPDATA%\CrimsonDesertTelemetry\RecoveryTests\TOKEN.done` immediately before
+the full cold search. Quitting at the menu leaves the test armed. Once the attempt
+starts it is consumed even if discovery fails or the process exits; the marker
+records an attempt, not success. The native worker only reads this marker, and no
+installed INI/profile is rewritten. A later launch uses ordinary compatibility
+checks; a real unknown build still triggers normal recovery independently.
+
+The diagnostic handoff uses version2 with its explicit token, so an older host
+cannot silently treat the test as ordinary cached recovery. The normal protocol
+remains version1. A resumed host after submission does not consume the request a
+second time. All code, object, layout, GPU and natural-physics guards remain active.
+Success is shown as **Recovery test passed** only after fresh requested captures;
+loading, scanning and failures are also explicitly labelled as a test. This proves
+the current in-game recovery route, not compatibility with arbitrary future layouts.
+
+The owner installs the preconfigured private ZIP themselves, starts the game and
+loads a save. No light toggling, special movement or manual configuration is needed
+for this test. After their installation/restart report, inspect health.recovery,
+compatibility=recovered, cold-search/consumption logs and fresh requested feeds.
+Do not mistake an attempt marker alone for a completed test.
+
 ## Verification
 
 Synthetic tests cover full shifted PE recovery, ambiguous/missing/changed contexts,

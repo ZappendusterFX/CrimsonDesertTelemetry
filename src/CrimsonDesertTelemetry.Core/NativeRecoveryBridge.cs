@@ -5,13 +5,17 @@ using System.Text.Json;
 namespace CrimsonDesertTelemetry.Core;
 
 public sealed record NativeRecoveryRequest(uint State, string TemplateSha256, string ExecutableSha256,
-    string ContractId, uint RequestedFeatures);
+    string ContractId, uint RequestedFeatures, string? DiagnosticToken = null)
+{
+    public bool DiagnosticTest => DiagnosticToken is not null;
+}
 
 /// <summary>Per-process, one-shot handoff to the ASI. This never writes game process memory.</summary>
 public sealed class NativeRecoveryBridge : IDisposable
 {
     public const int Capacity = 65536, HeaderBytes = 256;
     public const uint Magic = 0x52544443, Version = 1;
+    public const uint DiagnosticVersion = 2;
     private readonly MemoryMappedFile _mapping;
     private readonly MemoryMappedViewAccessor _view;
     private readonly int _pid;
@@ -55,7 +59,7 @@ public sealed class NativeRecoveryBridge : IDisposable
     public static NativeRecoveryRequest DecodeHeader(byte[] bytes, int pid, long start)
     {
         if (bytes.Length != HeaderBytes || BitConverter.ToUInt32(bytes, 0) != Magic ||
-            BitConverter.ToUInt32(bytes, 4) != Version || BitConverter.ToUInt32(bytes, 8) != Capacity ||
+            BitConverter.ToUInt32(bytes, 4) is not (Version or DiagnosticVersion) || BitConverter.ToUInt32(bytes, 8) != Capacity ||
             BitConverter.ToUInt32(bytes, 20) != (uint)pid || BitConverter.ToInt64(bytes, 24) != start ||
             BitConverter.ToUInt32(bytes, 16) > Capacity - HeaderBytes)
             throw new InvalidDataException("Recovery handshake identity or version disagrees.");
@@ -63,6 +67,13 @@ public sealed class NativeRecoveryBridge : IDisposable
         if (state > 5) throw new InvalidDataException("Unknown recovery handshake state.");
         var features = BitConverter.ToUInt32(bytes, 224);
         if ((features & ~15u) != 0) throw new InvalidDataException("Unknown recovery feature flags.");
+        var diagnostic = BitConverter.ToUInt32(bytes, 232);
+        var tokenBytes = bytes.AsSpan(240, 16);
+        var hasToken = tokenBytes.ContainsAnyExcept((byte)0);
+        var version = BitConverter.ToUInt32(bytes, 4);
+        if (diagnostic > 1 || diagnostic == 0 && (hasToken || version != Version) ||
+            diagnostic == 1 && (!hasToken || version != DiagnosticVersion || state == 5))
+            throw new InvalidDataException("Recovery test flag, token and protocol version disagree.");
         string Hash(int offset)
         {
             var value = Encoding.ASCII.GetString(bytes, offset, 64);
@@ -73,7 +84,8 @@ public sealed class NativeRecoveryBridge : IDisposable
         var zero = contractBytes.IndexOf((byte)0);
         if (zero <= 0 || contractBytes[..zero].ContainsAnyExceptInRange((byte)32, (byte)126))
             throw new InvalidDataException("Invalid recovery contract identity.");
-        return new(state, Hash(32), Hash(96), Encoding.ASCII.GetString(contractBytes[..zero]), features);
+        return new(state, Hash(32), Hash(96), Encoding.ASCII.GetString(contractBytes[..zero]), features,
+            diagnostic == 1 ? Convert.ToHexString(tokenBytes) : null);
     }
 
     public void Submit(BuildDefinition definition, NativeRecoveryRequest request)

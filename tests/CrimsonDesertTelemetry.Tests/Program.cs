@@ -21,6 +21,7 @@ if (args.Length != 0)
 var tests = new (string Name, Action Run)[]
 {
     ("recovery handshake rejects malformed identity and state", RecoveryHostTests.Handshake),
+    ("one-time recovery diagnostic is consumed atomically and clearly labelled", RecoveryHostTests.OneTimeDiagnostic),
     ("recovery waits for a stable progressing world", RecoveryHostTests.WorldReadiness),
     ("recovery completion requires fresh requested captures", RecoveryHostTests.LiveReadiness),
     ("recovery status retains honest health metadata", RecoveryHostTests.HealthStatus),
