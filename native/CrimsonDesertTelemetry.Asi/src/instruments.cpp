@@ -8,7 +8,8 @@
 #include "sky_bridge.h"
 #include "spatial_probe.h"
 #include "physics_probe.h"
-#include "native_contract.generated.h"
+#include "runtime_contract.generated.h"
+#include "runtime_recovery.h"
 #include "overlay.h"
 #include "console/common.h"
 #include "console/breakpoint.h"
@@ -131,34 +132,65 @@ void RunImpl(HANDLE stopEvent)
         overlay::ClearLocalFault("native-capture");
         return;
     }
-    if (!hashChecked) { hashChecked = true; verified = VerifyExecutable(); }
-    if (!verified)
+    std::array<unsigned char,32> executableHash{};
+    if (!ReadExecutableHash(executableHash))
     {
-        ch::Log("Native game instrumentation disabled: executable SHA256 differs from validated build %s.", native_contract::BuildId.data());
-        render::PublishStatus(render::Status::Incompatible, ERROR_REVISION_MISMATCH);
-        sky::PublishStatus(render::Status::Incompatible, ERROR_REVISION_MISMATCH);
-        overlay::SetLocalFault("native-capture", "This game build is not validated for native lights",
-            "Native hooks remain disabled. Install a telemetry version validated for this game build; check-update can inspect compatibility without enabling hooks.");
+        render::PublishStatus(render::Status::Incompatible, ERROR_READ_FAULT);
+        sky::PublishStatus(render::Status::Incompatible, ERROR_READ_FAULT);
+        overlay::SetLocalFault("native-capture", "Game executable could not be verified",
+            "The executable could not be read completely. Native game hooks remain disabled.");
         return;
     }
-    // All current-build acquisition anchors are checked together before ANY
-    // native game hook is installed. Later component checks keep their existing
-    // rules; repeated checks here would encounter our own installed trampolines.
+    hashChecked = true;
+    verified = executableHash == native_contract::ExecutableSha256;
+    const auto moduleBase = reinterpret_cast<uint64_t>(GetModuleHandleW(nullptr));
+    // Guard failures on a known executable also enter recovery. The host searches
+    // once; it must never adopt a modified/ambiguous context merely to keep going.
+    bool exactContexts = verified && static_cast<bool>(render::CheckCapturePreflight(moduleBase));
     for (const auto& context : native_contract::support::Contexts)
     {
-        std::array<uint8_t, 128> actual{};
-        if (context.bytes.size() > actual.size() ||
-            !ch::mem::SafeRead(reinterpret_cast<const uint8_t*>(GetModuleHandleW(nullptr)) + context.rva,
-                actual.data(), context.bytes.size()) ||
-            !std::equal(context.bytes.begin(), context.bytes.end(), actual.begin()))
+        std::array<uint8_t,128> actual{};
+        if (context.bytes.size()>actual.size() ||
+            !ch::mem::SafeRead(reinterpret_cast<void*>(moduleBase+context.rva),actual.data(),context.bytes.size()) ||
+            !std::equal(context.bytes.begin(),context.bytes.end(),actual.begin())) exactContexts = false;
+    }
+    const bool ambientRequested = GetPrivateProfileIntW(L"Ambient", L"Enabled", 0, iniPath.c_str()) != 0;
+    if (ambientRequested && exactContexts && !render::CheckAmbientPreflight(moduleBase)) exactContexts = false;
+    const bool recoveryNeeded = !verified || !exactContexts;
+    const bool physicsRecoveryRequested = GetPrivateProfileIntW(L"SourceVisibility", L"Enabled", 0, iniPath.c_str()) != 0;
+    const uint32_t requestedFeatures = (captureEnabled?1u:0u)|(upstreamRequested?2u:0u)|
+        (ambientRequested?4u:0u)|(physicsRecoveryRequested?8u:0u);
+    recovery::Handoff recovery;
+#if CDT_RESEARCH
+    // The retained research instruments have additional historical offsets and
+    // remain exact-only. Automatic recovery belongs to the production pipeline.
+    constexpr bool recoverySupported = false;
+#else
+    constexpr bool recoverySupported = native_contract::support::Available;
+#endif
+    if (recoverySupported)
+    {
+        if (!recovery.Initialize(executableHash,recoveryNeeded,requestedFeatures))
         {
-            ch::Log("Full-product acquisition preflight refused at RVA 0x%llX; no new native game hooks installed.", context.rva);
-            render::PublishStatus(render::Status::Incompatible, ERROR_REVISION_MISMATCH);
-            sky::PublishStatus(render::Status::Incompatible, ERROR_REVISION_MISMATCH);
-            overlay::SetLocalFault("native-capture", "Acquisition context changed",
-                "An exact-build acquisition guard differs. Check the native log and use a telemetry package for this game build.");
+            overlay::SetLocalFault("native-capture", "Recovery communication unavailable",
+                "The per-process compatibility channel could not initialize. Native game hooks remain disabled.");
             return;
         }
+    }
+    if (recoveryNeeded)
+    {
+        render::PublishStatus(render::Status::Incompatible, ERROR_REVISION_MISMATCH);
+        sky::PublishStatus(render::Status::Incompatible, ERROR_REVISION_MISMATCH);
+        if (!recoverySupported)
+        {
+            ch::Log("Native executable/context guard refused; this archived/research contract has no runtime recovery metadata.");
+            overlay::SetLocalFault("native-capture", "This game build needs a current telemetry package",
+                "Native hooks remain disabled. Install a package containing automatic update recovery for this game layout.");
+            return;
+        }
+        ch::Log("Executable or code context changed: requesting one conditional in-game address recovery.");
+        if (!recovery.WaitAndApply(stopEvent)) return;
+        overlay::ClearLocalFault("native-capture");
     }
     PinModule();
     if (!ch::mem::GetModuleRange(nullptr, &ch::g_game.moduleBase, &ch::g_game.moduleSize))
@@ -194,6 +226,7 @@ void RunImpl(HANDLE stopEvent)
     }
 #endif
     bool capturing = false;
+    bool upstreamStarted = !upstreamRequested;
     if (captureEnabled)
     {
         const unsigned rate = GetPrivateProfileIntW(L"Lights", L"ManyLightsSampleRateHz", 20, iniPath.c_str());
@@ -207,8 +240,11 @@ void RunImpl(HANDLE stopEvent)
         constexpr bool ambientProbe = false;
 #endif
         const bool streamSky = skyBridge && GetPrivateProfileIntW(L"Ambient", L"Enabled", 0, iniPath.c_str()) != 0;
-        if (upstreamRequested && !ambientProbe && !render::EnableUpstreamInput(ch::g_game.moduleBase))
-            ch::Log("ManyLights INPUT refused: exact-build input anchors did not verify; filtered output remains independent.");
+        if (upstreamRequested && !ambientProbe)
+        {
+            upstreamStarted = render::EnableUpstreamInput(ch::g_game.moduleBase);
+            if (!upstreamStarted) ch::Log("ManyLights INPUT refused: guarded input anchors did not verify; filtered output remains independent.");
+        }
         capturing = ambientProbe
             ? render::StartAmbientProbe(ch::g_game.moduleBase, std::filesystem::path(moduleDirectory).c_str())
             : render::StartCapture(ch::g_game.moduleBase, rate, streamSky);
@@ -291,6 +327,9 @@ void RunImpl(HANDLE stopEvent)
     if (physicsVisibility && !physicsStarted)
         overlay::SetLocalFault("physics-visibility", "Light visibility unavailable",
             "The validated physics hook or data bridge could not start. Raw light data is unaffected; check the native log.");
+    recovery.Complete((!captureEnabled || capturing) && upstreamStarted &&
+        (!ambientRequested || (spatialStarted && skyBridge && !sky::FailureCode())) &&
+        (!physicsRecoveryRequested || physicsStarted));
     while (WaitForSingleObject(stopEvent, 5) == WAIT_TIMEOUT)
     {
         if(spatialStarted) spatial::Poll();

@@ -126,13 +126,15 @@ namespace cdt::instruments
 {
 bool VerifyExecutable()
 {
-    // The reviewed JSON definition is the only EXE allowlist. Runtime discovery
-    // never authorizes an unknown binary to execute native game hooks.
+    Digest digest{};
+    return ReadExecutableHash(digest) && digest == native_contract::ExecutableSha256;
+}
+bool ReadExecutableHash(Digest& digest)
+{
     std::array<wchar_t, 32768> path{};
     const auto length = GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
     if (!length || length >= path.size()) return false;
-    Digest digest{};
-    return HashExecutableFile(path.data(), digest) && digest == native_contract::ExecutableSha256;
+    return HashExecutableFile(path.data(), digest);
 }
 
 #ifdef CDT_BUILD_GUARD_TEST

@@ -123,8 +123,8 @@ void CheckFileSignatures(const wchar_t* path, bool ambient)
     for (const auto& context : contract::support::Contexts) verify(context.rva, context.bytes);
     if (ambient)
     {
-        verify(cdt::render::AmbientHookRvas[0], cdt::render::AmbientSignatureA);
-        verify(cdt::render::AmbientHookRvas[1], cdt::render::AmbientSignatureB);
+        verify(cdt::render::AmbientHookRvas()[0], cdt::render::AmbientSignatureA());
+        verify(cdt::render::AmbientHookRvas()[1], cdt::render::AmbientSignatureB());
     }
     std::cout << "PASS generated hook and all caller contexts against current EXE file (no process access)"
         << (ambient ? ", including ambient hook bytes\n" : "; ambient deliberately not checked\n");
@@ -167,18 +167,18 @@ int wmain(int argc, wchar_t** argv)
     image.sections[0].Misc.VirtualSize=static_cast<DWORD>(contract::HookRva+0x1000-0x3800000);
     for(unsigned n=0;n<2;++n)
     {
-        image.Commit(AmbientHookRvas[n]-6,21);
-        const auto& sig=n ? AmbientSignatureB : AmbientSignatureA;
-        memcpy(image.data+AmbientHookRvas[n],sig.data(),sig.size());
-        memcpy(image.data+AmbientHookRvas[n]-6,AmbientDispatchSignature.data(),AmbientDispatchSignature.size());
+        image.Commit(AmbientHookRvas()[n]-6,21);
+        const auto& sig=n ? AmbientSignatureB() : AmbientSignatureA();
+        memcpy(image.data+AmbientHookRvas()[n],sig.data(),sig.size());
+        memcpy(image.data+AmbientHookRvas()[n]-6,AmbientDispatchSignature.data(),AmbientDispatchSignature.size());
     }
-    image.Commit(AmbientSourceRvas[0],7); image.Commit(AmbientSourceRvas[1],7);
+    image.Commit(AmbientSourceRvas()[0],7); image.Commit(AmbientSourceRvas()[1],7);
     const std::array<uint8_t,7> sourceA{0x48,0x8B,0xAF,static_cast<uint8_t>(AmbientSourceOffset),0,0,0},
         sourceB{0x48,0x8B,0x9D,static_cast<uint8_t>(AmbientSourceOffset),0,0,0};
-    memcpy(image.data+AmbientSourceRvas[0],sourceA.data(),7); memcpy(image.data+AmbientSourceRvas[1],sourceB.data(),7);
+    memcpy(image.data+AmbientSourceRvas()[0],sourceA.data(),7); memcpy(image.data+AmbientSourceRvas()[1],sourceB.data(),7);
     Check(CheckAmbientPreflight(image.Base()), "valid ambient preflight rejected");
-    for(auto rva : {AmbientHookRvas[0],AmbientHookRvas[1],AmbientHookRvas[0]-6,AmbientHookRvas[1]-6,
-                    AmbientSourceRvas[0],AmbientSourceRvas[1]})
+    for(auto rva : {AmbientHookRvas()[0],AmbientHookRvas()[1],AmbientHookRvas()[0]-6,AmbientHookRvas()[1]-6,
+                    AmbientSourceRvas()[0],AmbientSourceRvas()[1]})
     {
         image.data[rva]^=1; Check(!CheckAmbientPreflight(image.Base()),"changed ambient context accepted"); image.data[rva]^=1;
     }

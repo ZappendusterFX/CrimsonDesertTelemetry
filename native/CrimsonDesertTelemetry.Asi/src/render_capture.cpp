@@ -8,7 +8,7 @@
 #include "presentation_queue.h"
 #include "light_modulator.h"
 #include "modulator_bridge.h"
-#include "native_contract.generated.h"
+#include "runtime_contract.generated.h"
 #include "console/common.h"
 #include "console/mem.h"
 #include <d3d12.h>
@@ -30,7 +30,7 @@ namespace cdt::render
 {
 namespace
 {
-namespace contract = native_contract;
+namespace contract = runtime_contract;
 enum class Phase { Discover, Found, Preparing, Ready, Recorded, Submitting, WaitingGpu, Failed, Stopped };
 SRWLOCK lock = SRWLOCK_INIT;
 Phase phase = Phase::Stopped;
@@ -608,9 +608,9 @@ bool Prepare()
         intervalMs ? 1000 / intervalMs : 0u, upstreamEnabled ? " + full INPUT" : "");
     return true;
 }
-// Exact-build input anchors: owner+0x628 load and its SRV binder call. The outer
-// exact-EXE gate is still required in instruments::Run. Do not silently carry
-// this field/anchor to another profile/build; relocate and re-verify after updates.
+// Reviewed input anchors: owner+0x628 load and its SRV binder call. The outer
+// exact-EXE/full runtime-contract gate is still required in instruments::Run.
+// Runtime recovery changes their RVAs only after all layout guards pass.
 bool InputAnchorsVerified(uint64_t moduleBase)
 {
     const bool recovered = contract::BuildId == "26361232" && contract::HookRva == 0x40A1B33;
@@ -699,7 +699,7 @@ void CaptureAmbient(uint64_t sky, uint64_t command, uint64_t path)
             {
                 ambientHeader.pid = GetCurrentProcessId();
                 ambientHeader.frame = capturedFrame;
-                ambientHeader.producerRva = AmbientHookRvas[path];
+                ambientHeader.producerRva = AmbientHookRvas()[path];
                 ambientHeader.flags = capturedAt ? 7u : 0u; // exact build, completed fence (at save), stable CPU scene
                 ambientHeader.capturedTick = capturedAt;
                 ambientHeader.resource = capturedOutputResource;
@@ -734,12 +734,12 @@ bool CheckAmbientPreflight(uint64_t moduleBase)
         return ch::mem::SafeRead(reinterpret_cast<void*>(moduleBase + rva), bytes.data(), expected.size()) &&
             memcmp(bytes.data(), expected.data(), expected.size()) == 0;
     };
-    if (!match(AmbientHookRvas[0], AmbientSignatureA) || !match(AmbientHookRvas[1], AmbientSignatureB)) return false;
+    if (!match(AmbientHookRvas()[0], AmbientSignatureA()) || !match(AmbientHookRvas()[1], AmbientSignatureB())) return false;
     // Verify dispatch immediately before both hooks and the source-field loads.
     const std::array<uint8_t, 7> sourceA{0x48,0x8B,0xAF,static_cast<uint8_t>(AmbientSourceOffset),0x00,0x00,0x00};
     const std::array<uint8_t, 7> sourceB{0x48,0x8B,0x9D,static_cast<uint8_t>(AmbientSourceOffset),0x00,0x00,0x00};
-    return match(AmbientHookRvas[0] - 6, AmbientDispatchSignature) && match(AmbientHookRvas[1] - 6, AmbientDispatchSignature) &&
-        match(AmbientSourceRvas[0], sourceA) && match(AmbientSourceRvas[1], sourceB);
+    return match(AmbientHookRvas()[0] - 6, AmbientDispatchSignature) && match(AmbientHookRvas()[1] - 6, AmbientDispatchSignature) &&
+        match(AmbientSourceRvas()[0], sourceA) && match(AmbientSourceRvas()[1], sourceB);
 }
 
 bool StartAmbientProbe(uint64_t moduleBase, const wchar_t* outputDirectory)
@@ -749,8 +749,8 @@ bool StartAmbientProbe(uint64_t moduleBase, const wchar_t* outputDirectory)
     if (init != MH_OK && init != MH_ERROR_ALREADY_INITIALIZED) return false;
     if (!InitializeAmbientControl(outputDirectory)) return false;
     gameBase = moduleBase; ambientMode = true; intervalMs = 500;
-    hookAddress = gameBase + AmbientHookRvas[0];
-    void* targets[]{reinterpret_cast<void*>(hookAddress), reinterpret_cast<void*>(gameBase + AmbientHookRvas[1])};
+    hookAddress = gameBase + AmbientHookRvas()[0];
+    void* targets[]{reinterpret_cast<void*>(hookAddress), reinterpret_cast<void*>(gameBase + AmbientHookRvas()[1])};
     void* thunks[]{reinterpret_cast<void*>(CdtAmbientThunkA), reinterpret_cast<void*>(CdtAmbientThunkB)};
     void** trampolines[]{&CdtAmbientTrampolineA, &CdtAmbientTrampolineB};
     for (unsigned i = 0; i < 2; ++i)
@@ -879,7 +879,7 @@ bool StartCapture(uint64_t moduleBase, unsigned sampleRateHz, bool skyEnabled)
     hookEnabled = true;
     if (skyEnabled)
     {
-        auto* target = reinterpret_cast<void*>(gameBase + AmbientHookRvas[0]);
+        auto* target = reinterpret_cast<void*>(gameBase + AmbientHookRvas()[0]);
         // Publish configuration under the same lock read by both callbacks.
         AcquireSRWLockExclusive(&lock);
         skyStreaming = true;
@@ -896,7 +896,7 @@ bool StartCapture(uint64_t moduleBase, unsigned sampleRateHz, bool skyEnabled)
             sky::PublishStatus(Status::Fault, ERROR_INVALID_FUNCTION);
         }
     }
-    ch::Log("ManyLights exact-build/context detour installed at RVA 0x%llX; waiting for the host's first playable-world signal.", contract::HookRva);
+    ch::Log("ManyLights guarded-context detour installed at RVA 0x%llX; waiting for the host's first playable-world signal.", contract::HookRva);
     return true;
 }
 
@@ -1030,8 +1030,8 @@ uint32_t CaptureFailureCode()
 void StopCapture()
 {
     if (hookEnabled) MH_DisableHook(reinterpret_cast<void*>(hookAddress));
-    if (hookEnabled && ambientMode) MH_DisableHook(reinterpret_cast<void*>(gameBase + AmbientHookRvas[1]));
-    if (skyHookEnabled) MH_DisableHook(reinterpret_cast<void*>(gameBase + AmbientHookRvas[0]));
+    if (hookEnabled && ambientMode) MH_DisableHook(reinterpret_cast<void*>(gameBase + AmbientHookRvas()[1]));
+    if (skyHookEnabled) MH_DisableHook(reinterpret_cast<void*>(gameBase + AmbientHookRvas()[0]));
     if (executeEnabled) MH_DisableHook(executeTarget);
     AcquireSRWLockExclusive(&lock);
     phase = Phase::Stopped;
@@ -1053,11 +1053,11 @@ void StopCapture()
 }
 bool OwnsCodeAddress(uint64_t address)
 {
-    if (skyHookEnabled && address >= gameBase + AmbientHookRvas[0] &&
-        address < gameBase + AmbientHookRvas[0] + AmbientSignatureA.size()) return true;
+    if (skyHookEnabled && address >= gameBase + AmbientHookRvas()[0] &&
+        address < gameBase + AmbientHookRvas()[0] + AmbientSignatureA().size()) return true;
     if (ambientMode) return hookEnabled &&
-        ((address >= gameBase + AmbientHookRvas[0] && address < gameBase + AmbientHookRvas[0] + AmbientSignatureA.size()) ||
-         (address >= gameBase + AmbientHookRvas[1] && address < gameBase + AmbientHookRvas[1] + AmbientSignatureB.size()));
+        ((address >= gameBase + AmbientHookRvas()[0] && address < gameBase + AmbientHookRvas()[0] + AmbientSignatureA().size()) ||
+         (address >= gameBase + AmbientHookRvas()[1] && address < gameBase + AmbientHookRvas()[1] + AmbientSignatureB().size()));
     return hookEnabled && address >= hookAddress && address < hookAddress + contract::HookSignature.size();
 }
 #ifdef CDT_RENDER_CAPTURE_TEST

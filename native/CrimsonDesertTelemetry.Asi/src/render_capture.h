@@ -16,7 +16,7 @@ struct PreflightResult
 };
 // The exact same non-mutating preflight used by StartCapture before MinHook.
 // Passing it does NOT grant compatibility: instruments::Run separately requires
-// the generated exact EXE hash before calling StartCapture.
+// the generated exact EXE or the complete independently verified runtime contract.
 PreflightResult CheckCapturePreflight(uint64_t moduleBase);
 const char* PreflightFailureName(PreflightFailure failure);
 bool StartCapture(uint64_t moduleBase, unsigned sampleRateHz, bool skyEnabled = false);

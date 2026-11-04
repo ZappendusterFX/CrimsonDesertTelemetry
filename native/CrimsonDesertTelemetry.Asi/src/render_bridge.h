@@ -25,7 +25,9 @@ constexpr uint32_t MappingBytes = LegacyMappingBytes + RecordCount * sizeof(Visi
 constexpr uint32_t InputBytes = LightBytes;
 constexpr uint32_t InputMappingBytes = MappingBytes + InputBytes;
 enum class Status : uint32_t { Waiting, Active, Incompatible, Fault, LegacyConflict, Stopped };
-enum Flags : uint32_t { ExactBuild = 1, FenceCompleted = 2, PairedScene = 4, PairedCounter = 8 };
+// Bit1 denotes a fully guarded per-executable contract, either embedded exact or
+// recovered then independently checked before hooks. Keep the old alias/ABI.
+enum Flags : uint32_t { ValidatedContract = 1, ExactBuild = ValidatedContract, FenceCompleted = 2, PairedScene = 4, PairedCounter = 8 };
 // Disabled: no input block. Paired: this sample's block was copied on the same
 // list/fence as its output. Unavailable: requested, but not in this sample.
 // Refused: the exact-build input anchors or device support did not verify.

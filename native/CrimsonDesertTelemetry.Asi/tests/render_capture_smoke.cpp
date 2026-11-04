@@ -499,7 +499,7 @@ int main(int argc, char** argv)
             while((bridge->header.sampleSequence<lightSequence || skyMap->header.sampleSequence<skySequence) && GetTickCount64()<deadline) { PollCapture(); Sleep(5); }
             Check(bridge->header.sampleSequence==lightSequence && skyMap->header.sampleSequence==skySequence && !CaptureFailureCode(),"mixed stream sequence/fence failure");
             if(sky)
-                Check(skyMap->header.flags==7 && skyMap->header.producerRva==AmbientHookRvas[0] &&
+                Check(skyMap->header.flags==7 && skyMap->header.producerRva==AmbientHookRvas()[0] &&
                     skyMap->header.frameNumber==100+n && memcmp(skyMap->data,skyBytes.data(),AmbientBytes)==0,"sky payload/provenance mismatch");
             else Check(bridge->header.flags==15 && bridge->header.frameNumber==100+n &&
                 memcmp(bridge->lights,light.data(),sizeof(light))==0 && memcmp(bridge->counters,counterData.data(),CounterBytes)==0,"lights polluted by sky");
@@ -607,7 +607,7 @@ int main(int argc, char** argv)
             file.read(reinterpret_cast<char*>(recordedAmbient.data()),recordedAmbient.size());
             ExposureCacheContext cache{}; file.read(reinterpret_cast<char*>(&cache),sizeof(cache));
             Check(file.good() && header.magic==0x41445443 && header.version==2 && header.recordBytes==recordBytes && header.flags==7 &&
-                header.sequence==n+1 && header.frame==100+n && header.producerRva==AmbientHookRvas[n] &&
+                header.sequence==n+1 && header.frame==100+n && header.producerRva==AmbientHookRvas()[n] &&
                 header.resource==reinterpret_cast<uint64_t>(n ? source2.Get() : source.Get()) &&
                 header.sky==reinterpret_cast<uint64_t>(sky.data()) && header.outer==reinterpret_cast<uint64_t>(outer.data()),"ambient provenance");
             uint32_t sceneFrame{}; memcpy(&sceneFrame,recordedScene.data()+0x20,4);

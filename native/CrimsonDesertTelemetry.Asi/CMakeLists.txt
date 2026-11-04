@@ -102,7 +102,7 @@ set(CDT_CONSOLE_SOURCES
 # The preserved research sources predate /WX; keep their warnings visible without
 # relaxing warnings for newly integrated production code.
 set_source_files_properties(${CDT_CONSOLE_SOURCES} PROPERTIES COMPILE_OPTIONS "/WX-;/wd4996")
-add_library(cdt_instruments STATIC src/instruments.cpp src/build_guard.cpp
+add_library(cdt_instruments STATIC src/instruments.cpp src/build_guard.cpp src/runtime_recovery.cpp
     src/render_bridge.cpp src/render_capture.cpp src/light_modulator.cpp src/modulator_bridge.cpp src/filter_thunk.asm src/ambient_thunk.asm
     ${CDT_RESEARCH_SOURCES} ${CDT_CONSOLE_SOURCES})
 target_compile_features(cdt_instruments PUBLIC cxx_std_20)
@@ -138,6 +138,12 @@ target_compile_options(CrimsonDesertTelemetryBootstrapSmoke PRIVATE /W4 /WX /per
 target_link_libraries(CrimsonDesertTelemetryBootstrapSmoke PRIVATE ws2_32)
 
 enable_testing()
+add_executable(CrimsonDesertTelemetryRuntimeRecoveryTests tests/runtime_recovery_tests.cpp)
+target_compile_features(CrimsonDesertTelemetryRuntimeRecoveryTests PRIVATE cxx_std_20)
+target_compile_options(CrimsonDesertTelemetryRuntimeRecoveryTests PRIVATE /W4 /WX /permissive-)
+target_link_libraries(CrimsonDesertTelemetryRuntimeRecoveryTests PRIVATE cdt_instruments cdt_overlay nlohmann_json::nlohmann_json)
+add_test(NAME runtime-recovery-contract COMMAND CrimsonDesertTelemetryRuntimeRecoveryTests)
+set_tests_properties(runtime-recovery-contract PROPERTIES TIMEOUT 15)
 add_executable(CrimsonHue.OverlaySmoke tests/hue_panel_smoke.cpp)
 target_compile_features(CrimsonHue.OverlaySmoke PRIVATE cxx_std_20)
 target_compile_options(CrimsonHue.OverlaySmoke PRIVATE /W4 /WX /permissive-)
@@ -316,6 +322,8 @@ add_test(NAME overlay-d3d12 COMMAND CrimsonDesertTelemetryGraphicsSmoke)
 set_tests_properties(overlay-d3d12 PROPERTIES TIMEOUT 45)
 add_test(NAME notifications-d3d12 COMMAND CrimsonDesertTelemetryGraphicsSmoke --notices)
 set_tests_properties(notifications-d3d12 PROPERTIES TIMEOUT 45)
+add_test(NAME recovery-ui-d3d12 COMMAND CrimsonDesertTelemetryGraphicsSmoke --recovery)
+set_tests_properties(recovery-ui-d3d12 PROPERTIES TIMEOUT 45)
 add_test(NAME light-overlay-d3d12 COMMAND CrimsonDesertTelemetryGraphicsSmoke --lights)
 set_tests_properties(light-overlay-d3d12 PROPERTIES TIMEOUT 45)
 add_test(NAME light-overlay-only-d3d12 COMMAND CrimsonDesertTelemetryGraphicsSmoke --lights-only)

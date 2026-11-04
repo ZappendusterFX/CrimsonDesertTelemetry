@@ -1,0 +1,28 @@
+#pragma once
+// Mutable only once, on the native worker BEFORE any hook is installed. Layouts
+// remain the compile-time reviewed ABI; recovery can relocate code, never it.
+#include "native_contract.generated.h"
+namespace cdt::runtime_contract
+{
+using namespace native_contract;
+inline bool Recovered = false;
+inline auto ExecutableSha256 = native_contract::ExecutableSha256;
+inline auto SceneGlobalRva = native_contract::SceneGlobalRva;
+inline auto SkyProducerRva = native_contract::SkyProducerRva;
+inline auto HookRva = native_contract::HookRva;
+inline auto HookSignature = native_contract::HookSignature;
+@CDT_RUNTIME_CONTEXT_ARRAYS@
+inline std::array<ContextSignature, @CDT_CONTEXT_COUNT@> ContextSignatures{{
+@CDT_CONTEXT_ENTRIES@}};
+namespace support {
+inline constexpr bool Available = native_contract::support::Available;
+@CDT_RUNTIME_SUPPORT_DECLARATIONS@
+inline std::array<ContextSignature, @CDT_SUPPORT_COUNT@> Contexts{{
+@CDT_SUPPORT_ENTRIES@}};
+}
+}
+namespace cdt::native_contract::support {
+struct RecoveryAnchor { std::string_view name; std::uint64_t rva; std::span<const std::uint8_t> bytes; std::string_view pattern; };
+inline constexpr std::array<RecoveryAnchor, @CDT_SUPPORT_COUNT@> RecoveryAnchors{{
+@CDT_RECOVERY_ANCHORS@}};
+}

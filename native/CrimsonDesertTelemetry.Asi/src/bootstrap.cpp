@@ -386,6 +386,11 @@ DWORD RunBootstrap()
         std::to_wstring(port) + L" " + std::to_wstring(sampleRate);
     if (lightsEnabled)
         commandLine += L" --lights --light-radius " + std::to_wstring(nearbyRadius);
+#if !CDT_RESEARCH
+    if constexpr (cdt::native_contract::support::Available)
+        if (lightsEnabled && GetPrivateProfileIntW(L"Lights", L"ManyLights", 1, iniPath.c_str()) != 0)
+            commandLine += L" --native-recovery";
+#endif
 #if CDT_RESEARCH
     if (researchSourceVisibility) commandLine += L" --research-source-visibility";
 #endif

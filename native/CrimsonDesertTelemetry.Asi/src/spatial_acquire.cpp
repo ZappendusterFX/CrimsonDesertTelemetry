@@ -5,7 +5,7 @@
 #include "sdf_acquire.h"
 #include "render_bridge.h"
 #include "render_capture.h"
-#include "native_contract.generated.h"
+#include "runtime_contract.generated.h"
 #include "console/mem.h"
 #include <windows.h>
 #include <d3d12.h>
@@ -26,17 +26,17 @@ constexpr bool HotfixGameBuild = native_contract::support::Available;
 constexpr bool RecoveryGameBuild = native_contract::BuildId == "26361232" || HotfixGameBuild;
 constexpr uint32_t RendererGiOffset = HotfixGameBuild ? native_contract::support::RendererGiOffset : RecoveryGameBuild ? 0x688 : 0x660;
 constexpr bool UpdatedGameBuild = native_contract::BuildId == "25477059";
-constexpr uint32_t DispatchRva = HotfixGameBuild ? static_cast<uint32_t>(native_contract::support::SpatialDispatchRva) : RecoveryGameBuild ? 0x3B744D0 : UpdatedGameBuild ? 0x389C000 : 0x37B6520;
-constexpr uint32_t ExposureReturnRva = HotfixGameBuild ? native_contract::support::ExposureReturnRva : RecoveryGameBuild ? 0x38F774A : UpdatedGameBuild ? 0x362595A : 0x3547264;
-constexpr auto DispatchSignature()
+uint32_t DispatchRva() { return HotfixGameBuild ? static_cast<uint32_t>(runtime_contract::support::SpatialDispatchRva) : RecoveryGameBuild ? 0x3B744D0 : UpdatedGameBuild ? 0x389C000 : 0x37B6520; }
+uint32_t ExposureReturnRva() { return HotfixGameBuild ? runtime_contract::support::ExposureReturnRva : RecoveryGameBuild ? 0x38F774A : UpdatedGameBuild ? 0x362595A : 0x3547264; }
+auto DispatchSignature()
 {
-    if constexpr (HotfixGameBuild) return native_contract::support::SpatialDispatchBytes;
+    if constexpr (HotfixGameBuild) return runtime_contract::support::SpatialDispatchBytes;
     else if constexpr (RecoveryGameBuild)
         return std::array<uint8_t, 26>{0x48,0x89,0x5C,0x24,0x08,0x48,0x89,0x6C,0x24,0x10,0x48,0x89,0x74,0x24,0x18,0x48,0x89,0x7C,0x24,0x20,0x41,0x56,0x48,0x83,0xEC,0x40};
     else
         return std::array<uint8_t, 14>{0x48,0x89,0x5C,0x24,0x10,0x48,0x89,0x6C,0x24,0x18,0x56,0x57,0x41,0x56};
 }
-constexpr auto Signature = DispatchSignature();
+
 using DispatchFn = uint64_t(*)(uint64_t, uint32_t, uint32_t, uint32_t);
 DispatchFn originalDispatch{};
 void* dispatchTarget{};
@@ -134,7 +134,7 @@ void Abandon()
 uint64_t Dispatch(uint64_t command, uint32_t x, uint32_t y, uint32_t z, uint64_t owner, uint64_t caller)
 {
     std::array<uint8_t,ConstantBytes> giBefore{};
-    const bool observeSources=sampleSources&&caller==gameBase+ExposureReturnRva&&
+    const bool observeSources=sampleSources&&caller==gameBase+ExposureReturnRva()&&
         x==2&&y==1&&z==1&&Read(owner+0x20,giBefore);
     auto result = originalDispatch(command, x, y, z);
     
@@ -237,10 +237,10 @@ bool Start(uint64_t moduleBase, const wchar_t*, bool enableReadback, unsigned, u
     bool enableDistanceReadback, bool, bool)
 {
     if (!enableReadback&&!enableDistanceReadback) return false;
-    std::array<uint8_t, Signature.size()> bytes{};
-    if (!Read(moduleBase + DispatchRva, bytes) || bytes != Signature) return false;
+    decltype(DispatchSignature()) bytes{};
+    if (!Read(moduleBase + DispatchRva(), bytes) || bytes != DispatchSignature()) return false;
     
-    dispatchTarget = reinterpret_cast<void*>(moduleBase + DispatchRva);
+    dispatchTarget = reinterpret_cast<void*>(moduleBase + DispatchRva());
     gameBase=moduleBase;sampleAmbient=enableReadback;requestedSources=enableDistanceReadback;
     sampleSources.store(false, std::memory_order_release);
     if (MH_CreateHook(dispatchTarget, reinterpret_cast<void*>(CdtSpatialThunk), reinterpret_cast<void**>(&originalDispatch)) != MH_OK) return false;
