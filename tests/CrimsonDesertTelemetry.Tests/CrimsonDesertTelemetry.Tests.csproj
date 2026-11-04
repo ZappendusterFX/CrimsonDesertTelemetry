@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../src/CrimsonDesertTelemetry.Cli/TelemetryServerState.cs" Link="TelemetryServerState.cs" />
+    <Compile Include="../../src/CrimsonDesertTelemetry.Cli/RecoveryHost.cs" Link="RecoveryHost.cs" />
     <ProjectReference Include="../../src/CrimsonDesertTelemetry.Core/CrimsonDesertTelemetry.Core.csproj" />
   </ItemGroup>
 </Project>
