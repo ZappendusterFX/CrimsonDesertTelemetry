@@ -13,10 +13,25 @@ spatial_acquire::Dispatch before new GI work, and both physics batch arming/clai
 existing GPU work must drain and original game queries must remain untouched.
 Hidden-panel input review found no demonstrated input injection or hover cause.
 
-Owner points to World Builder for a menu-state lead. Review current official source
-and relocate only against the preserved EXE; editor g_menuOpen is not a game-menu
-flag. No runtime/deployment changes or menu fix yet. Hue additionally implements
-the requested OpenRGB reset controls; its authoritative panel will be synchronized.
+Reviewed World Builder official source at6ad72dcb and offline-relocated seven real
+Skills/Pause/Inventory/WorldMap/MainMenu RTTI/vtables uniquely against preserved
+26423880. No live menu instance or active/visible state established. Its g_menuOpen
+is editor-only and GameClockNow's2s server-age check is no proven Skills detector.
+Read docs/MENU_LIGHTING_RESEARCH.md; evidence and repeatable script in
+artifacts/worldbuilder-menu-review-20261104-181905/. Next research step: resolve
+the real Skills/Pause instance and validate its active state before implementing
+automatic pause. No runtime/deployment changes or menu fix.
+
+Requested OpenRGB reset controls implemented in Huef04a94b; authoritative panel
+synced here in097961a. Private production candidate2.2.9-reset.1 (ResearchOFF,
+AllowResearchOFF, native26423880) built/validated with matching Hue1.0.7-reset.1.
+Hue163Core tests, exact controller command/reset/smoke, both package validators
+and paired --openrgb D3D12 smoke pass; screenshot visually inspected748802pixels.
+This is reset-only, not a skill-menu fix. No new game/lamp acceptance, no install.
+ZIP: artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.9-reset.1-ModManagers.zip,
+SHA256 C5F0A7FEE188455A333A3EA30AA3D8B7C43A60642D9512FD856890FE1834899A.
+Build log artifacts/reset-1-package.log; paired smoke and receipt in Hue artifacts/.
+Hand off both packages for owner installation only; do not poll for that action.
 
 # Previous checkpoint — 2026-11-04, apparent Razer workaround (WITHDRAWN by owner)
 
