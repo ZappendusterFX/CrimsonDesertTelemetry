@@ -1,4 +1,30 @@
-# Current checkpoint — 2026-11-04, live visibility stopped and low-FPS report
+# Current checkpoint — 2026-11-04, restart restored visibility and lighting
+
+Owner restarted after the Deminiss Civil War slowdown and reports about 60 FPS
+and 100% GPU again; the prior session could no longer reach full GPU utilization.
+Read-only checks confirm new game PID 34956 / host 35112, tested build 26423880,
+health playing/error=null. A first capture coincided with loading and correctly
+cleared outputs; do not use its 9.5% CPU / 2% GPU as a gameplay comparison.
+The follow-up at 17:43:29 CET is playing: capture 1752/frame 14069, age 47 ms,
+137 upstream sources = 16 clear / 116 blocked / 5 pending. The new native log has
+no visibility-stop entry at inspection. Passive Hue snapshot confirms 17/139
+usable sources in its slightly later capture, spatially differing channel colors,
+and active OpenRGB output for four devices. These are calculated/stream states,
+not a new physical/optical test.
+
+One follow-up performance sample: game 50.4%, host 1.9% of 16 logical processors,
+GPU 3D 68%; instantaneous counters differ from the owner's reported 100% GPU.
+The old session's 22-38% game CPU therefore does not by itself establish CPU
+saturation. A CPU/synchronization stall starving the GPU remains plausible, not
+proven. No controlled same-scene comparison or attribution to CDT/Hue/other mods.
+Evidence: artifacts/runtime-visibility-restart-20261104-174305-pid34956/
+(original new logs, health/raw/Ambient and passive Hue snapshots, including the
+loading capture and playing follow-up); failed-session evidence remains preserved.
+No code/settings/deployment changes. Restart clears the observed session failures;
+it is not a fix for the permanent timing-guard latch. No further owner test needed
+for this check; retain the scene context for any subsequent scoped fix.
+
+# Previous checkpoint — 2026-11-04, live visibility stopped and low-FPS report
 
 Owner reports abnormal CDT/Hue behavior, about30FPS and high CPU. Read-only checks
 of gamePID22684/host26180 at17:32-17:34CET confirm tested26423880, fresh advancing
