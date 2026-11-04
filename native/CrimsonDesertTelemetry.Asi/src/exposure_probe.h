@@ -7,8 +7,9 @@
 
 namespace cdt::render
 {
-inline constexpr uint32_t RendererSkyOffset = native_contract::BuildId == "26361232" ? 0x690 : 0x668;
-inline constexpr uint32_t RendererExposureOffset = native_contract::BuildId == "26361232" ? 0x6B8 : 0x690;
+inline constexpr bool CurrentRendererLayout = native_contract::BuildId == "26361232";
+inline constexpr uint32_t RendererSkyOffset = native_contract::support::Available ? native_contract::support::RendererSkyOffset : CurrentRendererLayout ? 0x690 : 0x668;
+inline constexpr uint32_t RendererExposureOffset = native_contract::support::Available ? native_contract::support::RendererExposureOffset : CurrentRendererLayout ? 0x6B8 : 0x690;
 // Private diagnostic appendix. This is the engine's GPU-derived CPU cache,
 // NOT a GPU exposure sample fenced with ambient. Its source-frame age is unknown.
 // +118 contains pointers: copy ONLY +D8..+117 (64 bytes), never all 80 CBV bytes.

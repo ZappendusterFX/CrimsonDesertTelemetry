@@ -120,6 +120,7 @@ void CheckFileSignatures(const wchar_t* path, bool ambient)
     };
     verify(contract::HookRva, contract::HookSignature);
     for (const auto& context : contract::ContextSignatures) verify(context.rva, context.bytes);
+    for (const auto& context : contract::support::Contexts) verify(context.rva, context.bytes);
     if (ambient)
     {
         verify(cdt::render::AmbientHookRvas[0], cdt::render::AmbientSignatureA);

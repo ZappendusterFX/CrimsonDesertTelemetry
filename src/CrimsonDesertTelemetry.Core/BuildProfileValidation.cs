@@ -48,9 +48,9 @@ public static class BuildProfileValidation
         Rva(camera.CameraReferenceRva); Rva(camera.CameraGlobalRva, 8); Rva(camera.CameraVtableRva, 8);
         Signature(camera.CameraReferencePattern, 12, 64);
         CameraInstruction(camera.CameraReferencePattern, "05");
-        if (camera.SourcePointerOffset != 0x428 &&
-            !(definition.SteamBuildId == "26361232" && camera.Layout == "renderer-camera-direct-v1" &&
-              camera.SourcePointerOffset == 0x430))
+        var currentSceneLayout = definition.SteamBuildId is "26361232" or "26423880";
+        if (camera.SourcePointerOffset != (currentSceneLayout ? 0x430 : 0x428) ||
+            (currentSceneLayout && camera.Layout != "renderer-camera-direct-v1"))
             Fail("Unsupported camera source-pointer layout.");
         Fingerprints(camera.CameraVtableFingerprints);
         Fingerprints(camera.ContextVtableFingerprints);
@@ -134,8 +134,8 @@ public static class BuildProfileValidation
         if (native.Registers is not { Output: "r12", Command: "rbx", Counter: "r15", Owner: "r13" } ||
             native.Wrapper is not { InnerOffset: 48, StrideOffset: 192, CountOffset: 196, ResourceOffset: 360,
                 NativeListOffset: 8 } ||
-            native.Wrapper.CommandHolderOffset != (definition.SteamBuildId == "26361232" ? 0x8C0 : 0x800) ||
-            native.Wrapper.OwnerBankIndexOffset != (definition.SteamBuildId == "26361232" ? 0x8E0 : 0x8F8) ||
+            native.Wrapper.CommandHolderOffset != (definition.SteamBuildId is "26361232" or "26423880" ? 0x8C0 : 0x800) ||
+            native.Wrapper.OwnerBankIndexOffset != (definition.SteamBuildId is "26361232" or "26423880" ? 0x8E0 : 0x8F8) ||
             native.Scene is not { ByteCount: 2816, FrameOffset: 32, ScreenOffset: 48,
                 PositionOffset: 128, DirectionOffset: 144, ViewRelativeOffset: 160, EarthRadiusOffset: 2752, EarthRadius: 6360000f } ||
             native.Scene.RootPointerOffset != definition.EngineCamera.SourcePointerOffset ||
@@ -146,6 +146,41 @@ public static class BuildProfileValidation
             evidence.ConsumerEntries.Any(e => !Hex(e, 8)) || !Hex(evidence.ProducerDxilHash, 32) ||
             string.IsNullOrWhiteSpace(evidence.Source) || evidence.Source.Length > 512 ||
             evidence.Validation != "archived-one-variant-not-live-pso")) Fail("Invalid or overstated archived shader evidence.");
+        if (definition.SteamBuildId == "26423880" && native.Support is null)
+            Fail("Current full-product profile requires its acquisition support anchors.");
+        if (native.Support is { } support) ValidateSupport(native, support);
+    }
+
+    private static void ValidateSupport(NativeCaptureDefinition native, NativeSupportDefinition support)
+    {
+        string[] keys = ["AmbientSourceOffset", "RendererGiOffset", "RendererSkyOffset", "RendererExposureOffset",
+            "PhysicsCollectorVtableRva", "PhysicsQueryProfile", "UpstreamInputRva", "UpstreamBinderRva",
+            "ExposureReturnRva"];
+        string[] names = ["AmbientHookA", "AmbientHookB", "AmbientSourceA", "AmbientSourceB", "SpatialDispatch",
+            "PhysicsShape", "PhysicsRay", "PhysicsCollectorMethod", "ExposureDispatch", "PhysicsShapeCaller", "PhysicsRayCaller"];
+        if (native.ContextSignatures.Count != 7 || support.Values is null || !keys.Order().SequenceEqual(support.Values.Keys.Order()) ||
+            support.Anchors is null || support.Anchors.Any(a => a is null) ||
+            !names.Order().SequenceEqual(support.Anchors.Select(a => a.Name).Order()))
+            Fail("Incomplete or unknown full-product acquisition anchors.");
+        foreach (var anchor in support.Anchors)
+        {
+            Rva(anchor.Rva); Signature(anchor.Bytes, 12, 128, exact: true);
+            Signature(anchor.RelocationPattern, 12, 128);
+            var exact = SignaturePattern.Parse(anchor.Bytes);
+            var masked = SignaturePattern.Parse(anchor.RelocationPattern);
+            if (exact.Length != masked.Length || !masked.FindAll(Convert.FromHexString(
+                    new string(anchor.Bytes.Where(c => !char.IsWhiteSpace(c)).ToArray()))).SequenceEqual([0]))
+                Fail("Recovery fingerprint does not describe the exact guarded instruction bytes.");
+        }
+        foreach (var key in keys.Where(k => k.EndsWith("Rva", StringComparison.Ordinal))) Rva(support.Values[key]);
+        if ((support.Values["PhysicsCollectorVtableRva"] & 7) != 0 || support.Values["PhysicsQueryProfile"] != 0x40000017 ||
+            support.Values["AmbientSourceOffset"] != 0xA8 || support.Values["RendererGiOffset"] != 0x688 ||
+            support.Values["RendererSkyOffset"] != 0x690 || support.Values["RendererExposureOffset"] != 0x6B8 ||
+            support.Anchors.Single(a => a.Name == "AmbientHookA").Rva != native.SkyProducerRva ||
+            support.Values["UpstreamInputRva"] != native.ContextSignatures[^2].Rva ||
+            support.Values["UpstreamBinderRva"] != native.ContextSignatures[^1].Rva ||
+            support.Values["ExposureReturnRva"] != support.Anchors.Single(a => a.Name == "ExposureDispatch").Rva + 18)
+            Fail("Unsupported or incoherent acquisition layout.");
     }
 
     public static void ValidatePattern(PatternDefinition pattern, bool trusted = true)

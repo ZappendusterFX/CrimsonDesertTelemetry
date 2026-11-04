@@ -15,7 +15,7 @@ public static class UpdateCheck
     {
         BuildProfileValidation.ValidateAll(definitions);
         var hash = GameDiscovery.ComputeSha256(executable);
-        var reference = definitions.SingleOrDefault(d => d.Status == "locally-validated" &&
+        var reference = definitions.SingleOrDefault(d =>
                 string.Equals(d.ExecutableSha256, hash, StringComparison.OrdinalIgnoreCase)) ??
             definitions.Where(d => d.Status == "locally-validated").OrderByDescending(d => ulong.Parse(d.SteamBuildId)).FirstOrDefault()
             ?? throw new InvalidDataException("No validated reference profile for update diagnostics.");
@@ -91,15 +91,40 @@ public static class UpdateCheck
             foreach (var context in native.ContextSignatures)
                 Check("native-context-" + context.Purpose, context.Rva, () =>
                 {
-                    var found = image.FindFunction(context.Bytes, context.Purpose);
+                    ulong found;
+                    var detail = "Unique bounded dispatch-context instruction guard.";
+                    if (exact)
+                    {
+                        if (!image.MatchesFunctionAt(context.Rva, context.Bytes))
+                            throw new InvalidDataException("Missing exact-profile instruction bytes at the guarded context RVA.");
+                        found = context.Rva;
+                        detail = "Byte-exact context at its exact-EXE profile location; no image-wide uniqueness assumption.";
+                    }
+                    else
+                    {
+                        try { found = image.FindFunction(context.Bytes, context.Purpose); }
+                        catch (InvalidDataException e) when (e.Message.Contains("Ambiguous", StringComparison.OrdinalIgnoreCase) && relocatedContexts.Count > 0)
+                        {
+                            var nearest = relocatedContexts.MinBy(c => Distance(c.Context.Rva, context.Rva));
+                            var distance = checked((long)context.Rva - (long)nearest.Context.Rva);
+                            var candidate = checked((long)nearest.Found + distance);
+                            if (Math.Abs(distance) > 0x4000 || candidate < 0) throw;
+                            found = (ulong)candidate;
+                            if (!image.MatchesFunctionAt(found, context.Bytes)) throw;
+                            detail = "Repeated fingerprint verified byte-exact at the bounded relative position from a unique dispatch context; offline candidate only.";
+                        }
+                    }
                     relocatedContexts.Add((context, found));
-                    return (found, null, "Unique bounded dispatch-context instruction guard.");
+                    return (found, null, detail);
                 });
             Check("native-filter-callsite", native.HookRva, () =>
             {
                 if (exact)
-                    return (image.FindFunction(native.HookSignature, "native filter callsite"), null,
-                        "Unique exact instruction guard for the exact executable profile.");
+                {
+                    if (!image.MatchesFunctionAt(native.HookRva, native.HookSignature))
+                        throw new InvalidDataException("Missing exact hook bytes at the guarded profile RVA.");
+                    return (native.HookRva, null, "Byte-exact instruction guard at the exact executable profile location.");
+                }
                 var pattern = HookRelocationPattern(native.HookSignature);
                 var nearest = relocatedContexts.MinBy(candidate => Distance(candidate.Context.Rva, native.HookRva));
                 if (nearest.Context is null)
@@ -111,10 +136,26 @@ public static class UpdateCheck
                     throw new InvalidDataException("Missing code fingerprint at the position established by the nearest native dispatch context.");
                 return (candidate, null, "Instruction guard located relative to the unique nearest dispatch context; its rel32 call displacement is masked for offline relocation only. Runtime preflight remains byte-exact.");
             });
+            if (native.Support is { } support)
+            {
+                foreach (var anchor in support.Anchors)
+                    Check("native-support-" + anchor.Name, anchor.Rva, () =>
+                    {
+                        if (!exact) return (image.FindFunction(anchor.RelocationPattern, anchor.Name), null,
+                            "Offline acquisition candidate; only relative address operands are masked. Field/layout semantics remain unverified.");
+                        if (!image.MatchesFunctionAt(anchor.Rva, anchor.Bytes))
+                            throw new InvalidDataException("Missing exact acquisition context bytes.");
+                        return (anchor.Rva, null, "Byte-exact acquisition context from the shared build definition; no live execution claim.");
+                    });
+                Check("native-support-PhysicsCollectorVtable", support.Values["PhysicsCollectorVtableRva"], () =>
+                    (image.ResolveCollectorVtable(support.Anchors.Single(a => a.Name == "PhysicsCollectorMethod").RelocationPattern), null,
+                        "Unique read-only 12-slot collector shape and guarded method; natural query/profile control remains a live check."));
+            }
         }
         else anchors.Add(new("native-filter-callsite", "unverified", null, null, null, "This reference has no native capture contract."));
         var failures = anchors.Any(a => a.Status is "missing" or "ambiguous" or "rejected" or "mismatch");
-        return new(1, failures ? "anchor-check-failed" : exact ? "exact-profile-anchors-checked" : "candidate-layout-unverified",
+        return new(1, failures ? "anchor-check-failed" : exact ?
+                reference.Status == "research" ? "exact-research-anchors-checked" : "exact-profile-anchors-checked" : "candidate-layout-unverified",
             hash, FileVersionInfo.GetVersionInfo(executable).FileVersion, GameDiscovery.ReadSteamBuildIdForExecutable(executable),
             reference.SteamBuildId, exact, false,
             "Offline anchors are recovery evidence, not proof of runtime layouts. No profile is promoted and no lights/hooks are enabled.",

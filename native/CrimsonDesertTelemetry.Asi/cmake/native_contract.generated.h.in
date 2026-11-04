@@ -39,15 +39,22 @@ inline constexpr std::uint32_t RecordCount = @CDT_GPU_recordCount@;
 inline constexpr std::uint32_t RecordStride = @CDT_GPU_recordStride@;
 inline constexpr std::uint32_t CounterBytes = @CDT_GPU_counterBytes@;
 inline constexpr std::uint32_t ValidCounterByteOffset = @CDT_GPU_validCounterByteOffset@;
+namespace support {
+inline constexpr bool Available = @CDT_HAS_SUPPORT@;
+@CDT_SUPPORT_DECLARATIONS@
+inline constexpr std::array<ContextSignature, @CDT_SUPPORT_COUNT@> Contexts{{
+@CDT_SUPPORT_ENTRIES@}};
+}
 // These are ABI/layout version assertions, not a second editable profile. A new
 // layout must receive a reviewed decoder/bridge version, not only a new hash.
 static_assert(SceneBytes == 2816 && RecordCount == 32768 && RecordStride == 48 && CounterBytes == 256);
 static_assert(ValidCounterByteOffset == 4 && ValidCounterByteOffset + 4 <= CounterBytes);
 static_assert(InnerOffset == 48 && StrideOffset == 192 && CountOffset == 196 && ResourceOffset == 360);
-static_assert(CommandHolderOffset == (BuildId == "26361232" ? 0x8C0 : 0x800));
+inline constexpr bool CurrentSceneLayout = BuildId == "26361232" || BuildId == "26423880";
+static_assert(CommandHolderOffset == (CurrentSceneLayout ? 0x8C0 : 0x800));
 static_assert(NativeListOffset == 8);
-static_assert(OwnerBankIndexOffset == (BuildId == "26361232" ? 0x8E0 : 0x8F8));
-static_assert(SceneRootPointerOffset == (BuildId == "26361232" ? 0x430 : 0x428));
+static_assert(OwnerBankIndexOffset == (CurrentSceneLayout ? 0x8E0 : 0x8F8));
+static_assert(SceneRootPointerOffset == (CurrentSceneLayout ? 0x430 : 0x428));
 static_assert(FrameOffset == 32 && ScreenOffset == 48);
 static_assert(PositionOffset == 128 && DirectionOffset == 144 && ViewRelativeOffset == 160);
 static_assert(EarthRadiusOffset == 2752 && EarthRadius == 6360000.0f);

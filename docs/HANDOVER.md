@@ -1,4 +1,29 @@
-# Current checkpoint — 2026-11-04, OpenRGB light-response controls
+# Current checkpoint — 2026-11-04, build26423880 complete-path recovery on main
+
+Owner requests recovering the overnight update and merging both OpenRGB branches
+to main. Both local branches fast-forwarded. New EXE1.0.0.3527/SHA DC4237F2...,
+Steam26423880 is preserved. Installed PID6340's old native gate refuses it; old
+automatic camera source+428 fails. Current+430/2D0 layout passes24/24 progressing
+frames/orientations; authored46 is layout evidence only. Existing PE/name/unwind/
+Core tools recover all current paths in one pass. See BUILD-26423880-RECOVERY.md.
+
+New exact research profile ports ManyLights/input, Ambient/GI/exposure and physics.
+Eleven acquisition anchors/values now live centrally in the build definition and
+generate native constants; startup checks all11 before any game hook. Existing
+exact hash/context, natural control/profile, budget/fault/freshness rules remain.
+No runtime unknown-build scan/cache/automatic native activation was added. Owner
+asks about that conditional recovery as a follow-up; the explanation distinguishes
+address discovery from safely accepting changed layouts/physics/shader contracts.
+
+79/79 managed and40/40 native pass; actual EXE/all generated caller/acquisition/
+Ambient hook byte preflight passes. Offline full check28matched, authored layout
+unverified, activates=false, exact-research status. No repeated AN/AUS, GPU-buffer/
+new-shader or new installed physics acceptance. Target candidate is production
+code, Research off, all9 features ON,2.2.8-build26423880-integrated.1 with Hue1.0.5.
+Packaging and final receipt follow. Public2.2.7 and its defaults remain unchanged.
+No install or release tag; owner alone installs and reports before live acceptance.
+
+# Previous checkpoint — 2026-11-04, OpenRGB light-response controls
 
 Owner reports grey OpenRGB and weak lightning response alongside blue Hue. Hue's
 live-state diagnosis/replay attributes this to its narrow shared30deg footprint

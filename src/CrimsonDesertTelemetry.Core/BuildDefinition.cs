@@ -166,6 +166,21 @@ public sealed class NativeCaptureDefinition
     public NativeCaptureScene Scene { get; set; } = new();
     public NativeCaptureGpu Gpu { get; set; } = new();
     public NativeShaderEvidence? ShaderEvidence { get; set; }
+    public NativeSupportDefinition? Support { get; set; }
+}
+// Build-specific acquisition anchors share the exact-EXE definition. They are
+// offline recovery evidence, never authorization to enable an unknown executable.
+public sealed class NativeSupportDefinition
+{
+    public Dictionary<string, uint> Values { get; set; } = [];
+    public List<NativeSupportAnchor> Anchors { get; set; } = [];
+}
+public sealed class NativeSupportAnchor
+{
+    public string Name { get; set; } = "";
+    public ulong Rva { get; set; }
+    public string Bytes { get; set; } = "";
+    public string RelocationPattern { get; set; } = "";
 }
 public sealed class NativeContextSignature
 {

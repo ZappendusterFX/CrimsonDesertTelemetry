@@ -21,7 +21,8 @@ namespace cdt::physics
 namespace
 {
 using Json = nlohmann::json;
-constexpr bool RecoveryPhysicsBuild = native_contract::BuildId == "26361232";
+constexpr bool HotfixPhysicsBuild = native_contract::support::Available;
+constexpr bool RecoveryPhysicsBuild = native_contract::BuildId == "26361232" || HotfixPhysicsBuild;
 // Exact-build natural-context selection, never a decoded/general collision mask.
 // Build25477059: retained ground/wall controls and291 normal PID456 batches used
 // 0x40000016; the10 all-clear failures used0x40004027. Build26361232 PID31416:
@@ -29,13 +30,13 @@ constexpr bool RecoveryPhysicsBuild = native_contract::BuildId == "26361232";
 // inline storage and player-near layout;0x40000016 has a different collector.
 // Select only this new-build candidate. Same-call control must still reproduce
 // the original result before any changed segment; never rewrite query bits.
-constexpr std::uint32_t VisibilityRayProfile = RecoveryPhysicsBuild ? 0x40000017 : 0x40000016;
-constexpr uint64_t ShapeRva = RecoveryPhysicsBuild ? 0x45AE480 : 0x42B0C50;
-constexpr uint64_t RayRva = RecoveryPhysicsBuild ? 0x45AE380 : 0x42B0B50;
-constexpr uint64_t CollectorRva = RecoveryPhysicsBuild ? 0x60D71D0 : 0x5D13528;
-constexpr uint64_t CollectorMethodRva = RecoveryPhysicsBuild ? 0x3CB3010 : 0x39DBE20;
-constexpr uint64_t ShapeCallerRva = RecoveryPhysicsBuild ? 0x350CB52 : 0x32554FA;
-constexpr uint64_t RayCallerRva = RecoveryPhysicsBuild ? 0x350C807 : 0x32551AF;
+constexpr std::uint32_t VisibilityRayProfile = HotfixPhysicsBuild ? native_contract::support::PhysicsQueryProfile : RecoveryPhysicsBuild ? 0x40000017 : 0x40000016;
+constexpr uint64_t ShapeRva = HotfixPhysicsBuild ? native_contract::support::PhysicsShapeRva : RecoveryPhysicsBuild ? 0x45AE480 : 0x42B0C50;
+constexpr uint64_t RayRva = HotfixPhysicsBuild ? native_contract::support::PhysicsRayRva : RecoveryPhysicsBuild ? 0x45AE380 : 0x42B0B50;
+constexpr uint64_t CollectorRva = HotfixPhysicsBuild ? native_contract::support::PhysicsCollectorVtableRva : RecoveryPhysicsBuild ? 0x60D71D0 : 0x5D13528;
+constexpr uint64_t CollectorMethodRva = HotfixPhysicsBuild ? native_contract::support::PhysicsCollectorMethodRva : RecoveryPhysicsBuild ? 0x3CB3010 : 0x39DBE20;
+constexpr uint64_t ShapeCallerRva = HotfixPhysicsBuild ? native_contract::support::PhysicsShapeCallerRva : RecoveryPhysicsBuild ? 0x350CB52 : 0x32554FA;
+constexpr uint64_t RayCallerRva = HotfixPhysicsBuild ? native_contract::support::PhysicsRayCallerRva : RecoveryPhysicsBuild ? 0x350C807 : 0x32551AF;
 // Five pointer/integer parameters verified in the current-build wrapper; preserve RAX.
 using ShapeFn = std::uint64_t(__fastcall*)(void*, void*, void*, void*, void*);
 // Current-build TtWorldCastRay wrapper forwards world, query, collector only.
@@ -738,7 +739,7 @@ bool Start(std::uint64_t moduleBase, const wchar_t* directory, bool continuous)
         ? "df531a585bf84ceb47779304cc8b3caaf976aea88424c32605885623cd4519c7"
         : "57da440d72f4db974f25fef047cf84c4dadd999a88cb2a3c5af4c9bd67fde1e7";
     if (enabled.load() || (!RecoveryPhysicsBuild && native_contract::BuildId != "25477059") ||
-        Hex(native_contract::ExecutableSha256) != expectedHash) return false;
+        (!HotfixPhysicsBuild && Hex(native_contract::ExecutableSha256) != expectedHash)) return false;
 #if !CDT_RESEARCH
     // Production ships only the continuous visibility sampler. File-driven manual
     // observe/replay/segment/rayfan requests and their JSON reports stay research-only.

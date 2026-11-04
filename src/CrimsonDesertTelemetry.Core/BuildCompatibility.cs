@@ -203,6 +203,28 @@ internal sealed class CompatibilityImage
         return pattern.FindAll(Bytes(section).AsSpan(offset, pattern.Length)).SequenceEqual([0]);
     }
 
+    internal ulong ResolveCollectorVtable(string methodPattern)
+    {
+        var method = _imageBase + FindFunction(methodPattern, "physics collector method");
+        var matches = new List<ulong>();
+        foreach (var section in _sections.Where(s => s.Readable && !s.Executable && !s.Writable))
+        {
+            var bytes = Bytes(section);
+            for (var start = 0; start + 12 * 8 <= bytes.Length; start += 8)
+            {
+                if (((section.VirtualAddress + (ulong)start) & 7) != 0 ||
+                    BitConverter.ToUInt64(bytes, start + 40) != method) continue;
+                var slots = Enumerable.Range(0, 12).Select(i => BitConverter.ToUInt64(bytes, start + i * 8)).ToArray();
+                if (slots[0] != slots[9] || slots[3] != slots[7] || slots[6] != slots[8] ||
+                    slots.Any(p => p < _imageBase || !IsExecutable(p - _imageBase))) continue;
+                matches.Add(section.VirtualAddress + (ulong)start);
+            }
+        }
+        if (matches.Count != 1) throw new InvalidDataException(matches.Count == 0 ?
+            "Missing physics collector vtable shape." : "Ambiguous physics collector vtable shape.");
+        return matches[0];
+    }
+
     public (ulong Instruction, ulong Target) ResolveDataReference(PatternDefinition pattern, int size)
     {
         var length = SignaturePattern.Parse(pattern.Pattern).Length;
@@ -294,6 +316,9 @@ internal sealed class CompatibilityImage
             ?? throw new InvalidDataException("RVA is not file-backed.");
         return Bytes(section).AsSpan(checked((int)(rva - section.VirtualAddress)), size).ToArray();
     }
+
+    private bool IsExecutable(ulong rva) => _sections.Any(s => s.Executable &&
+        rva >= s.VirtualAddress && rva < (ulong)s.VirtualAddress + s.RawSize);
 
     private bool IsData(ulong rva, int size, bool writable) => _sections.Any(section =>
         section.Readable && !section.Executable && section.Writable == writable &&

@@ -1,5 +1,10 @@
 # Crimson Desert Telemetry
 
+Main includes the OpenRGB companion HUD and the exact-build26423880 recovery
+candidate. Use CDT `2.2.8-build26423880-integrated.1` with CrimsonHue1.0.5 for owner
+testing; current installed acquisition is pending. This is ahead of the public
+2.2.7 release. [Recovery and combined update checks](docs/BUILD-26423880-RECOVERY.md).
+
 **Live light, player, camera and local ambient data for Crimson Desert, with HTTP/WebSocket APIs, fullscreen light markers and a 3D radar.**
 
 Inspect positions, colors and brightness of current light contributions from fires, candles, lanterns and glass/crystal lamps, alongside the player and render camera. Use the data in your own overlays, tools and lighting integrations.

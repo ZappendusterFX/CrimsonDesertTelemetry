@@ -35,6 +35,26 @@ internal static class UpdateCheckTests
         var updated = BuildDefinition.LoadAll("not-a-profile-directory").Single(d => d.SteamBuildId == "26361232");
         updated.NativeCapture!.Wrapper.CommandHolderOffset = 0x800;
         Reject(() => BuildProfileValidation.Validate(updated), "New build retained the obsolete command-list holder.");
+        var current = BuildDefinition.LoadAll("not-a-profile-directory").Single(d => d.SteamBuildId == "26423880");
+        Check(current.Status == "research" && !current.AllowAutomaticCompatibility && current.NativeCapture!.Support?.Anchors.Count == 11,
+            "Unmeasured current integration was promoted or lost full-product anchor coverage.");
+        Action<BuildDefinition>[] supportCorruptions = [
+            d => d.NativeCapture!.Support = null,
+            d => d.NativeCapture!.Support!.Values.Remove("PhysicsQueryProfile"),
+            d => d.NativeCapture!.Support!.Values["UnreviewedOffset"] = 16,
+            d => d.NativeCapture!.Support!.Values["PhysicsQueryProfile"] = 0x40000016,
+            d => d.NativeCapture!.Support!.Values["PhysicsCollectorVtableRva"] += 1,
+            d => d.NativeCapture!.Support!.Anchors.RemoveAt(0),
+            d => d.NativeCapture!.Support!.Anchors[0].RelocationPattern = new string('?', 30),
+            d => d.NativeCapture!.Support!.Values["ExposureReturnRva"] += 1,
+            d => { d.EngineCamera!.SourcePointerOffset = 0x428; d.NativeCapture!.Scene.RootPointerOffset = 0x428; }
+        ];
+        foreach (var corrupt in supportCorruptions)
+        {
+            var candidate = BuildDefinition.LoadAll("not-a-profile-directory").Single(d => d.SteamBuildId == "26423880");
+            corrupt(candidate);
+            Reject(() => BuildProfileValidation.Validate(candidate), "Malformed or legacy current-build acquisition support accepted.");
+        }
         var valid = Current();
         Reject(() => BuildProfileValidation.ValidateAll([valid, valid]), "Duplicate identity accepted.");
         var research = Current();
@@ -122,7 +142,7 @@ internal static class UpdateCheckTests
         mismatch.Definition.NativeCapture!.HookRva += 1;
         mismatch.Definition.ExecutableSha256 = GameDiscovery.ComputeSha256(mismatch.Path);
         result = UpdateCheck.Run(mismatch.Path, [mismatch.Definition]);
-        Check(result.Anchors.Single(a => a.Name == "native-filter-callsite").Status == "mismatch",
+        Check(result.Anchors.Single(a => a.Name == "native-filter-callsite").Status == "missing",
             "Exact hash masked native gate RVA mismatch.");
     }
 

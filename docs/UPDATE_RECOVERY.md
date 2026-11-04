@@ -1,5 +1,13 @@
 # Update recovery — current direct-camera / ManyLights path
 
+Current recovery: [build26423880](BUILD-26423880-RECOVERY.md). Its exact definition
+now carries Ambient/GI/exposure/physics anchors as well as ManyLights. The existing
+check-update checks all of them in one disk-only report; CMake emits the native
+constants from the same definition. Research status stays explicit and does not
+enable a normal build or install anything. The plugin checks the11 acquisition
+contexts together before installing game hooks. No unknown-build runtime scan,
+result cache or automatic native activation has been added.
+
 Assistant reference, not user homework. Start here after a game update, not at the
 oldest fire handover. This recipe and its three reused archive tools travel with
 the product Git clone. Raw game material stays private under ignored `artifacts/`.

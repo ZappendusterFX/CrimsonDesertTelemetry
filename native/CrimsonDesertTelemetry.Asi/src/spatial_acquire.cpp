@@ -22,14 +22,16 @@ namespace
 {
 // Exact-build spatial acquisition. The private all-on package exercises this
 // candidate without promoting the build to a supported release.
-constexpr bool RecoveryGameBuild = native_contract::BuildId == "26361232";
-constexpr uint32_t RendererGiOffset = RecoveryGameBuild ? 0x688 : 0x660;
+constexpr bool HotfixGameBuild = native_contract::support::Available;
+constexpr bool RecoveryGameBuild = native_contract::BuildId == "26361232" || HotfixGameBuild;
+constexpr uint32_t RendererGiOffset = HotfixGameBuild ? native_contract::support::RendererGiOffset : RecoveryGameBuild ? 0x688 : 0x660;
 constexpr bool UpdatedGameBuild = native_contract::BuildId == "25477059";
-constexpr uint32_t DispatchRva = RecoveryGameBuild ? 0x3B744D0 : UpdatedGameBuild ? 0x389C000 : 0x37B6520;
-constexpr uint32_t ExposureReturnRva = RecoveryGameBuild ? 0x38F774A : UpdatedGameBuild ? 0x362595A : 0x3547264;
+constexpr uint32_t DispatchRva = HotfixGameBuild ? static_cast<uint32_t>(native_contract::support::SpatialDispatchRva) : RecoveryGameBuild ? 0x3B744D0 : UpdatedGameBuild ? 0x389C000 : 0x37B6520;
+constexpr uint32_t ExposureReturnRva = HotfixGameBuild ? native_contract::support::ExposureReturnRva : RecoveryGameBuild ? 0x38F774A : UpdatedGameBuild ? 0x362595A : 0x3547264;
 constexpr auto DispatchSignature()
 {
-    if constexpr (RecoveryGameBuild)
+    if constexpr (HotfixGameBuild) return native_contract::support::SpatialDispatchBytes;
+    else if constexpr (RecoveryGameBuild)
         return std::array<uint8_t, 26>{0x48,0x89,0x5C,0x24,0x08,0x48,0x89,0x6C,0x24,0x10,0x48,0x89,0x74,0x24,0x18,0x48,0x89,0x7C,0x24,0x20,0x41,0x56,0x48,0x83,0xEC,0x40};
     else
         return std::array<uint8_t, 14>{0x48,0x89,0x5C,0x24,0x10,0x48,0x89,0x6C,0x24,0x18,0x56,0x57,0x41,0x56};

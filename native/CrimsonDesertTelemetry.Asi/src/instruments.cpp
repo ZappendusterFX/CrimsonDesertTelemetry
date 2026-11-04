@@ -141,6 +141,25 @@ void RunImpl(HANDLE stopEvent)
             "Native hooks remain disabled. Install a telemetry version validated for this game build; check-update can inspect compatibility without enabling hooks.");
         return;
     }
+    // All current-build acquisition anchors are checked together before ANY
+    // native game hook is installed. Later component checks keep their existing
+    // rules; repeated checks here would encounter our own installed trampolines.
+    for (const auto& context : native_contract::support::Contexts)
+    {
+        std::array<uint8_t, 128> actual{};
+        if (context.bytes.size() > actual.size() ||
+            !ch::mem::SafeRead(reinterpret_cast<const uint8_t*>(GetModuleHandleW(nullptr)) + context.rva,
+                actual.data(), context.bytes.size()) ||
+            !std::equal(context.bytes.begin(), context.bytes.end(), actual.begin()))
+        {
+            ch::Log("Full-product acquisition preflight refused at RVA 0x%llX; no new native game hooks installed.", context.rva);
+            render::PublishStatus(render::Status::Incompatible, ERROR_REVISION_MISMATCH);
+            sky::PublishStatus(render::Status::Incompatible, ERROR_REVISION_MISMATCH);
+            overlay::SetLocalFault("native-capture", "Acquisition context changed",
+                "An exact-build acquisition guard differs. Check the native log and use a telemetry package for this game build.");
+            return;
+        }
+    }
     PinModule();
     if (!ch::mem::GetModuleRange(nullptr, &ch::g_game.moduleBase, &ch::g_game.moduleSize))
     {
