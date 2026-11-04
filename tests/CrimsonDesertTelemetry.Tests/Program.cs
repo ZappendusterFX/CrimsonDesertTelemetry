@@ -3,6 +3,7 @@ using System.Text.Json;
 
 if (args.Length != 0)
 {
+    if (args.Length == 3 && args[0] == "--runtime-recovery") return RuntimeRecoveryTests.Replay(args[1], args[2]);
     if (args.Length == 1 && args[0] == "--physics-visibility")
     {
         PhysicsVisibilityTests.Exchange();
@@ -84,6 +85,8 @@ var tests = new (string Name, Action Run)[]
     ("player orientation rejects wrong identity and replaced physics", PlayerOrientationReaderTests.IdentityAndRaces),
     ("private exact-build candidate anchors stay gated", PlayerOrientationReaderTests.PrivateCandidateGate),
     ("build profiles reject malformed and mismatched native contracts", UpdateCheckTests.Profiles),
+    ("runtime recovery requires a full contract and observes cancellation", RuntimeRecoveryTests.ContractGuards),
+    ("runtime recovery relocates all roles and rejects missing, ambiguous or changed contracts", RuntimeRecoveryTests.SyntheticRecovery),
     ("build profile JSON rejects typos, duplicates and omitted offsets", UpdateCheckTests.JsonGuards),
     ("update check relocates direct-camera and native candidates without promotion", UpdateCheckTests.DirectRelocation),
     ("update check distinguishes exact, missing and ambiguous anchors", UpdateCheckTests.ExactAndAmbiguous),

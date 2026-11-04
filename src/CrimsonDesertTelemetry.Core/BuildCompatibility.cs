@@ -117,9 +117,12 @@ internal sealed class CompatibilityImage
     private readonly Dictionary<PeSectionInfo, byte[]> _bytes = [];
     private readonly Dictionary<string, ulong> _functions = [];
     private readonly ulong _imageBase;
+    private readonly uint _exceptionRva, _exceptionSize;
+    private byte[]? _runtimeFunctions;
 
-    private CompatibilityImage(string path, IReadOnlyList<PeSectionInfo> sections, ulong imageBase)
-    { _path = path; _sections = sections; _imageBase = imageBase; }
+    private CompatibilityImage(string path, IReadOnlyList<PeSectionInfo> sections, ulong imageBase,
+        uint exceptionRva, uint exceptionSize)
+    { _path = path; _sections = sections; _imageBase = imageBase; _exceptionRva = exceptionRva; _exceptionSize = exceptionSize; }
 
     public static CompatibilityImage Load(string path)
     {
@@ -161,7 +164,17 @@ internal sealed class CompatibilityImage
                     throw new InvalidDataException("Invalid, overlapping or truncated PE section.");
                 previousEnd = end;
             }
-            return new CompatibilityImage(path, sections, imageBase);
+            uint exceptionRva = 0, exceptionSize = 0;
+            if (optionalSize >= 112 + 4 * 8)
+            {
+                stream.Position = pe + 24 + 108;
+                if (reader.ReadUInt32() >= 4)
+                {
+                    stream.Position = pe + 24 + 112 + 3 * 8;
+                    exceptionRva = reader.ReadUInt32(); exceptionSize = reader.ReadUInt32();
+                }
+            }
+            return new CompatibilityImage(path, sections, imageBase, exceptionRva, exceptionSize);
         }
         catch (EndOfStreamException exception) { throw new InvalidDataException("Truncated PE file.", exception); }
     }
@@ -201,6 +214,120 @@ internal sealed class CompatibilityImage
         if (section is null) return false;
         var offset = checked((int)(rva - section.VirtualAddress));
         return pattern.FindAll(Bytes(section).AsSpan(offset, pattern.Length)).SequenceEqual([0]);
+    }
+
+    internal byte[] ReadCode(ulong rva, int size)
+    {
+        if (size is < 1 or > 32768 || !_sections.Any(s => s.Executable && rva >= s.VirtualAddress &&
+                rva + (ulong)size <= (ulong)s.VirtualAddress + s.RawSize))
+            throw new InvalidDataException("Code range is outside the executable image.");
+        return ReadRva(rva, size);
+    }
+
+    internal (ulong Instruction, ulong Target) CheckDataReferenceAt(ulong rva, PatternDefinition pattern, int size)
+    {
+        if (!MatchesFunctionAt(rva, pattern.Pattern) || pattern.RipOffset is not int displacement ||
+            pattern.RipEnd is not int end || displacement < 0 || displacement + 4 > SignaturePattern.Parse(pattern.Pattern).Length ||
+            end < displacement + 4 || end > SignaturePattern.Parse(pattern.Pattern).Length)
+            throw new InvalidDataException("Cached data-reference instruction does not match its template.");
+        var target = checked((long)rva + end + BitConverter.ToInt32(ReadRva(rva + (ulong)displacement, 4)));
+        if (target < 0 || (target & 3) != 0 || !IsData((ulong)target, size, writable: true))
+            throw new InvalidDataException("Cached RIP target is not writable game data.");
+        return (rva, (ulong)target);
+    }
+
+    internal bool MatchesVtableAt(ulong rva, IReadOnlyList<VtableSlotFingerprint> fingerprints)
+    {
+        if (fingerprints.Count < 2 || (rva & 7) != 0 ||
+            !IsData(rva, checked((fingerprints.Max(f => f.Slot) + 1) * 8), writable: false)) return false;
+        foreach (var fingerprint in fingerprints)
+        {
+            var address = BitConverter.ToUInt64(ReadRva(rva + (ulong)fingerprint.Slot * 8, 8));
+            if (address < _imageBase || !MatchesFunctionAt(address - _imageBase, fingerprint.Pattern)) return false;
+        }
+        return true;
+    }
+
+    internal bool MatchesRttiAt(ulong rva, string name)
+    {
+        var bytes = System.Text.Encoding.ASCII.GetBytes(name + '\0');
+        if (!_sections.Any(s => s.Readable && !s.Executable && rva >= s.VirtualAddress &&
+                rva + (ulong)bytes.Length <= (ulong)s.VirtualAddress + s.RawSize)) return false;
+        return ReadRva(rva, bytes.Length).AsSpan().SequenceEqual(bytes);
+    }
+
+    // Natural ray/shape prologues occur in several functions. Their bounded
+    // unwind function and the engine's own profiler label establish the role.
+    // A first matching prologue must never select a physics entry point.
+    internal ulong FindNamedFunction(string pattern, string name, bool atEntry = true)
+    {
+        var matches = new List<ulong>();
+        foreach (var section in _sections.Where(s => s.Executable && s.RawSize != 0))
+            foreach (var offset in SignaturePattern.Parse(pattern).FindAll(Bytes(section)))
+            {
+                var rva = section.VirtualAddress + (ulong)offset;
+                if (MatchesNamedFunctionAt(rva, pattern, name, atEntry)) matches.Add(rva);
+                if (matches.Count > 1) throw new InvalidDataException("Ambiguous named physics function: " + name);
+            }
+        return matches.Count == 1 ? matches[0] : throw new InvalidDataException("Missing named physics function: " + name);
+    }
+
+    internal bool MatchesNamedFunctionAt(ulong rva, string pattern, string name, bool atEntry = true)
+    {
+        if (!MatchesFunctionAt(rva, pattern)) return false;
+        var entries = RuntimeFunctions();
+        for (var at = 0; at + 12 <= entries.Length; at += 12)
+        {
+            var start = BitConverter.ToUInt32(entries, at);
+            var end = BitConverter.ToUInt32(entries, at + 4);
+            if (atEntry ? start != rva : start > rva || rva >= end) continue;
+            if (end <= start || end - start > 32768) return false;
+            var code = ReadCode(start, checked((int)(end - start)));
+            // Entry-point roles have their profiler reference near entry. The
+            // ambient/exposure context roles may register it later in the same
+            // bounded unwind function. Neither route executes candidate code.
+            for (var index = 0; index + 7 <= (atEntry ? Math.Min(code.Length, 512) : code.Length); index++)
+            {
+                if (code[index] is < 0x48 or > 0x4F || code[index + 1] != 0x8D || (code[index + 2] & 0xC7) != 0x05) continue;
+                var target = checked((long)start + index + 7 + BitConverter.ToInt32(code, index + 3));
+                if (target >= 0 && MatchesRttiAt((ulong)target, name)) return true;
+            }
+            return false;
+        }
+        return false;
+    }
+
+    internal bool SameUnwindFunction(ulong first, ulong second, bool firstIsEntry = false)
+    {
+        var entries = RuntimeFunctions();
+        for (var at = 0; at + 12 <= entries.Length; at += 12)
+        {
+            var start = BitConverter.ToUInt32(entries, at);
+            var end = BitConverter.ToUInt32(entries, at + 4);
+            if (start <= first && first < end && start <= second && second < end &&
+                end - start <= 32768 && (!firstIsEntry || start == first)) return true;
+        }
+        return false;
+    }
+
+    private byte[] RuntimeFunctions()
+    {
+        // Packed game images rename sections; use PE's exception directory, not
+        // the conventional .pdata name. The table itself must be read-only data.
+        if (_runtimeFunctions is not null) return _runtimeFunctions;
+        if (_exceptionRva == 0 || _exceptionSize is < 12 or > 16 * 1024 * 1024 || _exceptionSize % 12 != 0 ||
+            !IsData(_exceptionRva, checked((int)_exceptionSize), writable: false))
+            throw new InvalidDataException("Missing or malformed AMD64 exception directory.");
+        return _runtimeFunctions = ReadRva(_exceptionRva, checked((int)_exceptionSize));
+    }
+
+    internal bool MatchesCollectorVtableAt(ulong rva, ulong method)
+    {
+        if ((rva & 7) != 0 || !IsData(rva, 96, writable: false)) return false;
+        var bytes = ReadRva(rva, 96);
+        var slots = Enumerable.Range(0, 12).Select(i => BitConverter.ToUInt64(bytes, i * 8)).ToArray();
+        return slots[5] == _imageBase + method && slots[0] == slots[9] && slots[3] == slots[7] && slots[6] == slots[8] &&
+            slots.All(p => p >= _imageBase && IsExecutable(p - _imageBase));
     }
 
     internal ulong ResolveCollectorVtable(string methodPattern)
