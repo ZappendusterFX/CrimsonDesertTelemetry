@@ -727,6 +727,20 @@ struct NoticeState
     Notice notice;
     enum Kind { Silent, Waiting, Ready, Error, Progress, Recovered } kind = Error;
 };
+bool IntentionalCaptureWait(const LightSummary& light)
+{
+    return light.status == "unavailable" && (light.unavailableReason == "simulation-paused" ||
+        light.unavailableReason == "awaiting-post-resume-capture");
+}
+bool IntentionalCaptureWait(const View& view, Clock::time_point now, int staleMs)
+{
+    if (!view.connected || !view.hasSample || AgeMs(view, now) > staleMs) return false;
+    // Pause is host policy, regardless of which light display is enabled. Do not
+    // use a stale cached marker to suppress readiness after a genuine new load.
+    return (view.recovery && view.recovery->state == "waiting-for-simulation") ||
+        IntentionalCaptureWait(view.sample.authoredLights) || IntentionalCaptureWait(view.sample.renderedLights) ||
+        IntentionalCaptureWait(view.sample.upstreamLights);
+}
 NoticeState LightNotice(const LightSummary& light)
 {
     const auto& reason = light.unavailableReason;
@@ -735,8 +749,7 @@ NoticeState LightNotice(const LightSummary& light)
             "Install matching ASI and telemetry host versions, then restart Crimson Desert.", true}};
     // Explicit host acquisition policy, not a native capture/read failure. Keep
     // these quiet even while the first post-resume sample is still pending.
-    if (light.status == "unavailable" &&
-        (reason == "simulation-paused" || reason == "awaiting-post-resume-capture"))
+    if (IntentionalCaptureWait(light))
         return {"lights-intentional-wait", {}, NoticeState::Silent};
     if (reason == "unsupported-build")
         return {reason, {"Light capture needs an update",
@@ -855,13 +868,16 @@ std::optional<Notice> NoticeTracker::Update(const View& view, const Config& conf
         return current_ && (current_->error || current_->persistent || now - shownAt_ < std::chrono::milliseconds(
             std::clamp(config.notificationDurationMs, 5000, 10000))) ? current_ : std::nullopt;
     };
-    // A confirmed non-playing state arms one new ready toast for the next
-    // loaded scene. Connection jitter / sample counts never imply a reload.
+    // A new loaded scene gets a ready toast; an intentional acquisition pause
+    // keeps the already-ready scene. Connection jitter never implies a reload.
     const bool sceneWaiting = (view.connected && view.hasSample && view.sample.state != "playing" &&
         view.sample.state != "unsupported") || (!IsLive(view, now, config.staleMs) &&
         (view.healthStatus == "loading" || view.healthStatus == "discovering" || view.healthStatus == "waiting"));
-    if (sceneWaiting) readyForScene_ = false;
     auto next = NextNotice(view, config, now);
+    if ((sceneWaiting && !IntentionalCaptureWait(view, now, config.staleMs)) || next.kind == NoticeState::Error)
+        readyForScene_ = false;
+    // A real error remains eligible for a recovery toast even if a quiet pause
+    // clears its card before the first healthy sample returns.
     if (currentKey_.starts_with("recovery-") && !view.recovery)
     {
         // The owner explicitly cleared this recovery status. Never leave a

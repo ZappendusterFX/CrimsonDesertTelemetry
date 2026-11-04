@@ -212,6 +212,8 @@ seconds once valid player and render-camera data establish a playable world. The
 native light/sky capture waits for this one-shot signal, so initial menu and shader
 loading cannot consume a GPU capture transaction. The duration is configurable
 from 5–10 seconds. Actionable errors may appear immediately and remain until resolved.
+Returning from an intentional menu pause does not repeat the ready notice. Initial
+startup, a newly loaded scene and recovery from a reported failure retain their notices.
 
 The status display starts independently of game-memory validation, so an unknown EXE or missing host/runtime can still produce an explanation. If the graphics overlay itself cannot run, consult the logs beside the plugin:
 

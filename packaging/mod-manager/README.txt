@@ -11,9 +11,10 @@ Menu-mode preview (paired with CrimsonHue 1.0.7-menu.2):
   CrimsonHue uses fixed menu light, then blends fresh gameplay data on resume.
 - Pause.Enabled=1 in this production profile. Research is compiled out.
 - Intentional menu pauses and the short fresh-capture wait no longer show a
-  light-failure notification. Genuine reader/native failures stay visible.
-- The tick signal passed gameplay/Skills/gameplay; the resulting stutter fix
-  and real-lamp behavior of this new package still need owner testing.
+  light-failure notification or repeat "Telemetry is ready" on resume.
+  Genuine reader/native failures stay visible.
+- The tick signal passed gameplay/Skills/gameplay. The owner still reports
+  controller-specific Skills-menu stutter; menu lighting does not resolve it.
 
 Included telemetry features:
 - Lights all around you. Telemetry reads the game's light list before the
@@ -134,7 +135,9 @@ more lights share the 256-target visibility budget. MaxMarkers/MaxLabels bound
 visual clutter, not source discovery.
 HdrPaperWhiteNits=200 sets shared HDR UI white, clamped to 80-500 nits.
 Notifications show readiness briefly or persistent actionable errors. Readiness
-requires valid player and render-camera data. Native light/sky capture waits for
+requires valid player and render-camera data. Normal menu resume stays quiet;
+startup, a new scene and recovery from a reported failure retain their notices.
+Native light/sky capture waits for
 that first playable-world signal, so initial menu/shader loading cannot consume a
 GPU transaction. Consult logs if graphics initialization fails.
 Set Enabled=0 in Overlay, LightOverlay, Notifications AND optional CrimsonHue

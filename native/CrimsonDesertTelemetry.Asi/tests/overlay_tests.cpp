@@ -727,6 +727,102 @@ void IntentionalPauseNoticeTests()
     std::cout << "PASS intentional pause/resume notices stay silent while genuine failures remain actionable\n";
 }
 
+void PauseResumeReadyNoticeTests()
+{
+    Config config; config.notifications = true;
+    config.lightsExpected = config.renderedExpected = true;
+    auto time = Clock::time_point{} + std::chrono::seconds(10);
+    View healthy; healthy.connected = healthy.hasSample = true; healthy.received = time;
+    healthy.sample.state = "playing";
+    healthy.sample.playerPosition = Vec3{1, 2, 3}; healthy.sample.cameraPosition = Vec3{4, 5, 6};
+    for (auto* light : {&healthy.sample.authoredLights, &healthy.sample.renderedLights, &healthy.sample.upstreamLights})
+    {
+        light->status = "available"; light->publishedRecords = 0; light->ageMilliseconds = 0;
+        light->records = std::make_shared<const std::vector<LightRecord>>();
+    }
+    const auto ready = [](const std::optional<Notice>& notice)
+    { return notice && !notice->error && notice->title == "Telemetry is ready"; };
+    // Include a marker from an unrequested layer: it still identifies the host's
+    // intentional pause, independent of which light display the owner enabled.
+    for (int marker = 0; marker < 4; ++marker)
+    {
+        NoticeTracker tracker; View view = healthy; view.received = time;
+        Require(ready(tracker.Update(view, config, time)), "Initial ready notice was suppressed");
+        time += std::chrono::seconds(7); view.received = time;
+        Require(!tracker.Update(view, config, time), "Initial ready notice did not expire");
+        for (int repeat = 0; repeat < 3; ++repeat)
+        {
+            time += std::chrono::seconds(1); view = healthy; view.received = time;
+            view.sample.state = "loading"; view.healthStatus = "loading";
+            if (marker == 3) view.recovery = RecoveryStatus{"waiting-for-simulation", "Paused", "Waiting.", std::nullopt};
+            else
+            {
+                auto* light = marker == 0 ? &view.sample.authoredLights : marker == 1 ?
+                    &view.sample.renderedLights : &view.sample.upstreamLights;
+                light->status = "unavailable"; light->unavailableReason = "simulation-paused";
+            }
+            Require(!tracker.Update(view, config, time), "Pause showed a notice");
+            time += std::chrono::seconds(1); view.received = time;
+            if (marker != 3)
+            {
+                auto* light = marker == 0 ? &view.sample.authoredLights : marker == 1 ?
+                    &view.sample.renderedLights : &view.sample.upstreamLights;
+                light->unavailableReason = "awaiting-post-resume-capture";
+            }
+            Require(!tracker.Update(view, config, time), "Resume waiting showed a notice");
+            time += std::chrono::seconds(1); view = healthy; view.received = time;
+            // Health is a slower separate feed and can still say loading.
+            view.healthStatus = "loading";
+            Require(!tracker.Update(view, config, time), "Intentional pause rearmed Telemetry is ready");
+        }
+        // A true reload has no fresh pause marker and still announces readiness.
+        time += std::chrono::seconds(1); view = healthy; view.received = time; view.sample.state = "loading";
+        Require(!tracker.Update(view, config, time), "Actual reload showed a waiting toast");
+        time += std::chrono::seconds(1); view = healthy; view.received = time;
+        Require(ready(tracker.Update(view, config, time)), "Actual scene reload lost its ready notice");
+    }
+    // Initial menu/loading before first gameplay must not count as already ready.
+    NoticeTracker startup; View view = healthy; view.sample.state = "loading";
+    view.sample.renderedLights.status = "unavailable";
+    view.sample.renderedLights.unavailableReason = "simulation-paused"; view.received = time;
+    Require(!startup.Update(view, config, time), "Initial paused state showed a notice");
+    time += std::chrono::seconds(1); view = healthy; view.received = time;
+    Require(ready(startup.Update(view, config, time)), "Initial pause suppressed first gameplay readiness");
+    // A quick menu visit also clears an unexpired toast instead of resurrecting it.
+    NoticeTracker quick; Require(ready(quick.Update(view, config, time)), "Quick fixture initial ready");
+    time += std::chrono::milliseconds(100); view.received = time; view.sample.state = "loading";
+    view.sample.renderedLights.status = "unavailable"; view.sample.renderedLights.unavailableReason = "simulation-paused";
+    Require(!quick.Update(view, config, time), "Pause retained the still-visible ready toast");
+    time += std::chrono::milliseconds(100); view = healthy; view.received = time;
+    Require(!quick.Update(view, config, time), "Quick resume resurrected the unexpired ready toast");
+    // A stale pause payload cannot relabel a new health loading transition.
+    NoticeTracker stale; Require(ready(stale.Update(view, config, time)), "Stale fixture initial ready");
+    view.sample.state = "loading"; view.sample.renderedLights.status = "unavailable";
+    view.sample.renderedLights.unavailableReason = "simulation-paused"; view.healthStatus = "loading";
+    time += std::chrono::seconds(8);
+    Require(!stale.Update(view, config, time), "Stale loading showed a notice");
+    view = healthy; view.received = time;
+    Require(ready(stale.Update(view, config, time)), "Expired pause marker hid actual reload readiness");
+    // Pause recognition never masks real error or compatibility recovery paths.
+    NoticeTracker fault; Require(ready(fault.Update(view, config, time)), "Fault fixture initial ready");
+    view.sample.state = "loading"; view.sample.authoredLights.status = "unavailable";
+    view.sample.authoredLights.unavailableReason = "simulation-paused";
+    view.sample.renderedLights.status = "unavailable"; view.sample.renderedLights.unavailableReason = "native-fault";
+    auto notice = fault.Update(view, config, time);
+    Require(notice && notice->error, "Pause hid a genuine light failure");
+    view.sample.renderedLights.unavailableReason = "awaiting-post-resume-capture";
+    Require(!fault.Update(view, config, time), "Resolved error retained its card during intentional waiting");
+    view = healthy; view.received = time;
+    Require(ready(fault.Update(view, config, time)), "Error-to-pause-to-ready lost genuine recovery readiness");
+    view.recovery = RecoveryStatus{"validating", "Checking telemetry", "New captures.", 90};
+    notice = fault.Update(view, config, time);
+    Require(notice && notice->persistent, "Real recovery progress was suppressed");
+    view.recovery = RecoveryStatus{"ready", "Compatibility checks passed", "Fresh captures.", 100};
+    notice = fault.Update(view, config, time);
+    Require(notice && notice->title == "Compatibility checks passed", "Real recovery completion was suppressed");
+    std::cout << "PASS menu pause/resume does not rearm ready; startup, real reload, expired markers and error recovery remain intact\n";
+}
+
 void NoticeTests()
 {
     Config config;
@@ -1118,6 +1214,7 @@ int main(int argc, char** argv)
         std::cout << "PASS overlay source age includes time before receipt\n";
         NoticeTests();
         IntentionalPauseNoticeTests();
+        PauseResumeReadyNoticeTests();
         RecoveryNoticeTests();
         return 0;
     }
