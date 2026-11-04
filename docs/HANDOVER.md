@@ -1,4 +1,24 @@
-# Current checkpoint — 2026-11-04, menu recovers with connected Razer RGB output disabled
+# Current checkpoint — 2026-11-04, OpenRGB diagnosis withdrawn; menu acquisition bypass requested
+
+Owner retracts the apparent OpenRGB-off/Razer-disabled recovery: the skill menu
+still hangs with Hue alone, with rapid repeated hover sounds when the skill preview
+loads. Earlier target snapshots remain valid but establish no working workaround
+or backend-specific cause. Historical conclusions below are explicitly superseded.
+
+Owner requests a fixed menu light and bypassing normal acquisition. Existing
+playing/loading is availability, not menu detection; no validated generic menu
+signal exists in the code/research. Fixed output in Hue alone cannot stop CDT
+native capture. Required boundaries are render_capture::Record before new copies,
+spatial_acquire::Dispatch before new GI work, and both physics batch arming/claiming;
+existing GPU work must drain and original game queries must remain untouched.
+Hidden-panel input review found no demonstrated input injection or hover cause.
+
+Owner points to World Builder for a menu-state lead. Review current official source
+and relocate only against the preserved EXE; editor g_menuOpen is not a game-menu
+flag. No runtime/deployment changes or menu fix yet. Hue additionally implements
+the requested OpenRGB reset controls; its authoritative panel will be synchronized.
+
+# Previous checkpoint — 2026-11-04, apparent Razer workaround (WITHDRAWN by owner)
 
 Owner reports disabling the "second Razer Blackwidow" resolves the menu problem.
 Hue's passive 18:07:46 CET snapshot, same PID 34956, confirms OpenRGB sending to
@@ -14,7 +34,7 @@ No new CDT fix, game/output/settings/deployment actions or further test. Hue own
 any later backend fix. Preserve the working selection; no assistant reenabling or
 polling, and no need for another owner action to finish this check.
 
-# Previous checkpoint — 2026-11-04, owner isolates menu stalls to Hue's OpenRGB output
+# Previous checkpoint — 2026-11-04, apparent OpenRGB isolation (WITHDRAWN by owner)
 
 Owner clarifies that skill-menu usability itself collapses and repeated menu
 sounds occur; the recorded bridge-stale clears alone do not explain this. Owner

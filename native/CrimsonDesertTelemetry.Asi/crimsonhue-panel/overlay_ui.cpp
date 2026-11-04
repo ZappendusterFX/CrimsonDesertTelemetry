@@ -13,6 +13,10 @@ namespace {
 std::string testTab;
 std::string Text(const Json& value, const char* key) { return value.value(key, std::string{}); }
 void Wrap(const std::string& text) { ImGui::TextWrapped("%s", text.c_str()); }
+void WrappedTooltip(const char* text) {
+    ImGui::BeginTooltip(); ImGui::PushTextWrapPos(ImGui::GetFontSize() * 30);
+    Wrap(text); ImGui::PopTextWrapPos(); ImGui::EndTooltip();
+}
 void Action(const char* name) { Command({{"action", name}}); }
 bool Button(const char* label, bool enabled = true) {
     ImGui::BeginDisabled(!enabled); const bool clicked = ImGui::Button(label); ImGui::EndDisabled(); return clicked;
@@ -51,6 +55,12 @@ void OpenRgbControls(const Json& view) {
     if (ImGui::SliderFloat("Background light", &background, 0, 100, "%.0f%%"))
         Command({{"action", "openRgb"}, {"key", "background"}, {"value", background / 100}});
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Share of the common background setting. Lower values keep local colors clearer.");
+    if (Button("Reset OpenRGB settings", room.value("canReset", false))) Action("resetOpenRgbSettings");
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        WrappedTooltip("Stop lighting sync first. Restores output defaults, switches OpenRGB off and resets current devices to the front. Removes disconnected placements. Keeps the SDK port and Hue settings.");
+    if (Button("Remove disconnected devices", room.value("canRemoveDisconnected", false))) Action("removeDisconnectedOpenRgbDevices");
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        WrappedTooltip("Stop lighting sync and read devices first. Removes saved placements for devices absent from that inventory. Keeps connected-device positions and output settings.");
     ImGui::SeparatorText("Devices");
     const auto devices = room.value("devices", Json::array());
     if (devices.empty()) Wrap("Start OpenRGB's SDK server and click Read devices.");
