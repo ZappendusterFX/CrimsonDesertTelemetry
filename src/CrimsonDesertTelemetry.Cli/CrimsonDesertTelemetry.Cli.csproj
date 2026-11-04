@@ -12,6 +12,7 @@
     <Content Include="../../schema/*.json" Link="schema/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="../../schema/telemetry-v1.schema.json" Link="schema/telemetry-v1.schema.json" />
     <EmbeddedResource Include="../../schema/ambient-v1.schema.json" Link="schema/ambient-v1.schema.json" />
+    <EmbeddedResource Include="../../schema/activity-v1.schema.json" Link="schema/activity-v1.schema.json" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 </Project>

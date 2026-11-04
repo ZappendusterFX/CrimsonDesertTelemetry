@@ -139,6 +139,20 @@ internal static class SkyAmbientTests
         // Version 1 has no block, so the whole bridge must be refused, not misread.
         var old = WithVisibility(0.25, 1, 77, 1000); U32(old, 4, 1); Invalid(() => Read(old));
     }
+    public static void ResumeBoundary()
+    {
+        var bytes = Bridge();
+        Check(SkyAmbientReader.Decode(bytes,42,123,1100,minimumCaptureTickMs:1000).Reason ==
+            "awaiting-post-resume-capture", "An old sky capture was relabelled on resume.");
+        BinaryPrimitives.WriteDoubleLittleEndian(bytes.AsSpan(96), .25);
+        U32(bytes,104,1); U32(bytes,108,77); U64(bytes,112,999);
+        var fresh = SkyAmbientReader.Decode(bytes,42,123,1100,minimumCaptureTickMs:999);
+        Check(fresh.Status == "available" && fresh.Visibility is null,
+            "A new sky frame borrowed pre-resume visibility.");
+        U64(bytes,112,1000);
+        Check(SkyAmbientReader.Decode(bytes,42,123,1100,minimumCaptureTickMs:999).Visibility is not null,
+            "A genuinely newer visibility measurement was rejected.");
+    }
     public static void Mapping()
     {
         using var m=MemoryMappedFile.CreateNew($"Local\\CrimsonDesertTelemetry.Sky.{Environment.ProcessId}",SkyAmbientReader.TotalBytes);

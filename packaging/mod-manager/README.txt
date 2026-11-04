@@ -4,6 +4,15 @@ Live light contributions, player/render-camera telemetry and local ambient data,
 with a corner HUD, 3D light radar, fullscreen markers and startup/error notices.
 Local HTTP/WebSocket APIs support other tools. This mod does not drive lamps.
 
+Menu-mode preview (paired with CrimsonHue 1.0.7-menu.1):
+- After 500 ms without simulation progress, suspend new light, ambient and
+  visibility acquisition. Tick observation stays active for automatic resume.
+- Expose pause state independently at /v1/activity and /v1/activity/stream.
+  CrimsonHue uses fixed menu light, then blends fresh gameplay data on resume.
+- Pause.Enabled=1 in this production profile. Research is compiled out.
+- The tick signal passed gameplay/Skills/gameplay; the resulting stutter fix
+  and real-lamp behavior of this new package still need owner testing.
+
 Included telemetry features:
 - Lights all around you. Telemetry reads the game's light list before the
   renderer discards what the current view cannot see, so lights behind the

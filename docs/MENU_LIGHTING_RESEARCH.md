@@ -3,7 +3,9 @@
 Owner reports skill-menu stalls and rapidly repeated hover sounds while the skill
 preview loads, also with Hue alone. Earlier OpenRGB/Razer isolation is withdrawn.
 The requested behavior is fixed room lighting in menus and a real pause of the
-normal acquisition path. No automatic menu mode or stall fix is implemented yet.
+normal acquisition path. The gameplay/Skills/gameplay tick comparison now passes;
+menu-mode implementation is tracked in HANDOVER and SIMULATION_TICK_DIAGNOSTIC.md.
+Stutter improvement and physical menu output still need owner acceptance.
 
 ## Existing state is insufficient
 

@@ -11,7 +11,9 @@ Build with a fresh private version, `-Research off -SimulationTickDiagnostic`;
 normal packages leave `Diagnostics.SimulationTicks=0`. See
 `docs/SIMULATION_TICK_DIAGNOSTIC.md`. Synthetic decoder check:
 `tests/scripts/Test-SimulationTickDiagnostic.ps1`; native CTest names start
-`simulation-tick-`. No capture pause or Hue menu output is implemented by this probe.
+`simulation-tick-`. The original monitor-only package changes no output. The newer
+menu package independently uses Pause.Enabled=1, MMFv2 and the neutral activity API;
+the read-only diagnostic accepts both MMF versions.
 
 For both assistants. Written because several of these cost real time to rediscover.
 Paths are machine-specific; verify before relying on a version number.

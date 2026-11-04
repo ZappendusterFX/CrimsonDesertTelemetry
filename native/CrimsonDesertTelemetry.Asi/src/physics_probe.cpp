@@ -7,6 +7,7 @@
 #include "console/common.h"
 #include "console/mem.h"
 #include "runtime_contract.generated.h"
+#include "simulation_tick_probe.h"
 #include <MinHook.h>
 #include <nlohmann/json.hpp>
 #include <intrin.h>
@@ -63,9 +64,11 @@ VisibilityBridge visibilityBridge;
 VisibilityBatch visibilityRequest{}, visibilityResult{};
 std::chrono::steady_clock::time_point visibilityDeadline{};
 std::uint64_t lastVisibilitySequence{}, lastVisibilityStart{};
+std::uint64_t observedPauseEpoch = 1;
 enum class Phase { Idle, Waiting, Capturing, Done };
 struct Work
 {
+    std::uint64_t captureEpoch{1};
     Phase phase{Phase::Idle};
     std::string id, mode, reason;
     Vec3 player{};
@@ -390,6 +393,8 @@ bool RayOriginalsIntact()
 void RunRayControl()
 {
     const auto began = std::chrono::steady_clock::now();
+    if (work.continuous && !simulation_tick_probe::IsCaptureCurrent(work.captureEpoch))
+    { work.controlStatus = "acquisition-paused"; return; }
     if (work.mode == "rayobserve") return;
     const bool fan = work.mode == "rayfan";
     const unsigned requiredCalls = fan ? 10u : work.mode == "raysegment" ? 2u : 1u;
@@ -438,6 +443,8 @@ void RunRayControl()
         { work.controlStatus = "invalid-segment-or-unverified-zero-component"; return; }
         std::memcpy(work.segmentQuery.data(), segment.query.data.data(), segment.query.data.size());
     }
+    if (work.continuous && !simulation_tick_probe::IsCaptureCurrent(work.captureEpoch))
+    { work.controlStatus = "acquisition-paused"; return; }
     ++replayTransactions;
     work.controlCalled = true;
     const bool returned = CallRayCopy(control, work.callException);
@@ -452,6 +459,8 @@ void RunRayControl()
     {
         for (auto& sample : work.fan)
         {
+            if (work.continuous && !simulation_tick_probe::IsCaptureCurrent(work.captureEpoch))
+            { work.controlStatus = "acquisition-paused"; return; }
             // A synchronous native call cannot be interrupted safely. This
             // stops issuing further calls if the small series runs long.
             if (std::chrono::steady_clock::now() - began > std::chrono::milliseconds(work.continuous ? 2 : 10) || GetTickCount64() - work.captured > 100)
@@ -506,7 +515,8 @@ void RunVisibilityBatch(std::chrono::microseconds budget = std::chrono::millisec
     visibilityDeadline = std::chrono::steady_clock::now() + budget;
     for (unsigned i = 0; i < visibilityResult.count; ++i)
     {
-        if (replayFaulted || std::chrono::steady_clock::now() >= visibilityDeadline) break;
+        if (!simulation_tick_probe::IsCaptureCurrent(work.captureEpoch) ||
+            replayFaulted || std::chrono::steady_clock::now() >= visibilityDeadline) break;
         auto& p = visibilityResult.entries[i];
         work.segmentStart = p.camera; work.segmentEnd = p.target;
         work.fan = {}; work.fanCompleted = 0;
@@ -532,15 +542,18 @@ void RunVisibilityBatch(std::chrono::microseconds budget = std::chrono::millisec
 std::uint64_t __fastcall RayHook(void* world, void* query, void* collector)
 {
     bool claimed = false;
-    if (armed.load(std::memory_order_relaxed) && TryAcquireSRWLockExclusive(&mutex))
+    bool claimedContinuous = false;
+    std::uint64_t claimedEpoch{};
+    if (!simulation_tick_probe::ShouldPauseAcquisition() && armed.load(std::memory_order_relaxed) && TryAcquireSRWLockExclusive(&mutex))
     {
         if (RayMode(work.mode) && work.phase == Phase::Waiting &&
+            (!work.continuous || simulation_tick_probe::IsCaptureCurrent(work.captureEpoch)) &&
             (!work.continuous || reinterpret_cast<std::uint64_t>(_ReturnAddress()) == base + RayCallerRva()) &&
             GetTickCount64() - work.issued < 2000 && work.attempts < 512 && CaptureRay(world, query, collector))
         {
             work.phase = Phase::Capturing;
             work.caller = reinterpret_cast<std::uint64_t>(_ReturnAddress());
-            armed = false; claimed = true;
+            armed = false; claimed = true; claimedContinuous = work.continuous; claimedEpoch = work.captureEpoch;
         }
         ReleaseSRWLockExclusive(&mutex);
     }
@@ -548,6 +561,14 @@ std::uint64_t __fastcall RayHook(void* world, void* query, void* collector)
     if (claimed)
     {
         AcquireSRWLockExclusive(&mutex);
+        // The worker may cancel this claim while the untouched original game
+        // call runs. Never use its borrowed context for a later/new generation.
+        if (work.phase != Phase::Capturing || (claimedContinuous &&
+            (!work.continuous || work.captureEpoch != claimedEpoch || !simulation_tick_probe::IsCaptureCurrent(claimedEpoch))))
+        {
+            ReleaseSRWLockExclusive(&mutex);
+            return result;
+        }
         work.afterCopied = Copy(reinterpret_cast<std::uint64_t>(collector), work.collectorAfter.data(), 0x140);
         work.rayQueryAfterCopied = Copy(reinterpret_cast<std::uint64_t>(query), work.rayQueryAfter.data(), work.rayQueryAfter.size());
         work.returnValue = result;
@@ -791,11 +812,29 @@ bool Start(std::uint64_t moduleBase, const wchar_t* directory, bool continuous)
 #endif
     return true;
 }
+bool VisibilityAfterResume(const VisibilityBatch& request, std::uint64_t resumedAt)
+{
+    if (request.count > MaximumVisibilityTargets) return false;
+    for (unsigned i = 0; i < request.count; ++i)
+        if (resumedAt && (request.entries[i].issued < resumedAt ||
+            request.entries[i].sourceAge > static_cast<double>(request.entries[i].issued - resumedAt))) return false;
+    return true;
+}
 void Poll()
 {
     const auto now = GetTickCount64();
     if (!enabled.load() || now - lastPoll < (continuousVisibility ? 10u : 100u)) return;
     lastPoll = now;
+    const auto epoch = simulation_tick_probe::CaptureEpoch();
+    if (continuousVisibility && observedPauseEpoch != epoch)
+    {
+        AcquireSRWLockExclusive(&mutex);
+        observedPauseEpoch = epoch;
+        armed = false; work = {}; visibilityRequest = {}; visibilityResult = {};
+        ReleaseSRWLockExclusive(&mutex);
+        visibilityBridge.Publish(VisibilityBatch{});
+    }
+    if (simulation_tick_probe::ShouldPauseAcquisition()) return;
     if (continuousVisibility) PollContextTrace(now);
     Work done;
     AcquireSRWLockExclusive(&mutex);
@@ -811,7 +850,7 @@ void Poll()
     }
     const bool idle = work.phase == Phase::Idle;
     ReleaseSRWLockExclusive(&mutex);
-    if (complete && done.continuous)
+    if (complete && done.continuous && simulation_tick_probe::IsCaptureCurrent(done.captureEpoch))
     {
         auto result = done.copied ? visibilityResult : visibilityRequest;
         for (unsigned i = 0; i < result.count; ++i)
@@ -825,7 +864,7 @@ void Poll()
         SaveContextTrace(done, result, now);
         if (replayFaulted) ch::Log("Continuous physics visibility stopped until restart: %s", done.reason.c_str());
     }
-    else if (complete) Save(done);
+    else if (complete && !done.continuous) Save(done);
     if (!idle) return;
     if (continuousVisibility)
     {
@@ -833,6 +872,11 @@ void Poll()
         VisibilityBatch request{};
         if (!visibilityBridge.Read(request, now) || request.sequence == lastVisibilitySequence) return;
         lastVisibilitySequence = request.sequence; lastVisibilityStart = now;
+        // A new request sequence can still refer to a cached pre-pause source.
+        // Accept only light samples captured after this generation resumed.
+        const auto resumedAt = simulation_tick_probe::ResumedAtTickMs();
+        if (!VisibilityAfterResume(request, resumedAt)) return;
+        if (!simulation_tick_probe::IsCaptureCurrent(epoch)) return;
         if (replayFaulted)
         {
             for (unsigned i = 0; i < request.count; ++i)
@@ -841,11 +885,14 @@ void Poll()
         }
         const auto& first = request.entries[0];
         Work pending{};
+        pending.captureEpoch = epoch;
         pending.mode = "rayfan"; pending.continuous = true; pending.player = first.player;
         pending.segmentStart = first.camera; pending.segmentEnd = first.target;
         pending.issued = first.issued; pending.sourceAgeAtRequest = first.sourceAge;
         pending.phase = Phase::Waiting; visibilityRequest = request;
-        AcquireSRWLockExclusive(&mutex); work = pending; armed = true; ReleaseSRWLockExclusive(&mutex);
+        AcquireSRWLockExclusive(&mutex);
+        if (simulation_tick_probe::IsCaptureCurrent(epoch)) { work = pending; armed = true; }
+        ReleaseSRWLockExclusive(&mutex);
         return; // no concurrent file-based manual probes in continuous mode
     }
     try

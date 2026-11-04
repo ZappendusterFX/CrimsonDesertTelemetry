@@ -253,5 +253,12 @@ public sealed class PhysicsVisibilityClient : IDisposable
     private static CameraVector3 Vector(byte[] p, int i) => new(BitConverter.ToSingle(p,i), BitConverter.ToSingle(p,i+4), BitConverter.ToSingle(p,i+8));
     private static float DistanceSquared(CameraVector3 a, CameraVector3 b) =>
         (a.X-b.X)*(a.X-b.X)+(a.Y-b.Y)*(a.Y-b.Y)+(a.Z-b.Z)*(a.Z-b.Z);
+    public void ResetForActivityEpoch()
+    {
+        _cache.Clear(); _pending = null; _pendingEntries = [];
+        _consumed = _sequence; _lastRequest = 0;
+        // Preserve request sequence and a latched native fault; late responses
+        // cannot match a new request and a pause does not cure a query fault.
+    }
     public void Dispose() { _read?.Dispose(); _result?.Dispose(); _write.Dispose(); _query.Dispose(); }
 }

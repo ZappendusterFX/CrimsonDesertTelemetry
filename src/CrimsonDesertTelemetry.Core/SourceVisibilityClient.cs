@@ -32,6 +32,12 @@ public sealed class SourceVisibilityClient : IDisposable
     private MemoryMappedViewAccessor? _resultView;
     private long _resultRetryAfter;
     private ulong _querySequence;
+    private ulong _minimumCaptureTick;
+    public void ResetForActivityEpoch(long minimumCaptureTickMs)
+    {
+        _minimumCaptureTick = (ulong)Math.Max(0, minimumCaptureTickMs);
+        ResetResult();
+    }
 
     public SourceVisibilityClient(int processId, long processStartFileTime)
     {
@@ -186,6 +192,7 @@ public sealed class SourceVisibilityClient : IDisposable
         var contextFrame = BitConverter.ToUInt32(bytes, 80);
         var count = BitConverter.ToUInt32(bytes, 84);
         var now = unchecked((ulong)Environment.TickCount64);
+        if (_minimumCaptureTick != 0 && (requestTick <= _minimumCaptureTick || volumeTick <= _minimumCaptureTick)) return null;
         if (querySequence == 0 || publishedTick == 0 || publishedTick > now || requestTick > publishedTick ||
             now - publishedTick > MaximumAgeMilliseconds || count > MaximumTargets ||
             (volumeSequence == 0) != (volumeTick == 0) || volumeTick > publishedTick)

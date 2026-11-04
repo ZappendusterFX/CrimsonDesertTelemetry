@@ -127,13 +127,15 @@ void RunImpl(HANDLE stopEvent)
     }
     const bool captureEnabled = GetPrivateProfileIntW(L"Lights", L"Enabled", 0, iniPath.c_str()) != 0 &&
         GetPrivateProfileIntW(L"Lights", L"ManyLights", 1, iniPath.c_str()) != 0;
-    // Optional private diagnostic only: never use this observation to gate capture yet.
+    // Independent tick observer for production pause control or a monitor-only diagnostic.
 #if CDT_RESEARCH
     constexpr bool simulationTickRequested = false;
+    constexpr bool pauseControlEnabled = false;
 #else
     const bool simulationTickRequested = GetPrivateProfileIntW(L"Diagnostics", L"SimulationTicks", 0, iniPath.c_str()) != 0;
+    const bool pauseControlEnabled = GetPrivateProfileIntW(L"Pause", L"Enabled", 1, iniPath.c_str()) != 0;
 #endif
-    if (!requested && !captureEnabled && !simulationTickRequested)
+    if (!requested && !captureEnabled && !simulationTickRequested && !pauseControlEnabled)
     {
         render::PublishStatus(render::Status::Stopped);
         overlay::ClearLocalFault("native-capture");
@@ -357,10 +359,12 @@ void RunImpl(HANDLE stopEvent)
     recovery.Complete((!captureEnabled || capturing) && upstreamStarted &&
         (!ambientRequested || (spatialStarted && skyBridge && !sky::FailureCode())) &&
         (!physicsRecoveryRequested || physicsStarted));
-    const bool simulationTickStarted = simulationTickRequested && verified && exactContexts &&
-        simulation_tick_probe::Start(ch::g_game.moduleBase);
-    if (simulationTickRequested && !simulationTickStarted)
-        ch::Log("Simulation tick diagnostic unavailable; exact-build/context and unique function guards are required. Lighting remains independent.");
+    // Reaching this point requires either the ordinary native context checks or
+    // a successful guarded recovery. Never introduce a second compatibility bypass.
+    const bool simulationTickStarted = (pauseControlEnabled || (simulationTickRequested && verified && exactContexts)) &&
+        simulation_tick_probe::Start(ch::g_game.moduleBase, pauseControlEnabled);
+    if ((simulationTickRequested || pauseControlEnabled) && !simulationTickStarted)
+        ch::Log("Simulation tick observer unavailable; validated native runtime and unique function guards are required. Acquisition continues normally.");
     while (WaitForSingleObject(stopEvent, 5) == WAIT_TIMEOUT)
     {
         if (simulationTickStarted) simulation_tick_probe::Poll();

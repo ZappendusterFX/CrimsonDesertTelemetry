@@ -23,8 +23,13 @@ Put32 28 2; Put32 84 1; Assert ((Decode).state -eq 'unknown') 'Disabled hook acc
 Put32 84 3; Put32 24 4321; Reject { Decode }; Put32 24 1234
 Put64 32 8765; Reject { Decode }; Put64 32 5678
 Put64 16 3; Reject { Decode }; Put64 16 2
-Put32 4 2; Reject { Decode }; Put32 4 1
+Put32 4 3; Reject { Decode }; Put32 4 1
 Put32 12 256; Reject { Decode }; Put32 12 128
 Put32 84 7; Reject { Decode }; Put32 84 3
 Put32 72 3; Reject { Decode }
+Put32 72 2; Put32 4 2; Put32 84 15; Put64 96 4; Put64 104 1500
+Assert ((Decode).acquisitionPaused -and (Decode).captureEpoch -eq 4 -and (Decode).resumedAtTickMs -eq 1500) 'V2 pause control lost.'
+Put64 48 999; Assert (-not (Decode).acquisitionPaused) 'Stale V2 pause control accepted.'
+Put64 48 2000; Put32 80 1; Assert (-not (Decode).acquisitionPaused) 'Faulted V2 pause control accepted.'
+Put32 80 0; Put32 84 3; Assert (-not (Decode).acquisitionPaused) 'Monitor-only V2 treated as acquisition pause.'
 Write-Output 'PASS tick diagnostic decoder: identity, schema, publication, startup, freshness, hook failure and known states. No process opened.'

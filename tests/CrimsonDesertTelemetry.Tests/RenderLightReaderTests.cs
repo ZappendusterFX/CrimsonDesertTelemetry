@@ -349,6 +349,17 @@ internal static class RenderLightReaderTests
             "A prolonged publication race extended capture freshness.");
     }
 
+    public static void ResumeBoundary()
+    {
+        var bytes = Snapshot();
+        var old = RenderLightReader.DecodeAll(bytes, ProcessId, ProcessStart, CapturedTick + 100,
+            (10, 20, 30), 10, CapturedTick);
+        Check(old.Rendered.UnavailableReason == "awaiting-post-resume-capture", "An equal/old tick passed resume.");
+        var fresh = RenderLightReader.DecodeAll(bytes, ProcessId, ProcessStart, CapturedTick + 100,
+            (10, 20, 30), 10, CapturedTick - 1);
+        Check(fresh.Rendered.Status == "available", "A genuinely newer native capture was rejected.");
+    }
+
     private static byte[] VisibilitySnapshot()
     {
         var bytes = new byte[RenderLightReader.VisibilityTotalBytes];

@@ -9,6 +9,7 @@
 #include "light_modulator.h"
 #include "modulator_bridge.h"
 #include "runtime_contract.generated.h"
+#include "simulation_tick_probe.h"
 #include "console/common.h"
 #include "console/mem.h"
 #include <d3d12.h>
@@ -35,6 +36,7 @@ enum class Phase { Discover, Found, Preparing, Ready, Recorded, Submitting, Wait
 SRWLOCK lock = SRWLOCK_INIT;
 Phase phase = Phase::Stopped;
 uint64_t gameBase{}, hookAddress{}, lastAttempt{}, capturedAt{}, issuedAt{}, submittedAt{}, fenceValue{};
+uint64_t captureEpoch{}, observedEpoch = 1;
 uint32_t intervalMs = 50, capturedFrame{}, lastFrame{}, error{};
 uint64_t capturedOutputResource{}, capturedCounterResource{}, capturedOwner{};
 uint32_t capturedBufferIndex = UINT32_MAX;
@@ -334,6 +336,8 @@ bool ResolveInput(uint64_t owner, uint64_t command, ID3D12Resource* source, ID3D
 
 void Record(uint64_t outer, uint64_t command, uint64_t counterOuter, uint64_t owner, bool ambientCopy = false)
 {
+    const auto epoch = simulation_tick_probe::CaptureEpoch();
+    if (!simulation_tick_probe::IsCaptureCurrent(epoch)) return;
     // Production capture is installed at process startup, but the managed host
     // only opens this one-shot gate after player and render-camera data prove
     // that a playable world exists. Explicit research probes remain manual.
@@ -408,6 +412,12 @@ void Record(uint64_t outer, uint64_t command, uint64_t counterOuter, uint64_t ow
         const bool valid = ReadExposure(owner, cache);
         BeginExposureCache(ambientExposure, cache, valid, begin);
     }
+    if (!simulation_tick_probe::IsCaptureCurrent(epoch))
+    {
+        if (inputList) inputList->Release();
+        return;
+    }
+    captureEpoch = epoch;
     source->AddRef();
     if (counter) counter->AddRef();
     list->AddRef();
@@ -683,6 +693,7 @@ void CaptureFilter(uint64_t outer, uint64_t command, uint64_t counterOuter, uint
 
 void CaptureAmbient(uint64_t sky, uint64_t command, uint64_t path)
 {
+    if (simulation_tick_probe::ShouldPauseAcquisition()) return;
     if ((!ambientMode && !skyStreaming) || path >= ambientHits.size()) return;
     // Only A has a validated public decode profile. B remains research-only.
     if (skyStreaming && path != 0) return;
@@ -903,6 +914,17 @@ bool StartCapture(uint64_t moduleBase, unsigned sampleRateHz, bool skyEnabled)
 void PollCapture()
 {
     AcquireSRWLockExclusive(&lock);
+    const auto epoch = simulation_tick_probe::CaptureEpoch();
+    if (observedEpoch != epoch)
+    {
+        observedEpoch = epoch;
+        hasFrame = false;
+        lastAttempt = lastSkyAttempt = 0;
+        // A menu may stop submitting the already-recorded command list. Keep
+        // its resources/fence and grant the normal bounded drain window on exit.
+        if (phase == Phase::Recorded) issuedAt = GetTickCount64();
+        if (phase == Phase::WaitingGpu) submittedAt = GetTickCount64();
+    }
     PollPairRequest();
     if (ambientMode) PollAmbientRequest();
     if (!ambientMode && !captureReady && captureReadyEvent &&
@@ -925,6 +947,9 @@ void PollCapture()
         if (completed == UINT64_MAX) Fail(static_cast<uint32_t>(DXGI_ERROR_DEVICE_REMOVED));
         else if (completed >= fenceValue)
         {
+            // Complete and release the existing transaction even while paused.
+            // Its recorded generation can never become valid after resume.
+            if (!simulation_tick_probe::IsCaptureCurrent(captureEpoch)) capturedAt = 0;
             void* mapped{};
             D3D12_RANGE range{0, CopyBytes()};
             const HRESULT hr = readback->Map(0, &range, &mapped);
@@ -968,7 +993,7 @@ void PollCapture()
                 if (pendingCounter) pendingCounter->Release(); pendingCounter = nullptr;
                 if (pendingInput) pendingInput->Release(); pendingInput = nullptr;
                 pendingList->Release(); pendingList = nullptr;
-                lastFrame = capturedFrame; hasFrame = true;
+                lastFrame = capturedFrame; hasFrame = simulation_tick_probe::IsCaptureCurrent(captureEpoch);
                 phase = Phase::Ready;
                 if (!saveOk) Fail(ERROR_WRITE_FAULT);
                 else if (ambientMode && ambientSamples >= ambientLimit)
@@ -980,13 +1005,13 @@ void PollCapture()
         }
     }
     const auto now = GetTickCount64();
-    if (phase == Phase::Recorded && now - issuedAt > SubmissionTimeoutMs)
+    if (!simulation_tick_probe::ShouldPauseAcquisition() && phase == Phase::Recorded && now - issuedAt > SubmissionTimeoutMs)
     {
         ch::Log("Capture submission timeout: recorded command list was not observed within %llu ms (hook target: %s).",
             SubmissionTimeoutMs, executeFromPresentation ? "presentation queue" : "probe queue");
         Fail(WAIT_TIMEOUT);
     }
-    else if (phase == Phase::WaitingGpu && now - submittedAt > GpuTimeoutMs)
+    else if (!simulation_tick_probe::ShouldPauseAcquisition() && phase == Phase::WaitingGpu && now - submittedAt > GpuTimeoutMs)
     {
         ch::Log("Capture GPU timeout: fence %llu remained incomplete for %llu ms (completed=%llu).",
             fenceValue, GpuTimeoutMs, fence ? fence->GetCompletedValue() : 0);

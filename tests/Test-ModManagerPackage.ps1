@@ -34,6 +34,7 @@ function Get-ProfileRules([ValidateSet('production', 'research')][string]$Profil
     $rules = @{
         Compatibility = @{ RecoveryTestOnce = 'recovery-token' }
         Diagnostics = @{ SimulationTicks = 'simulation-ticks' }
+        Pause = @{ Enabled = 'simulation-ticks' }
         Server = @{ Enabled = 'bool'; Port = 'int:1024:65535'; SampleRateHz = 'int:1:240' }
         Notifications = @{ Enabled = 'bool'; DurationMilliseconds = 'int:5000:10000' }
         CrimsonHue = @{ Enabled = 'bool' }
@@ -138,6 +139,7 @@ function Assert-IniConfiguration([string]$Ini, [ValidateSet('production', 'resea
         if ($requiredSection -eq 'Compatibility' -and -not $sections.ContainsKey($requiredSection)) { continue }
         # Private monitor opt-in added after 2.2.8; absent in old packages = OFF.
         if ($requiredSection -eq 'Diagnostics' -and -not $sections.ContainsKey($requiredSection)) { continue }
+        if ($requiredSection -eq 'Pause' -and -not $sections.ContainsKey($requiredSection)) { continue } # immutable older packages
         if ($requiredSection -eq 'CrimsonHue' -and -not $sections.ContainsKey($requiredSection)) { continue } # old INIs use optional discovery
         # New private opt-in; old research packages remain valid with default OFF.
         if ($requiredSection -eq 'Experimental' -and -not $sections.ContainsKey($requiredSection)) { continue }
@@ -299,6 +301,10 @@ ResultFile=inject_result.txt
         Assert-Rejected { Assert-IniConfiguration ($productionIni + $diagnosticSection.Replace('SimulationTicks=0', "SimulationTicks=$invalidTickValue")) 'production' } 'An invalid simulation tick switch was accepted.'
     }
     Assert-Rejected { Assert-IniConfiguration ($productionIni + "`n[Diagnostics]`n") 'production' } 'An incomplete diagnostics section was accepted.'
+    Assert-IniConfiguration ($productionIni + "`n[Pause]`nEnabled=1`n") 'production'
+    Assert-IniConfiguration ($researchIni + "`n[Pause]`nEnabled=0`n") 'research'
+    Assert-Rejected { Assert-IniConfiguration ($researchIni + "`n[Pause]`nEnabled=1`n") 'research' } 'Research pause hook was accepted.'
+    Assert-Rejected { Assert-IniConfiguration ($productionIni + "`n[Pause]`nEnabled=2`n") 'production' } 'Invalid pause control was accepted.'
     Assert-IniConfiguration ($researchIni + "`n[Compatibility]`nRecoveryTestOnce=`n") 'research'
     Assert-Rejected { Assert-IniConfiguration ($researchIni + "`n[Compatibility]`nRecoveryTestOnce=$testToken`n") 'research' } 'A forced production recovery test was accepted in research instrumentation.'
     Assert-IniConfiguration ($researchIni.Replace('EnableConsole=0', 'EnableConsole=1').Replace('SpatialProbe=0', 'SpatialProbe=1')) 'research'

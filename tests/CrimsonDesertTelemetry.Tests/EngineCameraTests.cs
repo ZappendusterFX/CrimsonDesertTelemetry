@@ -130,6 +130,20 @@ internal static class EngineCameraTests
         _ = fixture.Reader.Capture((10, 20, 30));
     }
 
+    public static void ResumeBoundary()
+    {
+        var fixture = new Fixture();
+        _ = fixture.Reader.Capture((10, 20, 30));
+        // A menu may have advanced the render frame while acquisition was paused.
+        fixture.Memory.U(fixture.Context + 0x40, ++fixture.Counter);
+        fixture.Reader.RequirePostResumeFrame();
+        Reject(() => fixture.Reader.Capture((10, 20, 30)), "The first cached menu camera passed resume.");
+        Reject(() => fixture.Reader.Capture((10, 20, 30)), "An unchanged resume baseline passed.");
+        fixture.Memory.U(fixture.Context + 0x40, ++fixture.Counter);
+        _ = fixture.Reader.Capture((10, 20, 30));
+        _ = fixture.Reader.Capture((10, 20, 30));
+    }
+
     public static void DirectCameraLayout()
     {
         var fixture = new DirectFixture();

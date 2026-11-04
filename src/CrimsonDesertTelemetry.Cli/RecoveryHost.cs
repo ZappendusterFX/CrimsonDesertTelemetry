@@ -199,6 +199,15 @@ internal sealed class RecoveryLiveMonitor(uint requestedFeatures, bool cacheHit,
             "The recovered addresses are retained. Live validation resumes when player and camera data return."));
     }
 
+    public void PauseForSimulation(TelemetryServerState state)
+    {
+        if (_finished) return;
+        _watch.Reset(); _lastLights = _lastSky = null;
+        _lastLightFrame = _lastSkyFrame = null; _lights = _sky = 0;
+        state.SetRecovery(new("waiting-for-simulation", "Lighting acquisition paused",
+            "The simulation is paused. Recovery validation resumes with new captures after simulation progress returns."));
+    }
+
     public void Observe(EngineLightsSnapshot? lights, SkyAmbientSnapshot sky, TelemetryServerState state)
     {
         if (_finished) return;

@@ -20,6 +20,14 @@ if (args.Length != 0)
 
 var tests = new (string Name, Action Run)[]
 {
+    ("activity identity, publisher freshness, seqlock and optional v1", SimulationActivityTests.Protocol),
+    ("activity resume boundary survives unknown samples", SimulationActivityTests.Boundary),
+    ("activity transport rejects old epochs and old process sessions", SimulationActivityTests.Transport),
+    ("activity heartbeat continues without pose and expires native pause", SimulationActivityTests.IndependentHeartbeat),
+    ("render resume refuses previous native capture", RenderLightReaderTests.ResumeBoundary),
+    ("camera resume requires a newly advancing frame", EngineCameraTests.ResumeBoundary),
+    ("ambient resume refuses previous sky and visibility capture", SkyAmbientTests.ResumeBoundary),
+    ("recovery validation suspends for intentional simulation pause", RecoveryHostTests.SimulationPause),
     ("recovery handshake rejects malformed identity and state", RecoveryHostTests.Handshake),
     ("one-time recovery diagnostic is consumed atomically and clearly labelled", RecoveryHostTests.OneTimeDiagnostic),
     ("recovery waits for a stable progressing world", RecoveryHostTests.WorldReadiness),

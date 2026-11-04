@@ -34,6 +34,7 @@ Snapshot current{};
 std::atomic<bool> enabled{};
 std::atomic<std::uint64_t> target{};
 bool attempted{};
+bool pauseControl{};
 std::uint64_t lastPoll{};
 simulation_tick::Monitor monitor;
 
@@ -45,7 +46,9 @@ void Publish()
 {
     if (!view) return;
     current.observerTickMs = GetTickCount64();
-    current.flags = 1u | (enabled.load() ? 2u : 0u);
+    current.flags = 1u | (enabled.load() ? 2u : 0u) | (ShouldPauseAcquisition() ? 4u : 0u) | (pauseControl ? 8u : 0u);
+    current.captureEpoch = CaptureEpoch();
+    current.resumedAtTickMs = ResumedAtTickMs();
     InterlockedIncrement64(reinterpret_cast<volatile LONG64*>(&view->seqlock));
     // Preserve the shared seqlock while replacing its surrounding payload.
     std::memcpy(view, &current, offsetof(Snapshot, seqlock));
@@ -56,6 +59,7 @@ void Publish()
 }
 bool Fail(Error error)
 {
+    acquisition_pause::gate.Update(false, GetTickCount64());
     current.status = Status::Failed;
     current.error = error;
     current.entryCounter = Counter();
@@ -109,14 +113,18 @@ bool ImageSections(std::uint64_t base, std::uint32_t& size, std::vector<scan::Se
 }
 }
 
-bool Start(std::uint64_t moduleBase)
+bool Start(std::uint64_t moduleBase, bool pauseControlEnabled)
 {
     if (attempted) return false;
     attempted = true;
+    pauseControl = pauseControlEnabled;
     try
     {
         if (!OpenMapping()) return false;
-        if (runtime_contract::ExecutableSha256 != ExpectedHash) return Fail(Error::ExactBuild);
+        // The caller already completed the normal native validation/recovery.
+        // Pause mode additionally requires this unique measured function shape;
+        // diagnostic-only packages retain their original exact-build boundary.
+        if (!pauseControl && runtime_contract::ExecutableSha256 != ExpectedHash) return Fail(Error::ExactBuild);
         std::uint32_t imageBytes{};
         std::vector<scan::Section> sections;
         if (!ImageSections(moduleBase, imageBytes, sections)) return Fail(Error::Image);
@@ -177,6 +185,7 @@ void Poll()
     const auto observed = simulation_tick::Monitor::Clock::now();
     current.entryCounter = Counter();
     current.state = static_cast<std::uint32_t>(monitor.Observe(current.entryCounter, observed));
+    acquisition_pause::gate.Update(pauseControl && current.state == 2, now);
     const auto progressed = monitor.LastProgress();
     current.ageMs = progressed ? static_cast<std::uint64_t>(
         std::chrono::duration_cast<std::chrono::milliseconds>(observed - *progressed).count()) : UINT64_MAX;
@@ -185,6 +194,7 @@ void Poll()
 }
 void Stop()
 {
+    acquisition_pause::gate.Update(false, GetTickCount64());
     if (enabled.load())
     {
         const auto result = MH_DisableHook(reinterpret_cast<void*>(target.load()));

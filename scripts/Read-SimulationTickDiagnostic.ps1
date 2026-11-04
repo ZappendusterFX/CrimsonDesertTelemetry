@@ -23,7 +23,7 @@ try {
             (Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '-' + [Guid]::NewGuid().ToString('N') + '.json')
     }
     $output = [IO.File]::Open([IO.Path]::GetFullPath($OutPath), [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::Read)
-    $report = [ordered]@{ observerVersion = 1; label = $Label; labelSource = 'Owner/caller supplied, not detected'
+    $report = [ordered]@{ observerVersion = 2; label = $Label; labelSource = 'Owner/caller supplied, not detected'
         processId = $game.Id; processStartFileTime = $processStart; seconds = $Seconds; samples = @(); complete = $false }
     try {
         $timer = [Diagnostics.Stopwatch]::StartNew()

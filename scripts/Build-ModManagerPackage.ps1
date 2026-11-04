@@ -146,6 +146,10 @@ if ($SimulationTickDiagnostic) {
 if (Resolve-SimulationTickDiagnostic ([bool]$SimulationTickDiagnostic) $Version $Research $NativeBuildId $simulationDefinition $IniOverrides) {
     if (-not $IniOverrides) { $IniOverrides = @{} }
     $IniOverrides['Diagnostics.SimulationTicks'] = '1'
+    if ($IniOverrides.ContainsKey('Pause.Enabled') -and [string]$IniOverrides['Pause.Enabled'] -ne '0') {
+        throw 'SimulationTickDiagnostic is monitor-only and requires Pause.Enabled=0.'
+    }
+    $IniOverrides['Pause.Enabled'] = '0'
 }
 $iniTemplate = Join-Path $repoRoot $(if ($researchEnabled) {
     'packaging\mod-manager\CrimsonDesertTelemetry.research.ini'

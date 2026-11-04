@@ -1,32 +1,24 @@
-# Current checkpoint — 2026-11-04, tick stops in Skills; resume comparison next
+# Current checkpoint — 2026-11-04, tick ABA confirmed; menu mode implementation
 
-Owner-confirmed Skills with preview at 19:53:42-45 CET: same PID 32972/start,
-47 fresh observing samples, all no-tick-500ms, no errors. Counter stays 25475;
-publisher time advances 2937 ms and sequence 24314 -> 24408, so the diagnostic
-observer remains alive while the candidate function stops. Progress age grows
-18.062 -> 20.997 seconds. This is a positive Skills-pause observation, not an
-observer/bridge outage. Evidence:
-artifacts/simulation-ticks-skills-20261104-195342-032-fb797840242046b2bccea0cf341eed8e.json.
+Owner-confirmed gameplay -> Skills preview -> gameplay, PID32972/start unchanged:
+47 fresh samples per capture. Counter 22018->22320, then25475 constant while
+observer publications advance, then26707->27001. All error0; return capture
+19:55:26-29 CET proves immediate resumed progress. Evidence in CDT artifacts:
+simulation-ticks-gameplay-20261104-195526-618-02e6f6ae1df54f2ab18907f18ea8cd1a.json.
+This validates the selected tick signal for Skills; it does not yet prove the
+stutter fix, every menu or physical output. Owner confirms menus iff paused.
 
-Owner reports installing 2.2.9-tick.1 and returning to gameplay. New game PID
-32972, start 19:40:59 CET. Loaded ASI and five executable/config companions all
-match the immutable package receipt; read-only identity evidence:
-artifacts/tick-install-check-20261104-195207-7112eff963174661bdaa7ac7055149be.json.
-No assistant installation or deployment mutation occurred.
+Implementation in progress: independent20Hz tick observation; production
+Pause.Enabled=1 gates new native/managed light, sky/GI and physics acquisition;
+epochs discard obsolete results while in-flight GPU work drains. Neutral
+/v1/activity and /v1/activity/stream feed Hue's fixed configurable menu color.
+Fresh post-resume data and a bounded blend restore gameplay. Research remains
+unchanged; old activity endpoints unavailable retain existing safe behavior.
 
-Owner-labeled gameplay recording 19:52:07-10 CET completes with 47 samples, all
-fresh/observing/running, zero errors, hook RVA 0x4585370. Counter 22018 -> 22320
-over 3000 ms of publisher timestamps (~100.7 function entries/sec, NOT FPS or
-lighting rate). No recorded inactivity; progressAgeMs=0 for all observations.
-Evidence: artifacts/simulation-ticks-gameplay-20261104-195207-550-5ef478405e6342a695786d43e6fc143d.json.
-This supplies the progressing gameplay control for the Skills stop above.
-
-Next owner closes Skills, returns to gameplay and replies "Spiel".
-Immediately run & ./scripts/Read-SimulationTickDiagnostic.ps1 -Label gameplay FROM
-CDT; verify renewed counter advancement/running state to complete the return control.
-No rebuild, extra install or waiting/polling for owner. Menu light/capture pause
-remain unimplemented until runtime semantics are established.
-
+Owner is freely playing. Do not capture labeled states or alter installations.
+Next finish automated/synthetic tests, commit, build fresh paired private menu
+packages and hand them to OWNER for installation with game closed. Never poll
+for that action. No deployed package changes or game test of menu mode yet.
 # Previous checkpoint — 2026-11-04, tick diagnostic ready; owner installation handoff
 
 Private CDT 2.2.9-tick.1 is built/validated from source 3f810c0, production profile

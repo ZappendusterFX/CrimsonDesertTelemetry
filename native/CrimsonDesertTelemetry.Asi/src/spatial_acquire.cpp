@@ -6,6 +6,7 @@
 #include "render_bridge.h"
 #include "render_capture.h"
 #include "runtime_contract.generated.h"
+#include "simulation_tick_probe.h"
 #include "console/mem.h"
 #include <windows.h>
 #include <d3d12.h>
@@ -63,6 +64,7 @@ std::atomic<bool> submissionObserved{};
 // incomplete after the GPU timeout abandons the copy and re-arms it.
 constexpr uint64_t SubmissionTimeoutMs = 5000, GpuTimeoutMs = 5000;
 uint64_t recordedAt = 0, submittedAt = 0;
+uint64_t captureEpoch = 0, observedEpoch = 1;
 bool signalFailed = false;
 // An abandoned list can still be submitted unobserved and then write its buffer.
 // Such a buffer is never read or released again, not even at unload; bounded.
@@ -133,10 +135,12 @@ void Abandon()
 
 uint64_t Dispatch(uint64_t command, uint32_t x, uint32_t y, uint32_t z, uint64_t owner, uint64_t caller)
 {
+    const auto epoch = simulation_tick_probe::CaptureEpoch();
     std::array<uint8_t,ConstantBytes> giBefore{};
-    const bool observeSources=sampleSources&&caller==gameBase+ExposureReturnRva()&&
+    const bool observeSources=simulation_tick_probe::IsCaptureCurrent(epoch)&&sampleSources&&caller==gameBase+ExposureReturnRva()&&
         x==2&&y==1&&z==1&&Read(owner+0x20,giBefore);
     auto result = originalDispatch(command, x, y, z);
+    if (!simulation_tick_probe::IsCaptureCurrent(epoch)) return result;
     
     ID3D12Resource* resource{};
     ID3D12GraphicsCommandList* list{};
@@ -152,7 +156,7 @@ uint64_t Dispatch(uint64_t command, uint32_t x, uint32_t y, uint32_t z, uint64_t
                 sdf::acquire::ObserveContext(list,giArray,camera,frame,GetTickCount64(),giBefore==giArray);
         }
         std::lock_guard<std::mutex> lock(acquireMutex);
-        if(!sampleAmbient||acquisitionInFlight||!submissionObserved.load(std::memory_order_acquire))return result;
+        if(!simulation_tick_probe::IsCaptureCurrent(epoch)||!sampleAmbient||acquisitionInFlight||!submissionObserved.load(std::memory_order_acquire))return result;
         Microsoft::WRL::ComPtr<ID3D12Device> device;
         if (SUCCEEDED(resource->GetDevice(IID_PPV_ARGS(&device))))
         {
@@ -210,6 +214,8 @@ uint64_t Dispatch(uint64_t command, uint32_t x, uint32_t y, uint32_t z, uint64_t
                 src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
                 src.SubresourceIndex = 0;
                 
+                if (!simulation_tick_probe::IsCaptureCurrent(epoch)) return result;
+                captureEpoch = epoch;
                 list->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
                 
                 activeList = list;
@@ -265,11 +271,24 @@ void Poll()
     }
     if(sampleSources)sdf::acquire::Poll();
     std::lock_guard<std::mutex> lock(acquireMutex);
+    const auto epoch = simulation_tick_probe::CaptureEpoch();
+    if (observedEpoch != epoch)
+    {
+        observedEpoch = epoch;
+        sky::PublishVisibility(0.0, sky::Visibility::Unavailable, 0, 0);
+        // Captured bytes remain obsolete, but intentional pause time must not
+        // exhaust a pending transaction's ordinary submission/fence deadline.
+        if (acquisitionInFlight)
+        {
+            if (activeList) recordedAt = GetTickCount64();
+            else submittedAt = GetTickCount64();
+        }
+    }
     if (!acquisitionInFlight) return;
     const auto now = GetTickCount64();
     if (activeList)
     {
-        if (now - recordedAt > SubmissionTimeoutMs) Abandon();
+        if (!simulation_tick_probe::ShouldPauseAcquisition() && now - recordedAt > SubmissionTimeoutMs) Abandon();
         return;
     }
     if (!readbackFence || !readbackBuffer) return;
@@ -285,7 +304,14 @@ void Poll()
     }
     if (completed < fenceValue)
     {
-        if (now - submittedAt > GpuTimeoutMs) Abandon();
+        if (!simulation_tick_probe::ShouldPauseAcquisition() && now - submittedAt > GpuTimeoutMs) Abandon();
+        return;
+    }
+    if (!simulation_tick_probe::IsCaptureCurrent(captureEpoch))
+    {
+        // Fence completion still drains the transaction; keep its reusable
+        // resources, but discard the old GI bytes across either transition.
+        acquisitionInFlight = false;
         return;
     }
     {

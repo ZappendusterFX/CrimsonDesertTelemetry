@@ -8,6 +8,7 @@ internal static class PhysicsVisibilityTests
         RadiusSelection();
         CacheAdmission();
         PendingResponseAfterInvalidation();
+        PendingResponseAfterResume();
         var pid = Environment.ProcessId + 210000;
         const long born = 987654321;
         long now = 10000;
@@ -173,6 +174,25 @@ internal static class PhysicsVisibilityTests
             "a replacement entry accepts its own new request after the retired response is discarded");
     }
 
+    private static void PendingResponseAfterResume()
+    {
+        using var fixture = new CacheFixture();
+        var position = new CameraVector3(2, 1, 3);
+        fixture.Apply(position);
+        var oldSequence = fixture.Sequence;
+        fixture.Now += 60; fixture.Reply(9);
+        Check(fixture.Apply(position).Rendered!.Sources![0].SourceVisibility!.Status == "clear",
+            "fixture did not establish a pre-pause result");
+        fixture.ResetActivity();
+        fixture.Now++; fixture.Reply(0); // Response to the pre-pause pending request.
+        var resumed = fixture.Apply(position).Rendered!.Sources![0].SourceVisibility!;
+        Check(resumed.Status == "unknown" && resumed.MeasurementSequence is null && fixture.Sequence > oldSequence,
+            "Resume borrowed an old cached or late pending physics result");
+        fixture.Now += 60; fixture.Reply(9);
+        Check(fixture.Apply(position).Rendered!.Sources![0].SourceVisibility!.Status == "clear",
+            "The new epoch could not receive a fresh measurement");
+    }
+
     private sealed class CacheFixture : IDisposable
     {
         private static int nextId;
@@ -202,6 +222,7 @@ internal static class PhysicsVisibilityTests
             return client.Apply((0, 0, 0), latest);
         }
         public void Invalidate() => client.Apply((0, 0, 0), latest with { Rendered = RenderLightReader.Unavailable("fixture-unavailable") });
+        public void ResetActivity() => client.ResetForActivityEpoch();
         public CameraVector3[] Targets() => Enumerable.Range(0, (int)input.ReadUInt32(12)).Select(n =>
         {
             var offset = PhysicsVisibilityClient.HeaderBytes + n * PhysicsVisibilityClient.PacketBytes + 112;

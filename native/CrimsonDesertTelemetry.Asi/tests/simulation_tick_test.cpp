@@ -1,4 +1,5 @@
 #include "../src/simulation_tick.h"
+#include "../src/acquisition_pause.h"
 #include <chrono>
 #include <cstdint>
 #include <iostream>
@@ -91,6 +92,27 @@ void ClockRollbackAndExplicitReset()
 }
 }
 
+void AcquisitionGenerations()
+{
+    cdt::acquisition_pause::Gate gate;
+    Require(!gate.Paused() && gate.Epoch() == 1 && gate.Current(1) && gate.ResumedAt() == 0,
+        "Unknown startup retains ordinary acquisition in generation one");
+    const auto inFlight = gate.Epoch();
+    gate.Update(true, 1000);
+    Require(gate.Paused() && gate.Epoch() == 2 && !gate.Current(inFlight) && !gate.Current(2),
+        "Pause rejects both old in-flight completion and newly attempted copies");
+    gate.Update(true, 1600);
+    Require(gate.Epoch() == 2 && gate.ResumedAt() == 0, "Repeated paused samples do not churn generations");
+    const auto duringPause = gate.Epoch();
+    gate.Update(false, 2000);
+    Require(!gate.Paused() && gate.Epoch() == 3 && gate.ResumedAt() == 2000 && gate.Current(3) &&
+        !gate.Current(inFlight) && !gate.Current(duringPause), "Resume permits only fresh-generation work");
+    gate.Update(false, 2100);
+    Require(gate.Epoch() == 3 && gate.ResumedAt() == 2000, "Running samples keep the exact resume boundary");
+    gate.Update(true, 2500); gate.Update(false, 2600);
+    Require(gate.Epoch() == 5 && !gate.Current(3) && !gate.Current(0), "Unobserved whole pause cycle cannot resurrect old work");
+}
+
 int main()
 {
     try
@@ -99,6 +121,7 @@ int main()
         BoundaryAndResume();
         CounterResetAndWrap();
         ClockRollbackAndExplicitReset();
+        AcquisitionGenerations();
         std::cout << "PASS simulation tick policy: startup, 500ms boundary, duplicate polling, resume, counter reset/wrap, clock rollback, lifecycle reset.\n";
     }
     catch (const std::exception& error)

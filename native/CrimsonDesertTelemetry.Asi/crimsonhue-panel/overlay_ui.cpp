@@ -388,6 +388,23 @@ void Assessment(const Json& view) {
     Wrap(Text(*assessment, "detail"));
 }
 void Lighting(const Json& view) {
+    if (const auto menu = view.find("menuLighting"); menu != view.end() && menu->is_object()) {
+        ImGui::SeparatorText("Menu lighting");
+        Wrap("A steady room light while the game is paused. Overall brightness still applies.");
+        float brightness = static_cast<float>(menu->value("brightness", .2) * 100.0);
+        ImGui::TextUnformatted("Menu brightness");
+        ImGui::SetNextItemWidth(-1);
+        if (ImGui::SliderFloat("##menuBrightness", &brightness, 0, 100, "%.0f%%"))
+            Command({{"action", "menuLighting"}, {"brightness", brightness / 100.0f}});
+        const auto color = menu->value("color", Json::object());
+        float rgb[]{color.value("x", 1.0f), color.value("y", .65f), color.value("z", .35f)};
+        ImGui::SetNextItemWidth(-1);
+        if (ImGui::ColorEdit3("Menu color", rgb, ImGuiColorEditFlags_NoInputs))
+            Command({{"action", "menuLighting"}, {"color", {{"r", rgb[0]}, {"g", rgb[1]}, {"b", rgb[2]}}}});
+        if (Button("Reset menu lighting")) Command({{"action", "menuLighting"}, {"reset", true}});
+        if (menu->value("active", false)) Wrap("Menu light active");
+        ImGui::Spacing();
+    }
     const auto& lighting = view.at("lighting");
     const bool recommended = lighting.value("recommended", true);
     const auto amount = [&](const char* label, const char* property, const char* key,

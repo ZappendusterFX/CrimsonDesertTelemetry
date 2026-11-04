@@ -20,6 +20,15 @@ public sealed class EngineCameraReader
     private Chain? _lastChain;
     private uint _lastCounter;
     private TimeSpan _lastProgress;
+    private bool _awaitingResumeFrame;
+    private uint? _resumeBaseline;
+
+    /// <summary>After resume, establish a new baseline before accepting frame progression.</summary>
+    public void RequirePostResumeFrame()
+    {
+        _awaitingResumeFrame = true;
+        _resumeBaseline = null;
+    }
 
     public int AddressCount => _lastChain is null ? 0 : 1;
     /// <summary>The last successfully decoded buffer frame, not the scene object's counter.</summary>
@@ -80,6 +89,13 @@ public sealed class EngineCameraReader
                 // have stopped updating. The buffer's own frame is authoritative
                 // for the measured direct layout; the older layout is unchanged.
                 var counter = scene?.FrameNumber ?? contextCounter;
+                if (_awaitingResumeFrame)
+                {
+                    _resumeBaseline ??= counter;
+                    if (counter == _resumeBaseline)
+                        throw new InvalidDataException("Awaiting a new camera frame after simulation resume.");
+                    _awaitingResumeFrame = false;
+                }
                 var now = _clock();
                 var relocated = _lastChain is not null && _lastChain != after;
                 if (_lastChain is null || relocated || counter != _lastCounter)

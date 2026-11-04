@@ -542,5 +542,31 @@ int main()
     CloseHandle(contextTraceEvent); contextTraceEvent = nullptr;
     for (const auto& file : std::filesystem::directory_iterator(folder)) std::filesystem::remove(file.path());
     std::filesystem::remove(folder); folder = savedFolder;
+    // Pause never suppresses the original game query; only our optional work.
+    Setup(); originalRay = OriginalRay; work.mode = "rayfan"; work.continuous = true;
+    work.captureEpoch = cdt::simulation_tick_probe::CaptureEpoch();
+    const auto oldEpoch = work.captureEpoch;
+    cdt::acquisition_pause::gate.Update(true, GetTickCount64());
+    Check(RayHook(worldBytes.data(), query.query.data(), query.collector.data()) == 0xFE123456789ABCDEULL &&
+        calls == 1 && badArgs == 0 && work.attempts == 0 && work.phase == Phase::Waiting,
+        "paused ray hook preserves original arguments/return and calls it exactly once without claiming");
+    enabled = true; continuousVisibility = true; lastPoll = 0;
+    work.phase = Phase::Capturing; visibilityRequest.count = visibilityResult.count = 1;
+    Poll();
+    Check(!armed && work.phase == Phase::Idle && visibilityRequest.count == 0 && visibilityResult.count == 0,
+        "pause poll cancels pending and claimed optional work under the existing mutex");
+    cdt::acquisition_pause::gate.Update(false, GetTickCount64());
+    calls = 0; work = {}; work.mode = "rayfan"; work.continuous = true; work.captureEpoch = oldEpoch;
+    RunRayControl();
+    Check(calls == 0 && !replayFaulted && work.fanCompleted == 0,
+        "stale pre-pause ray work cannot replay after resume or latch a timeout fault");
+    VisibilityBatch resumeRequest{}; resumeRequest.count = 1;
+    resumeRequest.entries[0].issued = 1100; resumeRequest.entries[0].sourceAge = 200;
+    Check(!VisibilityAfterResume(resumeRequest, 1000), "new request sequence with pre-resume light sample is rejected");
+    resumeRequest.entries[0].sourceAge = 50;
+    Check(VisibilityAfterResume(resumeRequest, 1000), "post-resume light sample is accepted");
+    resumeRequest.entries[0].issued = 999;
+    Check(!VisibilityAfterResume(resumeRequest, 1000), "pre-resume issued request cannot underflow age guard");
+    enabled = false; continuousVisibility = false;
     std::cout << checks << " physics observer synthetic checks passed; no live-game claim.\n";
 }

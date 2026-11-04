@@ -38,6 +38,11 @@ internal sealed class TelemetryServerState(JsonSerializerOptions jsonOptions, in
     private int[] _visibleAcceptedIndices = [];
     private TelemetrySnapshot? _latest;
     private byte[]? _latestBytes;
+    private string _activitySession = "none";
+    private long _activitySequence;
+    private SimulationActivityObservation _activity = SimulationActivityObservation.Unknown("waiting-for-game");
+    private ActivitySnapshot? _activityEnvelope;
+    private ulong _activityEpoch;
     private TelemetryHealth _health = new(schemaVersion, "waiting-for-game", false, null, null,
         sampleRateHz, null, null, 0, 0, null, null);
 
@@ -49,6 +54,48 @@ internal sealed class TelemetryServerState(JsonSerializerOptions jsonOptions, in
     public byte[]? LatestBytes
     {
         get { lock (_gate) return _latestBytes; }
+    }
+
+    public ActivitySnapshot LatestActivity
+    {
+        get
+        {
+            lock (_gate) return _activity.Fresh(Environment.TickCount64).Envelope(_activitySequence,
+                _activitySession, _activityEnvelope?.TimestampUtc ?? DateTimeOffset.UtcNow, Environment.TickCount64);
+        }
+    }
+    public byte[] LatestActivityBytes => JsonSerializer.SerializeToUtf8Bytes(LatestActivity, jsonOptions);
+    public void BeginActivitySession(string session)
+    {
+        lock (_gate)
+        {
+            _activitySession = session; _activityEpoch = 0;
+            _activity = SimulationActivityObservation.Unknown("waiting-for-observer");
+        }
+    }
+    public void PublishActivity(string session, SimulationActivityObservation value)
+    {
+        lock (_gate)
+        {
+            if (session != _activitySession) return; // An old worker cannot revive an ended session.
+            value = value.Fresh(Environment.TickCount64);
+            var reset = value.ControlEnabled && value.Epoch != _activityEpoch;
+            if (value.ControlEnabled) _activityEpoch = value.Epoch;
+            _activity = value;
+            _activityEnvelope = value.Envelope(++_activitySequence, session, DateTimeOffset.UtcNow, Environment.TickCount64);
+            if (reset || value.AcquisitionPaused)
+            {
+                var reason = value.AcquisitionPaused ? "simulation-paused" : "awaiting-post-resume-capture";
+                _smoothed = _smoother.Unavailable(reason, DateTimeOffset.UtcNow);
+                _visible = VisibleUnavailable(reason, DateTimeOffset.UtcNow);
+                _sky = SkyAmbientReader.Unavailable(reason);
+                _latest = null; _latestBytes = null;
+                SendFeed(JsonSerializer.SerializeToUtf8Bytes(_smoothed, jsonOptions), 1);
+                SendFeed(JsonSerializer.SerializeToUtf8Bytes(_visible, jsonOptions), 3);
+                SendFeed(JsonSerializer.SerializeToUtf8Bytes(_sky, jsonOptions), 2);
+            }
+            SendFeed(JsonSerializer.SerializeToUtf8Bytes(_activityEnvelope, jsonOptions), 4);
+        }
     }
 
     public SmoothedLightsSnapshot LatestSmoothed
@@ -113,10 +160,11 @@ internal sealed class TelemetryServerState(JsonSerializerOptions jsonOptions, in
         }
     }
     public byte[] LatestSkyBytes => JsonSerializer.SerializeToUtf8Bytes(LatestSky, jsonOptions);
-    public void PublishSky(SkyAmbientSnapshot snapshot)
+    public void PublishSky(SkyAmbientSnapshot snapshot, ulong? activityEpoch = null)
     {
         lock (_gate)
         {
+            if (RejectCapture(activityEpoch)) return;
             _sky = _health.Status == "playing" ? snapshot : SkyAmbientReader.Unavailable(_health.Status);
             SendFeed(JsonSerializer.SerializeToUtf8Bytes(_sky, jsonOptions), 2);
         }
@@ -171,22 +219,24 @@ internal sealed class TelemetryServerState(JsonSerializerOptions jsonOptions, in
         lock (_gate) _health = _health with { Recovery = recovery };
     }
 
-    public void Publish(TelemetrySnapshot snapshot, int discoveredCopies, double? discoveryMilliseconds)
+    public void Publish(TelemetrySnapshot snapshot, int discoveredCopies, double? discoveryMilliseconds, ulong? activityEpoch = null)
     {
         var bytes = JsonSerializer.SerializeToUtf8Bytes(snapshot, jsonOptions);
         var gameRunning = snapshot.Game.State != "stopped";
         lock (_gate)
         {
+            if (snapshot.Game.State == "playing" && RejectCapture(activityEpoch)) return;
             _latest = snapshot;
             _latestBytes = bytes;
             // Present Upstream means the input stream is configured; it then owns the
             // smoothed feed, including when a sample is unavailable.
             _smoothed = snapshot.Game.State != "playing"
-                ? _smoother.Unavailable(snapshot.Game.State, DateTimeOffset.UtcNow)
+                ? _smoother.Unavailable(_activity.Fresh(Environment.TickCount64).AcquisitionPaused ? "simulation-paused" : snapshot.Game.State, DateTimeOffset.UtcNow)
                 : snapshot.Lights?.Upstream is { } upstream
                     ? _smoother.ProcessUpstream(upstream, DateTimeOffset.UtcNow)
                     : _smoother.Process(snapshot.Lights?.Rendered, DateTimeOffset.UtcNow);
-            _visible = ProcessVisible(snapshot, DateTimeOffset.UtcNow);
+            _visible = _activity.Fresh(Environment.TickCount64).AcquisitionPaused
+                ? VisibleUnavailable("simulation-paused", DateTimeOffset.UtcNow) : ProcessVisible(snapshot, DateTimeOffset.UtcNow);
             _health = _health with
             {
                 Status = snapshot.Game.State,
@@ -206,15 +256,21 @@ internal sealed class TelemetryServerState(JsonSerializerOptions jsonOptions, in
             SendFeed(JsonSerializer.SerializeToUtf8Bytes(_visible, jsonOptions), 3);
             if (snapshot.Game.State != "playing")
             {
-                _sky = SkyAmbientReader.Unavailable(snapshot.Game.State);
+                _sky = SkyAmbientReader.Unavailable(_activity.Fresh(Environment.TickCount64).AcquisitionPaused ? "simulation-paused" : snapshot.Game.State);
                 SendFeed(JsonSerializer.SerializeToUtf8Bytes(_sky, jsonOptions), 2);
             }
+            Send(bytes, false);
         }
-        Send(bytes, false);
     }
 
     private void Send(byte[] bytes, bool smoothed)
         => SendFeed(bytes, smoothed ? 1 : 0);
+
+    private bool RejectCapture(ulong? epoch)
+    {
+        var activity = _activity.Fresh(Environment.TickCount64);
+        return activity.AcquisitionPaused || (epoch is { } capturedEpoch && _activityEpoch != capturedEpoch);
+    }
 
     // This is a *filtered* feed, not a fabricated physics verdict: unknown,
     // blocked and absent measurements contribute no RGB and cannot be tracked.
@@ -303,6 +359,7 @@ internal sealed class TelemetryServerState(JsonSerializerOptions jsonOptions, in
         => SubscribeFeed(smoothed ? 1 : 0);
     public TelemetrySubscription SubscribeSky() => SubscribeFeed(2);
     public TelemetrySubscription SubscribeVisible() => SubscribeFeed(3);
+    public TelemetrySubscription SubscribeActivity() => SubscribeFeed(4);
     private TelemetrySubscription SubscribeFeed(int feed)
     {
         var id = Guid.NewGuid();

@@ -157,7 +157,8 @@ reads memory, while native ManyLights capture uses guarded renderer hooks and GP
 readback in the ASI. It is an instrumented path, not an untouched baseline.
 Live validation with all production features enabled remains pending. Automatic
 HUD hiding in every game menu is not implemented; `playing`/`loading` remains a
-telemetry availability contract, not a menu-state API.
+telemetry availability contract. The independent activity API below reports
+simulation progression; it does not identify individual game menus.
 
 Alternatively, from a source checkout with the .NET 8 SDK:
 
@@ -190,6 +191,9 @@ Responses have camelCase keys. There are no mandatory custom request headers.
 | `GET /v1/stream` with WebSocket upgrade | 101: WebSocket connection. 400 without an upgrade (`A WebSocket connection is required.`). 403 for a supplied, disallowed `Origin`. |
 | `GET /v1/lights/visible` | 200: grouped/smoothed local lights containing only contributions with `sourceVisibility.status=clear`. Check `status`; an available empty list is valid. |
 | `GET /v1/lights/visible/stream` with WebSocket upgrade | 101: latest-only visible-light stream, same envelope as HTTP and same origin policy as `/v1/stream`. |
+| `GET /v1/activity` | 200: independent simulation-activity envelope, including `unknown` when no fresh observer is available. |
+| `GET /v1/activity/stream` with WebSocket upgrade | 101: latest-only activity heartbeat at 20 Hz while attached to a game session, independent of pose/light capture. |
+| `GET /v1/activity/schema` | 200: embedded [activity JSON Schema](../schema/activity-v1.schema.json), version 1.0. |
 
 There is no pagination, history query, replay cursor, per-client rate parameter or
 delta format. Repeated snapshot GETs can return the same `sequence`.
@@ -198,6 +202,59 @@ delta format. Repeated snapshot GETs can return the same `sequence`.
 timestamp. The snapshot endpoint retains the last published object; a health-only
 change (for example `error`) does not clear it. Use health and a freshness timeout
 as well. A missing host results in a connection failure, not an HTTP 503.
+
+### Simulation activity
+
+```json
+{
+  "schemaVersion": "1.0",
+  "sequence": 123,
+  "timestampUtc": "2026-11-04T20:00:00.0000000+00:00",
+  "sessionId": "414c-1dd0f0000000000",
+  "state": "paused",
+  "source": "simulation-tick",
+  "observationAgeMilliseconds": 17,
+  "acquisitionPaused": true,
+  "epoch": 2,
+  "reason": "simulation-idle"
+}
+```
+
+The observer counts entries into the guarded simulation pump. `running` means
+the counter has advanced; `paused` means it has not advanced for at least 500 ms
+after initial progression. Until progression has first been observed, the state
+is `unknown`. This is simulation activity, not proof of a particular menu. Other
+simulation stalls can also produce `paused`.
+
+`sequence` increases across activity publications for the lifetime of the host.
+`sessionId` is an opaque process-session identity; consumers must reset retained
+state when it changes. `timestampUtc` is the host publication time.
+`observationAgeMilliseconds` measures the age of the independent native
+**publisher**, not the time since simulation progress. A fresh paused state can
+therefore remain valid throughout a long menu visit. The native reader validates
+PID, process creation time, version, bounds and a stable seqlock. Publisher age
+over 350 ms, malformed/missing data, a stopped observer or game exit yields
+`unknown` with `acquisitionPaused=false`. Consumers also need a transport timeout;
+they must not retain a paused state indefinitely after disconnecting.
+
+`acquisitionPaused` confirms that native pause control is enabled and currently
+pausing acquisition. An older diagnostic-only observer can report `paused` with
+this flag false and `epoch=0`. Such an observer does not suspend capture.
+`epoch` changes on acquisition pause and resume. Known epochs clear grouped,
+visible and ambient histories. During a controlled pause the managed sampler
+skips pose, camera, lights and physics-request work, and reports unavailable
+lighting with reason `simulation-paused`; the normal snapshot's `game.state`
+uses `loading` as its existing availability value. Recovery live validation is
+suspended instead of treating the intentional pause as a failed capture.
+
+After resume, render/sky data must have a native capture timestamp strictly
+newer than the resume boundary. Camera-local sky visibility has its own boundary;
+old physics responses and smoothing state are discarded. The direct camera
+reader additionally waits for a newly advancing frame. No previous capture is
+relabeled with the resume time. Missing/newly pending data remains unavailable
+(`awaiting-post-resume-capture`) until it arrives. Activity continues independently
+while those feeds are unavailable. Activity has no game-build-label requirement
+at the consumer boundary; native compatibility validation remains CDT's job.
 
 ### Health response
 

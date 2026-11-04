@@ -35,7 +35,7 @@ public sealed class RenderLightReader(int processId, long processStartFileTime) 
     public RenderLightsSnapshot Capture((float X, float Y, float Z) player, float radius) =>
         CaptureAll(player, radius).Rendered;
 
-    public RenderCapture CaptureAll((float X, float Y, float Z) player, float radius)
+    public RenderCapture CaptureAll((float X, float Y, float Z) player, float radius, long minimumCaptureTickMs = 0)
     {
         try
         {
@@ -56,7 +56,7 @@ public sealed class RenderLightReader(int processId, long processStartFileTime) 
                 if ((before & 1) != 0) continue;
                 Thread.MemoryBarrier();
                 if (_lastBytes is not null && before == _lastLock)
-                    return DecodeAll(_lastBytes, processId, processStartFileTime, Environment.TickCount64, player, radius);
+                    return DecodeAll(_lastBytes, processId, processStartFileTime, Environment.TickCount64, player, radius, minimumCaptureTickMs);
                 var bytes = new byte[_mappingBytes];
                 if (_view.ReadArray(0, bytes, 0, bytes.Length) != bytes.Length)
                     throw new InvalidDataException("Truncated native render bridge.");
@@ -64,7 +64,7 @@ public sealed class RenderLightReader(int processId, long processStartFileTime) 
                 var after = _view.ReadUInt64(16);
                 if (before != after || (after & 1) != 0 || BitConverter.ToUInt64(bytes, 16) != after)
                     continue;
-                var decoded = DecodeAll(bytes, processId, processStartFileTime, Environment.TickCount64, player, radius);
+                var decoded = DecodeAll(bytes, processId, processStartFileTime, Environment.TickCount64, player, radius, minimumCaptureTickMs);
                 _lastBytes = bytes;
                 _lastLock = after;
                 return decoded;
@@ -75,7 +75,7 @@ public sealed class RenderLightReader(int processId, long processStartFileTime) 
             return _lastBytes is null
                 ? new(Unavailable("bridge-changing"), _mappingBytes == InputTotalBytes
                     ? UpstreamLightDecoder.Unavailable("bridge-changing") : null)
-                : DecodeAll(_lastBytes, processId, processStartFileTime, Environment.TickCount64, player, radius);
+                : DecodeAll(_lastBytes, processId, processStartFileTime, Environment.TickCount64, player, radius, minimumCaptureTickMs);
         }
         catch (FileNotFoundException)
         {
@@ -100,7 +100,7 @@ public sealed class RenderLightReader(int processId, long processStartFileTime) 
         DecodeAll(snapshot, expectedPid, expectedStartFileTime, nowTickMs, player, nearbyRadius).Rendered;
 
     public static RenderCapture DecodeAll(byte[] snapshot, int expectedPid, long expectedStartFileTime,
-        long nowTickMs, (float X, float Y, float Z) player, float nearbyRadius)
+        long nowTickMs, (float X, float Y, float Z) player, float nearbyRadius, long minimumCaptureTickMs = 0)
     {
         if (snapshot.Length < HeaderBytes ||
             snapshot.Length != MappingSize(BitConverter.ToUInt32(snapshot, 4), BitConverter.ToUInt32(snapshot, 12)) ||
@@ -136,6 +136,8 @@ public sealed class RenderLightReader(int processId, long processStartFileTime) 
         var sequence = BitConverter.ToUInt64(snapshot, 40);
         if (sequence == 0 || capturedTick < 0 || publishedTick < capturedTick || nowTickMs < publishedTick)
             throw new InvalidDataException("Invalid native render timing or sequence.");
+        if (minimumCaptureTickMs > 0 && capturedTick <= minimumCaptureTickMs)
+            return Missing("awaiting-post-resume-capture");
         var age = nowTickMs - capturedTick;
         if (age > MaximumAgeMilliseconds) return Missing("bridge-stale");
 

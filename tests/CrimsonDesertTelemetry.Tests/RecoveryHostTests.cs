@@ -247,6 +247,18 @@ internal static class RecoveryHostTests
         Check(state.Health.Recovery?.State == "ready", "Fresh complete physics controls did not finish recovery.");
     }
 
+    public static void SimulationPause()
+    {
+        var state = State(); var monitor = new RecoveryLiveMonitor(7, false);
+        monitor.Observe(Lights(1), Sky(1), state); monitor.Observe(Lights(2), Sky(2), state);
+        monitor.PauseForSimulation(state);
+        Check(state.Health.Recovery?.State == "waiting-for-simulation", "Intentional pause became recovery failure.");
+        monitor.Observe(Lights(3), Sky(3), state);
+        Check(state.Health.Recovery?.State != "ready", "Resume reused the old acceptance window.");
+        monitor.Observe(Lights(4), Sky(4), state); monitor.Observe(Lights(5), Sky(5), state);
+        Check(state.Health.Recovery?.State == "ready", "Fresh post-pause captures could not complete recovery.");
+    }
+
     public static void HealthStatus()
     {
         var state = State();

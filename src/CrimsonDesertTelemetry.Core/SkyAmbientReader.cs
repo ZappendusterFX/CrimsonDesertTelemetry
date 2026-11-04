@@ -75,7 +75,7 @@ public sealed class SkyAmbientReader(int processId, long processStartFileTime,
 
     public static SkyAmbientSnapshot Unavailable(string reason) => new("unavailable", reason);
 
-    public SkyAmbientSnapshot Capture()
+    public SkyAmbientSnapshot Capture(long minimumCaptureTickMs = 0)
     {
         try
         {
@@ -92,14 +92,14 @@ public sealed class SkyAmbientReader(int processId, long processStartFileTime,
                 Thread.MemoryBarrier();
                 if (_cached is not null && before == _lock)
                     return Decode(_cached, processId, processStartFileTime, Environment.TickCount64,
-                        expectedProducerRva);
+                        expectedProducerRva, minimumCaptureTickMs);
                 var bytes = new byte[TotalBytes];
                 if (_view.ReadArray(0, bytes, 0, TotalBytes) != TotalBytes) throw new InvalidDataException("Short sky bridge.");
                 Thread.MemoryBarrier();
                 var after = _view.ReadUInt64(16);
                 if (before != after || (after & 1) != 0 || BitConverter.ToUInt64(bytes, 16) != after) continue;
                 var result = Decode(bytes, processId, processStartFileTime, Environment.TickCount64,
-                    expectedProducerRva);
+                    expectedProducerRva, minimumCaptureTickMs);
                 _cached = bytes; _lock = after;
                 return result;
             }
@@ -111,7 +111,7 @@ public sealed class SkyAmbientReader(int processId, long processStartFileTime,
     }
 
     public static SkyAmbientSnapshot Decode(byte[] bytes, int pid, long start, long now,
-        uint expectedProducerRva = SkyProducerRva)
+        uint expectedProducerRva = SkyProducerRva, long minimumCaptureTickMs = 0)
     {
         if (bytes.Length != TotalBytes || BitConverter.ToUInt32(bytes, 0) != 0x53445443 ||
             BitConverter.ToUInt32(bytes, 4) != BridgeVersion || BitConverter.ToUInt32(bytes, 8) != HeaderBytes ||
@@ -134,12 +134,14 @@ public sealed class SkyAmbientReader(int processId, long processStartFileTime,
         var sequence = BitConverter.ToUInt64(bytes, 40);
         if (tick < 0 || published < tick || now < published || sequence == 0)
             throw new InvalidDataException("Invalid sky sample timing.");
+        if (minimumCaptureTickMs > 0 && tick <= minimumCaptureTickMs)
+            return Unavailable("awaiting-post-resume-capture");
         var age = now - tick;
         if (age > MaximumAgeMilliseconds) return Unavailable("bridge-stale");
         var scene = SceneConstantsDecoder.Decode(bytes.AsSpan(HeaderBytes, SceneBytes).ToArray());
         if (scene.FrameNumber != BitConverter.ToUInt32(bytes, 64)) throw new InvalidDataException("Sky/scene frame mismatch.");
         var values = DecodePayload(bytes.AsSpan(HeaderBytes + SceneBytes, PayloadBytes));
-        var visibility = DecodeVisibility(bytes, now);
+        var visibility = DecodeVisibility(bytes, now, minimumCaptureTickMs);
         return new("available", null, sequence, scene.FrameNumber, DateTimeOffset.UtcNow.AddMilliseconds(-age), age,
             values, visibility, Combine(values, visibility));
     }
@@ -150,11 +152,11 @@ public sealed class SkyAmbientReader(int processId, long processStartFileTime,
     /// branch is one BY DEFINITION and is not a measurement, and treating it as one
     /// would restore full ambient exactly where the local sample is missing.
     /// </summary>
-    public static CameraSkyVisibility? DecodeVisibility(byte[] bytes, long now)
+    public static CameraSkyVisibility? DecodeVisibility(byte[] bytes, long now, long minimumCaptureTickMs = 0)
     {
         if (BitConverter.ToUInt32(bytes, VisibilityStateOffset) != VisibilityValid) return null;
         var tick = BitConverter.ToInt64(bytes, VisibilityTickOffset);
-        if (tick <= 0 || now < tick) return null;
+        if (tick <= 0 || now < tick || tick <= minimumCaptureTickMs) return null;
         var value = BitConverter.ToDouble(bytes, VisibilityValueOffset);
         if (double.IsNaN(value) || value < 0 || value > 1) return null;
         return new(value, BitConverter.ToUInt32(bytes, VisibilityFrameOffset), now - tick);

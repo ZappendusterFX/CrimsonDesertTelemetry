@@ -39,9 +39,28 @@ time: 47 fresh observing samples all report no-tick-500ms, with counter fixed at
 observer timestamps advance 2937 ms; progress age rises 18062 -> 20997 ms.
 Thus the observer continues running while this function does not advance.
 Evidence: `artifacts/simulation-ticks-skills-20261104-195342-032-fb797840242046b2bccea0cf341eed8e.json`.
-The pending owner return to gameplay must confirm renewed progress. This is
-positive evidence for the targeted Skills menu; it does not itself verify every
-menu, capture-pause behavior or physical menu-light output.
+Owner-confirmed return to gameplay at 19:55:26-29 CET completes the comparison:
+47 fresh observing/running samples, same PID/start, counter 26707 -> 27001 over
+3000 ms; no errors. Evidence:
+`artifacts/simulation-ticks-gameplay-20261104-195526-618-02e6f6ae1df54f2ab18907f18ea8cd1a.json`.
+The candidate resumes when Skills closes. This validates the targeted pause signal;
+it does not verify every menu, the stutter fix, acquisition gating or lamp output.
+
+## Promotion to menu mode
+
+The next production-profile private menu package adds `[Pause] Enabled=1`.
+This starts observation independently of the old diagnostic switch and bypasses
+new light/ambient/physics acquisition after 500 ms without tick progress. Startup
+without a progressing control remains unknown. The lightweight observer continues
+independently; new progress resumes capture and changes its epoch. Completed work
+from an old epoch is drained and discarded. It never replays a game query.
+The neutral activity API conveys pause authorization to CrimsonHue, which owns
+fixed menu output. Missing/stale observations never authorize held menu output.
+
+Mapping v2 keeps the 128-byte layout and all existing offsets: flags bit2 means
+acquisition paused, bit3 pause control enabled; offset96 is uint64 captureEpoch,
+offset104 uint64 resumedAtTickMs. Diagnostic readers support v1 and v2. New
+monitor-only packages explicitly set Pause.Enabled=0; research keeps it disabled.
 
 ## Proven discovery, pending runtime semantics
 

@@ -325,7 +325,8 @@ int RunServer(int port, int rateHz, LightOptions lightOptions, LightSmoothingOpt
             schemaVersion = activeSchemaVersion,
             endpoints = new[] { "/v1/health", "/v1/snapshot", "/v1/schema", "/v1/stream",
                 "/v1/lights/smoothed", "/v1/lights/smoothed/stream", "/v1/lights/visible", "/v1/lights/visible/stream",
-                "/v1/ambient", "/v1/ambient/stream", "/v1/ambient/schema" }
+                "/v1/ambient", "/v1/ambient/stream", "/v1/ambient/schema",
+                "/v1/activity", "/v1/activity/stream", "/v1/activity/schema" }
         }, jsonOptions));
         app.MapGet("/v1/health", () => Results.Json(state.Health, jsonOptions));
         app.MapGet("/v1/snapshot", () => state.Latest is { } snapshot
@@ -336,6 +337,9 @@ int RunServer(int port, int rateHz, LightOptions lightOptions, LightSmoothingOpt
         app.MapGet("/v1/lights/smoothed", () => Results.Json(state.LatestSmoothed, jsonOptions));
         app.MapGet("/v1/lights/visible", () => Results.Json(state.LatestVisible, jsonOptions));
         app.MapGet("/v1/ambient", () => Results.Json(state.LatestSky, jsonOptions));
+        app.MapGet("/v1/activity", () => Results.Json(state.LatestActivity, jsonOptions));
+        app.MapGet("/v1/activity/schema", () => Results.Bytes(LoadEmbeddedSchema("activity-v1.schema.json"), "application/schema+json"));
+        app.Map("/v1/activity/stream", context => StreamWebSocket(context, state, cancellation.Token, activity: true));
         app.MapGet("/v1/ambient/schema", () => Results.Bytes(LoadEmbeddedSchema("ambient-v1.schema.json"), "application/schema+json"));
         app.Map("/v1/ambient/stream", context => StreamWebSocket(context, state, cancellation.Token, sky: true));
         app.Map("/v1/lights/smoothed/stream", context => StreamWebSocket(context, state, cancellation.Token, true));
@@ -367,7 +371,7 @@ int RunServer(int port, int rateHz, LightOptions lightOptions, LightSmoothingOpt
 }
 
 async Task StreamWebSocket(HttpContext context, TelemetryServerState state, CancellationToken cancellationToken,
-    bool smoothed = false, bool sky = false, bool visible = false)
+    bool smoothed = false, bool sky = false, bool visible = false, bool activity = false)
 {
     var origin = context.Request.Headers.Origin.ToString();
     if (!string.IsNullOrEmpty(origin) && !IsAllowedBrowserOrigin(origin))
@@ -382,12 +386,12 @@ async Task StreamWebSocket(HttpContext context, TelemetryServerState state, Canc
         return;
     }
     using var socket = await context.WebSockets.AcceptWebSocketAsync();
-    using var subscription = sky ? state.SubscribeSky() : visible ? state.SubscribeVisible() : state.Subscribe(smoothed);
+    using var subscription = activity ? state.SubscribeActivity() : sky ? state.SubscribeSky() : visible ? state.SubscribeVisible() : state.Subscribe(smoothed);
     using var connectionCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
     try
     {
         var sendTask = SendSnapshots(socket, subscription,
-            sky ? state.LatestSkyBytes : visible ? state.LatestVisibleBytes : smoothed ? state.LatestSmoothedBytes : state.LatestBytes,
+            activity ? state.LatestActivityBytes : sky ? state.LatestSkyBytes : visible ? state.LatestVisibleBytes : smoothed ? state.LatestSmoothedBytes : state.LatestBytes,
             connectionCancellation.Token);
         var receiveTask = WaitForWebSocketClose(socket, connectionCancellation.Token);
         await Task.WhenAny(sendTask, receiveTask);
@@ -456,6 +460,7 @@ async Task SampleContinuously(TelemetryServerState state, int rateHz, LightOptio
             }
 
             if (runtime is null) continue;
+            runtime.StartActivity(state);
             state.SetCompatibility(runtime.Compatibility);
             var initialPlayer = await WaitForPlayerPosition(runtime, state,
                 () => ToUnavailableSnapshot(runtime, sequence++, "loading", "player-unavailable"),
@@ -475,8 +480,20 @@ async Task SampleContinuously(TelemetryServerState state, int rateHz, LightOptio
                 try
                 {
                     var captureWatch = Stopwatch.StartNew();
+                    runtime.UpdateActivityBoundary();
+                    var activityEpoch = runtime.ActivityEpoch;
+                    if (runtime.AcquisitionPaused)
+                    {
+                        runtime.RecoveryMonitor?.PauseForSimulation(state);
+                        state.Publish(ToUnavailableSnapshot(runtime, sequence++, "loading", "simulation-paused"),
+                            tracker.AddressCount, discoveryMilliseconds);
+                        nextTick = Stopwatch.GetTimestamp();
+                        await Task.Delay(TimeSpan.FromSeconds(1d / rateHz), cancellationToken);
+                        continue;
+                    }
                     PlayerOrientationSnapshot? orientation;
                     (player, orientation) = runtime.ReadPose();
+                    runtime.RequireAcquisition();
                     var frame = tracker.Capture(player);
                     if (!nativeCaptureReadySignaled && Environment.TickCount64 >= nextNativeCaptureSignalAttempt)
                     {
@@ -488,14 +505,24 @@ async Task SampleContinuously(TelemetryServerState state, int rateHz, LightOptio
                     var snapshot = ToSnapshot(runtime.GameBuild, sequence++, player, frame,
                         captureWatch.ElapsedTicks * 1_000_000 / Stopwatch.Frequency, orientation,
                         lights, runtime.SupportsLights, SchemaFor(lightOptions));
-                    state.Publish(snapshot, tracker.AddressCount, discoveryMilliseconds);
+                    runtime.RequireAcquisition(activityEpoch);
+                    state.Publish(snapshot, tracker.AddressCount, discoveryMilliseconds, activityEpoch);
                     // Only an untested build leaves Sky null now, so the reason fits.
-                    var sky = runtime.Sky?.Capture() ?? SkyAmbientReader.Unavailable("unsupported-build");
-                    state.PublishSky(sky);
+                    runtime.RequireAcquisition(activityEpoch);
+                    var sky = runtime.Sky?.Capture(runtime.MinimumCaptureTickMs) ?? SkyAmbientReader.Unavailable("unsupported-build");
+                    runtime.RequireAcquisition(activityEpoch);
+                    state.PublishSky(sky, activityEpoch);
                     runtime.RecoveryMonitor?.Observe(lights, sky, state);
                 }
                 catch (Exception exception) when (exception is InvalidDataException or Win32Exception)
                 {
+                    if (runtime.AcquisitionPaused)
+                    {
+                        runtime.RecoveryMonitor?.PauseForSimulation(state);
+                        state.Publish(ToUnavailableSnapshot(runtime, sequence++, "loading", "simulation-paused"),
+                            tracker.AddressCount, discoveryMilliseconds);
+                        continue;
+                    }
                     runtime.RecoveryMonitor?.Pause(state);
                     if (state.Health.Status != "loading")
                         state.Publish(ToUnavailableSnapshot(runtime, sequence++, "loading", "required-telemetry-unavailable"),
@@ -537,6 +564,13 @@ async Task<(float X, float Y, float Z)?> WaitForPlayerPosition(RuntimeContext ru
     {
         try
         {
+            runtime.UpdateActivityBoundary();
+            if (runtime.AcquisitionPaused)
+            {
+                runtime.RecoveryMonitor?.PauseForSimulation(state);
+                await Task.Delay(50, cancellationToken);
+                continue;
+            }
             return StaticPositionProbe.Read(runtime.Reader, runtime.PositionAddresses);
         }
         catch (Exception exception) when (exception is InvalidDataException or Win32Exception)
@@ -846,6 +880,28 @@ sealed class RuntimeContext(
     public SourceVisibilityClient? Visibility { get; } = visibility;
     public PhysicsVisibilityClient? PhysicsVisibility { get; } = physicsVisibility;
     public RecoveryLiveMonitor? RecoveryMonitor { get; set; }
+    private ActivitySession? _activity;
+    private readonly ActivityCaptureBoundary _activityBoundary = new();
+    public ulong ActivityEpoch => _activityBoundary.Epoch;
+    public long MinimumCaptureTickMs => _activityBoundary.MinimumCaptureTickMs;
+    public bool AcquisitionPaused => _activity?.Current.AcquisitionPaused == true;
+    public void StartActivity(TelemetryServerState state) => _activity ??= new ActivitySession(Process, state);
+    public void UpdateActivityBoundary()
+    {
+        var previousResume = MinimumCaptureTickMs;
+        if (_activity is not null && _activityBoundary.Observe(_activity.Current))
+        {
+            PhysicsVisibility?.ResetForActivityEpoch();
+            Visibility?.ResetForActivityEpoch(MinimumCaptureTickMs);
+            if (MinimumCaptureTickMs > previousResume) Camera.RequirePostResumeFrame();
+        }
+    }
+    public void RequireAcquisition(ulong? epoch = null)
+    {
+        UpdateActivityBoundary();
+        if (AcquisitionPaused || (epoch is { } expected && expected != ActivityEpoch))
+            throw new InvalidDataException("simulation-paused-or-epoch-changed");
+    }
     /// <summary>
     /// The sky reader attaches on any exactly tested build. It used to require build
     /// 25116796 by name, which silently killed the ambient feed on 25246367 even
@@ -896,21 +952,25 @@ sealed class RuntimeContext(
     /// </remarks>
     public ((float X, float Y, float Z) Player, PlayerOrientationSnapshot? Orientation) ReadPose()
     {
+        RequireAcquisition();
         var player = StaticPositionProbe.Read(Reader, PositionAddresses);
         return (player, ReadOrientation(player));
     }
 
     public EngineLightsSnapshot? CaptureLights((float X, float Y, float Z) player)
     {
+        RequireAcquisition();
         if (!LightOptions.Enabled) return null;
         var authored = Lights?.Capture(player, LightOptions.NearbyRadius) ?? UnsupportedLights();
         // One bridge sample supplies both views, so they share sequence, camera and fence.
-        var capture = Rendered?.CaptureAll(player, LightOptions.NearbyRadius);
+        RequireAcquisition();
+        var capture = Rendered?.CaptureAll(player, LightOptions.NearbyRadius, MinimumCaptureTickMs);
         var combined = authored with
         {
             Rendered = capture?.Rendered ?? RenderLightReader.Unavailable("unsupported-build"),
             Upstream = capture?.Upstream
         };
+        RequireAcquisition();
         return PhysicsVisibility?.Apply(player, combined) ?? Visibility?.Apply(player, combined) ?? combined;
     }
 
@@ -928,6 +988,7 @@ sealed class RuntimeContext(
 
     public void Dispose()
     {
+        _activity?.Dispose();
         Rendered?.Dispose();
         Visibility?.Dispose();
         PhysicsVisibility?.Dispose();
