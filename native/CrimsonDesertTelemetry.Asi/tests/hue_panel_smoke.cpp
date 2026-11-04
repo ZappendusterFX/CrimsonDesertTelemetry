@@ -218,6 +218,17 @@ int wmain(int argc, wchar_t** argv) {
             Command({{"action", "profile"}, {"recommended", true}}); Sleep(100); state = State();
             Require(state.at("lighting").at("recommended") == true, "Recommended did not resume before product UI preview");
         }
+        if (rgbPreview) {
+            Command({{"action", "output"}, {"backend", "hue"}, {"value", false}});
+            Command({{"action", "output"}, {"backend", "tuya"}, {"value", false}});
+            Command({{"action", "output"}, {"backend", "openRgb"}, {"value", true}});
+            Sleep(150); state = State();
+            const auto& outputs = state.at("outputs");
+            Require(!outputs.at("hueEnabled").get<bool>() && !outputs.at("tuyaEnabled").get<bool>() &&
+                outputs.at("openRgbEnabled").get<bool>(), "OpenRGB-only selection depends on Hue or Tuya");
+            Require(state.value("smoke", false) && state.value("demo", false) && !state.value("canStart", true),
+                "OpenRGB-only preview escaped physical-output isolation");
+        }
         if (tuyaPreview) {
             Command({{"action", "output"}, {"backend", "hue"}, {"value", false}});
             Command({{"action", "output"}, {"backend", "openRgb"}, {"value", false}});
