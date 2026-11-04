@@ -1,4 +1,44 @@
-# Current checkpoint — 2026-11-04, conditional in-plugin recovery ready for owner install
+# Current checkpoint — 2026-11-04, one-time cold recovery test ready for owner install
+
+Owner authorized deliberately exercising recovery on the current known EXE.
+Chose an explicit one-time diagnostic; correct EXE hash/profile/addresses remain
+intact. See RUNTIME_RECOVERY.md. Private package2.2.8-recovery.2 has
+Compatibility.RecoveryTestOnce=4B0FEA8E34CA412191D7F28D8B776B24. This bypasses the
+exact-build shortcut and cache input, retains every guard, waits for valid live
+player/camera readiness, and atomically consumes the token before the full scan.
+The marker is under LOCALAPPDATA/CrimsonDesertTelemetry/RecoveryTests/TOKEN.done;
+native and managed use the same environment root. A menu exit before readiness
+does not consume it; a failure after scan start does. Subsequent launches use
+normal checks; genuine unknown builds still recover. No installed INI is changed.
+Diagnostic IPC uses v2; normal v1 remains unchanged. HUD explicitly labels the
+test, with Recovery test passed only after fresh requested captures. Marker
+existence alone is not success. No owner movement/light toggles are required.
+
+Validation:86/86 managed, current native ASI build and3/3 focused recovery/build-
+guard/preflight tests; archived26361232 native ASI and recovery test1/1 pass.
+Tests cover malformed/zero tokens, shared storage, atomic duplicate refusal,
+protocol mismatches, cache bypass, world readiness/loading and diagnostic status.
+Maintained package builder/self-test/expanded/ZIP validation passes. Exact
+packaged Core2.2.8.0 contains the diagnostic and resolver, correct26423880 SHA,
+research profile and7contexts/11support anchors. Token is unconsumed. Prior
+broader42-native/API/render/replay evidence remains recorded below; no new live
+game acceptance or future-update guarantee is claimed.
+
+Immutable owner-install ZIP: artifacts/mod-manager/
+CrimsonDesertTelemetry-v2.2.8-recovery.2-ModManagers.zip,1138473bytes,payload9f3df60,
+SHA256 B747771D5C887E72546D61ABF563D5047B7100033DD0C7C343A31EB7C3208593.
+Receipt artifacts/runtime-recovery-test-once-package-20261104.json; SHA256SUMS
+beside ZIP. Production implementation, Research OFF, all normal features/HUDs ON.
+This supersedes recovery.1 for the requested test; all older ZIPs are preserved.
+Pair with unchanged C:/DEV/CrimsonHue/dist/CrimsonHue-1.0.5-asi-win-x64.zip.
+Work committed locally on main; no new push/tag/publication or assistant install.
+
+Next: owner installs with game closed, launches and loads a save. End handoff;
+do not poll/wait. Resume only after their installation/restart report. Inspect
+recovery status/logs for a cold attempt, compatibility=recovered, independently
+accepted live addresses and fresh requested feeds; record any concrete failure.
+
+# Previous checkpoint — 2026-11-04, conditional in-plugin recovery ready for owner install
 
 Owner explicitly requested automatic full-path recovery only when necessary,
 after real game data exists, with clear progress. Implemented in CDT; Hue code
