@@ -1,4 +1,14 @@
-# Current checkpoint — 2026-11-04, targeted menu-state observer preparation
+# Current checkpoint — 2026-11-04, gameplay menu-state baseline captured; next Skills
+
+On owner's "Spiel", prepared reader completed three stable samples at18:47:58CET,
+PID16716 (started17:30:10UTC). All exact-code/vtable guards passed. Each sample:
+144subscriptions, six matching roots, zero rejected roots,11660bytes read;
+all six roots have A4=A8=593, transitionsAC/B0/B4=0, B8..C1=00010000000000000000.
+Evidence: artifacts/menu-state-gameplay-20261104-184757-378-bf992a97a14545619c5d8afd8a3d0e75.json.
+This validates the bounded lookup for this sample, NOT menu-open/closed semantics.
+Next owner action: open Skills, leave it open, reply "Skills". Then immediately
+run & ./scripts/Read-MenuStateCandidates.ps1 -Label skills FROM CDT and compare
+to the baseline. LightSync may remain off. No live writes or package checks.
 
 Owner asks how to implement menu lighting. Continue automatic menu detection work,
 not the withdrawn OpenRGB/Razer diagnosis. No package installation/restart has
@@ -29,10 +39,9 @@ Default3samples100ms apart, maximum1024subscriptions/64matching roots,1MiB read
 budget and1s issuance budget per sample (not a hard OS timeout), exclusive JSON.
 Registry recheck is best effort, never an atomic snapshot or open/closed verdict.
 
-Next: owner stays in normal gameplay without a game menu and replies "Spiel".
-Then run FROM CDT: & ./scripts/Read-MenuStateCandidates.ps1 -Label gameplay
-No rebuild or further preflight on their reply. Report result and hand off Skills
-entry, then a separate gameplay-return read; LightSync may remain off throughout.
+Gameplay baseline is now captured as recorded above. No rebuild or further
+preflight on the next reply. Skills entry and later gameplay-return are separate
+owner handoffs; LightSync may remain off throughout.
 Never wait/poll for the owner. No reset-package install needed for this research.
 
 # Previous checkpoint — 2026-11-04, OpenRGB diagnosis withdrawn; menu acquisition bypass requested
