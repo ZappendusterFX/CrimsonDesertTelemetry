@@ -7,6 +7,7 @@
 #include <wrl/client.h>
 #include <nlohmann/json.hpp>
 #include <array>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -25,7 +26,8 @@ int wmain(int argc, wchar_t** argv) {
     const bool customPreview = argc == 4 && wcscmp(argv[3], L"--custom") == 0;
     const bool rawPreview = argc == 4 && wcscmp(argv[3], L"--raw") == 0;
     const bool rgbPreview = argc == 4 && wcscmp(argv[3], L"--openrgb") == 0;
-    if (argc == 4 && !setupPreview && !lightingPreview && !advancedPreview && !customPreview && !rawPreview && !rgbPreview) return 1;
+    const bool tuyaPreview = argc == 4 && wcscmp(argv[3], L"--tuya") == 0;
+    if (argc == 4 && !setupPreview && !lightingPreview && !advancedPreview && !customPreview && !rawPreview && !rgbPreview && !tuyaPreview) return 1;
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
     try {
         const auto asi = std::filesystem::absolute(argv[1]);
@@ -216,7 +218,34 @@ int wmain(int argc, wchar_t** argv) {
             Command({{"action", "profile"}, {"recommended", true}}); Sleep(100); state = State();
             Require(state.at("lighting").at("recommended") == true, "Recommended did not resume before product UI preview");
         }
-        if (rgbPreview) crimson::overlay::SelectTabForTest("OpenRGB");
+        if (tuyaPreview) {
+            Command({{"action", "output"}, {"backend", "hue"}, {"value", false}});
+            Command({{"action", "output"}, {"backend", "openRgb"}, {"value", false}});
+            Command({{"action", "output"}, {"backend", "tuya"}, {"value", true}});
+            Command({{"action", "tuya"}, {"key", "brightness"}, {"value", .3}});
+            Command({{"action", "tuya"}, {"key", "sourceRadius"}, {"value", 75.0}});
+            Command({{"action", "tuya"}, {"key", "background"}, {"value", .2}});
+            Sleep(150); state = State();
+            const auto& outputs = state.at("outputs");
+            Require(!outputs.at("hueEnabled").get<bool>() && !outputs.at("openRgbEnabled").get<bool>() &&
+                outputs.at("tuyaEnabled").get<bool>(), "Tuya-only selection still depends on another output");
+            const auto& room = state.at("tuyaRoom");
+            Require(room.value("available", false) && room.value("enabled", false) && !room.at("devices").empty(),
+                "Missing synthetic Tuya room/device preview");
+            Require(room.at("brightness") == .3 && room.at("sourceRadiusDegrees") == 75.0 && room.at("backgroundAmount") == .2,
+                "Tuya tuning commands did not reach the shared snapshot");
+            const auto key = room.at("devices")[0].at("key");
+            Command({{"action", "tuya"}, {"key", "position"}, {"device", key},
+                {"position", {{"x", -.4}, {"y", .7}, {"z", -.2}}}});
+            Sleep(100); state = State();
+            const auto& position = state.at("tuyaRoom").at("devices")[0].at("position");
+            Require(std::abs(position.value("x", 0.0) + .4) < 1e-6 && std::abs(position.value("y", 0.0) - .7) < 1e-6 &&
+                std::abs(position.value("z", 0.0) + .2) < 1e-6,
+                "Tuya device position did not reach the shared snapshot");
+            Require(state.value("smoke", false) && state.value("demo", false), "Tuya preview escaped dry smoke mode");
+            crimson::overlay::SelectTabForTest("Tuya LAN");
+        }
+        else if (rgbPreview) crimson::overlay::SelectTabForTest("OpenRGB");
         else if (lightingPreview || customPreview) crimson::overlay::SelectTabForTest("Lighting");
         else if (advancedPreview) crimson::overlay::SelectTabForTest("Advanced");
         else if (rawPreview) crimson::overlay::SelectTabForTest("CDT raw input");

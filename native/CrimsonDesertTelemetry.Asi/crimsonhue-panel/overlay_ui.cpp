@@ -21,28 +21,47 @@ void Action(const char* name) { Command({{"action", name}}); }
 bool Button(const char* label, bool enabled = true) {
     ImGui::BeginDisabled(!enabled); const bool clicked = ImGui::Button(label); ImGui::EndDisabled(); return clicked;
 }
-std::string rgbSelected;
+struct DeviceRoomState {
+    std::string selected, dragging;
+    float yaw = -.45f, elevation = .60f;
+    std::array<float, 3> start{}, live{};
+    ImVec2 mouseStart{};
+};
+DeviceRoomState rgbRoomState, tuyaRoomState;
 bool rgbTabActive = false;
-void RgbPosition(const std::string& key, const std::array<float, 3>& p) {
-    Command({{"action", "openRgb"}, {"key", "position"}, {"device", key},
+bool tuyaTabActive = false;
+bool HueEnabled(const Json& view) { return view.value("outputs", Json::object()).value("hueEnabled", false); }
+void OutputCheckbox(const Json& view, const char* label, const char* backend, const char* key) {
+    const auto outputs = view.value("outputs", Json::object());
+    bool enabled = outputs.value(key, false);
+    ImGui::BeginDisabled(!outputs.value("canConfigure", false));
+    if (ImGui::Checkbox(label, &enabled)) Command({{"action", "output"}, {"backend", backend}, {"value", enabled}});
+    ImGui::EndDisabled();
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        WrappedTooltip("Stop lighting sync before changing which outputs participate.");
+}
+void DevicePosition(const char* backend, const std::string& key, const std::array<float, 3>& p) {
+    Command({{"action", backend}, {"key", "position"}, {"device", key},
         {"position", {{"x", p[0]}, {"y", p[1]}, {"z", p[2]}}}});
 }
 void OpenRgbControls(const Json& view) {
     const auto room = view.value("openRgbRoom", Json::object());
+    auto& rgbSelected = rgbRoomState.selected;
+    const bool canConfigure = view.value("outputs", Json::object()).value("canConfigure", false);
     Wrap("Select devices and arrange them in the room on the right.");
-    if (!room.value("available", false)) { Wrap("Install a CrimsonHue OpenRGB build to use this panel."); return; }
-    bool enabled = room.value("enabled", true);
-    if (ImGui::Checkbox("Include OpenRGB in lighting sync", &enabled))
-        Command({{"action", "openRgb"}, {"key", "enabled"}, {"value", enabled}});
+    if (!room.value("available", false)) { Wrap("OpenRGB settings are unavailable."); return; }
+    OutputCheckbox(view, "Include OpenRGB in lighting sync", "openRgb", "openRgbEnabled");
     if (Button("Read devices", !room.value("busy", false) && !view.value("smoke", false))) Action("openRgbDiscover");
     Wrap(Text(room, "status"));
     if (ImGui::CollapsingHeader("Connection and output limit")) {
     static int port = 6742, observedPort = 0;
     const int savedPort = room.value("port", 6742);
     if (savedPort != observedPort) { port = savedPort; observedPort = savedPort; }
+    ImGui::BeginDisabled(!canConfigure);
     ImGui::SetNextItemWidth(110);
     if (ImGui::InputInt("SDK port (Enter)", &port, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue))
         Command({{"action", "openRgb"}, {"key", "port"}, {"value", port}});
+    ImGui::EndDisabled();
     float brightness = room.value("brightness", .25f) * 100;
     if (ImGui::SliderFloat("Output limit", &brightness, 0, 100, "%.0f%%"))
         Command({{"action", "openRgb"}, {"key", "brightness"}, {"value", brightness / 100}});
@@ -70,7 +89,7 @@ void OpenRgbControls(const Json& view) {
     for (const auto& d : devices) {
         const auto key = Text(d, "key"); ImGui::PushID(key.c_str());
         bool use = d.value("enabled", false);
-        ImGui::BeginDisabled(!d.value("eligible", false) && d.value("present", false));
+        ImGui::BeginDisabled(!canConfigure || (!d.value("eligible", false) && d.value("present", false)));
         if (ImGui::Checkbox("##use", &use)) Command({{"action", "openRgb"}, {"key", "deviceEnabled"}, {"device", key}, {"value", use}});
         ImGui::EndDisabled(); ImGui::SameLine();
         if (ImGui::Selectable(Text(d, "name").c_str(), key == rgbSelected)) rgbSelected = key;
@@ -86,20 +105,81 @@ void OpenRgbControls(const Json& view) {
         changed |= ImGui::SliderFloat("Back / front", &xyz[1], -1, 1, "%.2f");
         changed |= ImGui::SliderFloat("Height", &xyz[2], -1, 1, "%.2f");
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("Height relative to your viewpoint. Desk devices can naturally be below this reference.");
-        if (changed) RgbPosition(rgbSelected, xyz);
-        if (Button("In front of monitor")) RgbPosition(rgbSelected, {0, 1, 0});
+        if (changed) DevicePosition("openRgb", rgbSelected, xyz);
+        if (Button("In front of monitor")) DevicePosition("openRgb", rgbSelected, {0, 1, 0});
     }
-    Wrap("Start/Stop lighting sync controls Hue and selected OpenRGB devices. Positions are saved locally.");
+    Wrap("Start/Stop controls the enabled outputs. OpenRGB works independently of Hue. Positions are saved locally.");
 }
-void OpenRgbRoom(const Json& view) {
-    const auto room = view.value("openRgbRoom", Json::object());
+void TuyaControls(const Json& view) {
+    const auto room = view.value("tuyaRoom", Json::object());
+    Wrap("Direct local lighting for compatible Tuya 3.5 RGB devices, including supported LEDVANCE lamps.");
+    if (!room.value("available", false)) { Wrap("Tuya settings are unavailable."); return; }
+    const bool canConfigure = room.value("canConfigure", false) && !room.value("busy", false);
+    OutputCheckbox(view, "Include Tuya LAN in lighting sync", "tuya", "tuyaEnabled");
+    Wrap(Text(room, "status"));
+    if (Button("Add device", canConfigure && !view.value("smoke", false)))
+        Command({{"action", "tuyaConfigure"}, {"device", ""}});
+    Wrap("Device address, ID and local key are entered in a separate protected Windows dialog.");
+    float brightness = room.value("brightness", .25f) * 100;
+    if (ImGui::SliderFloat("Output limit", &brightness, 0, 100, "%.0f%%"))
+        Command({{"action", "tuya"}, {"key", "brightness"}, {"value", brightness / 100}});
+    float radius = room.value("sourceRadiusDegrees", 90.f);
+    if (ImGui::SliderFloat("Light coverage", &radius, 1, 180, "%.0f deg"))
+        Command({{"action", "tuya"}, {"key", "sourceRadius"}, {"value", radius}});
+    float background = room.value("backgroundAmount", .25f) * 100;
+    if (ImGui::SliderFloat("Background light", &background, 0, 100, "%.0f%%"))
+        Command({{"action", "tuya"}, {"key", "background"}, {"value", background / 100}});
+    ImGui::SeparatorText("Devices");
+    const auto devices = room.value("devices", Json::array());
+    auto& selected = tuyaRoomState.selected;
+    bool selectedFound = false;
+    for (const auto& device : devices) if (Text(device, "key") == selected) selectedFound = true;
+    if (!selectedFound) selected = devices.empty() ? "" : Text(devices[0], "key");
+    if (devices.empty()) Wrap("Add a compatible RGB device, then place it in the room.");
+    for (const auto& device : devices) {
+        const auto key = Text(device, "key"); ImGui::PushID(key.c_str());
+        bool enabled = device.value("enabled", false);
+        ImGui::BeginDisabled(!canConfigure || !device.value("configured", false));
+        if (ImGui::Checkbox("##use", &enabled))
+            Command({{"action", "tuya"}, {"key", "deviceEnabled"}, {"device", key}, {"value", enabled}});
+        ImGui::EndDisabled(); ImGui::SameLine();
+        if (ImGui::Selectable(Text(device, "name").c_str(), key == selected)) selected = key;
+        if (!device.value("configured", false)) ImGui::TextDisabled("Configuration required");
+        ImGui::PopID();
+    }
+    for (const auto& device : devices) if (Text(device, "key") == selected) {
+        ImGui::SeparatorText("Selected device");
+        if (Button("Edit device", canConfigure && !view.value("smoke", false)))
+            Command({{"action", "tuyaConfigure"}, {"device", selected}});
+        ImGui::SameLine();
+        if (Button("Check connection", canConfigure && !view.value("smoke", false) && device.value("configured", false)))
+            Command({{"action", "tuyaProbe"}, {"device", selected}});
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+            WrappedTooltip("Checks TCP reachability only. Does not change the light or verify its RGB capabilities.");
+        if (Button("Remove device", canConfigure && !view.value("canStop", false)))
+            Command({{"action", "tuyaRemove"}, {"device", selected}});
+        const auto p = device.value("position", Json::object());
+        std::array<float, 3> xyz{p.value("x", 0.f), p.value("y", 1.f), p.value("z", 0.f)};
+        bool changed = ImGui::SliderFloat("Left / right", &xyz[0], -1, 1, "%.2f");
+        changed |= ImGui::SliderFloat("Back / front", &xyz[1], -1, 1, "%.2f");
+        changed |= ImGui::SliderFloat("Height", &xyz[2], -1, 1, "%.2f");
+        if (changed) DevicePosition("tuya", selected, xyz);
+        if (Button("In front of monitor")) DevicePosition("tuya", selected, {0, 1, 0});
+    }
+    Wrap("Tuya LAN works independently of Hue and OpenRGB. Stop sync before adding, editing or removing devices.");
+}
+void DeviceRoom(const Json& view, const char* roomKey, const char* backend, DeviceRoomState& state) {
+    const auto room = view.value(roomKey, Json::object());
     const auto devices = room.value("devices", Json::array());
     Wrap("Drag a device to move it across the room. Use Height to move it up/down. Right-drag to rotate the view.");
-    static float yaw = -.45f, elevation = .60f;
+    auto& yaw = state.yaw; auto& elevation = state.elevation;
+    auto& selected = state.selected;
+    auto& dragging = state.dragging;
+    auto& start = state.start; auto& live = state.live; auto& mouseStart = state.mouseStart;
     if (Button("Reset view")) { yaw = -.45f; elevation = .60f; }
     const auto at = ImGui::GetCursorScreenPos();
     const ImVec2 size{std::max(220.f, ImGui::GetContentRegionAvail().x), std::max(270.f, ImGui::GetContentRegionAvail().y - 55)};
-    ImGui::InvisibleButton("OpenRGB 3D room", size, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+    ImGui::InvisibleButton(roomKey, size, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
     const bool hovered = ImGui::IsItemHovered();
     auto& io = ImGui::GetIO();
     if (hovered && ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
@@ -137,32 +217,34 @@ void OpenRgbRoom(const Json& view) {
     draw->AddCircleFilled(project(0,0,0),5,IM_COL32(225,230,240,255));
     const auto seat = project(0,0,-.15f);
     draw->AddText(seat,IM_COL32(160,175,195,255),"YOU");
-    static std::string dragging;
-    static std::array<float,3> start{}, live{};
-    static ImVec2 mouseStart{};
+    // A drag belongs to one backend and one still-present device. A tab switch
+    // or inventory refresh must never move a device in another output.
+    bool draggingFound = false;
+    for (const auto& device : devices) if (Text(device, "key") == dragging) draggingFound = true;
+    if (!draggingFound) dragging.clear();
     if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         float best = 16*16; std::string picked;
         for (const auto& d : devices) {
             const auto p = d.at("position"); const auto point = project(p.value("x",0.f),p.value("y",0.f),p.value("z",0.f));
             const float dx=point.x-io.MousePos.x, dy=point.y-io.MousePos.y;
-            if (dx*dx+dy*dy < best || (Text(d,"key")==rgbSelected && dx*dx+dy*dy < 16*16)) {
+            if (dx*dx+dy*dy < best || (Text(d,"key")==selected && dx*dx+dy*dy < 16*16)) {
                 best=dx*dx+dy*dy; picked=Text(d,"key");
                 start={p.value("x",0.f),p.value("y",0.f),p.value("z",0.f)};
-                if (picked==rgbSelected) break;
+                if (picked==selected) break;
             }
         }
-        if (!picked.empty()) { rgbSelected=picked; dragging=picked; live=start; mouseStart=io.MousePos; }
+        if (!picked.empty()) { selected=picked; dragging=picked; live=start; mouseStart=io.MousePos; }
     }
     if (!dragging.empty()) {
         const float dx=(io.MousePos.x-mouseStart.x)/scale, dy=(io.MousePos.y-mouseStart.y)/scale;
         live={std::clamp(start[0]+c*dx-s*dy/se,-1.f,1.f),
             std::clamp(start[1]-s*dx-c*dy/se,-1.f,1.f),start[2]};
-        if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) { RgbPosition(dragging,live); dragging.clear(); }
+        if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) { DevicePosition(backend,dragging,live); dragging.clear(); }
     }
     std::vector<Json> ordered(devices.begin(), devices.end());
     std::sort(ordered.begin(),ordered.end(),[&](const Json& a,const Json& b) {
-        if (Text(a,"key")==rgbSelected) return false;
-        if (Text(b,"key")==rgbSelected) return true;
+        if (Text(a,"key")==selected) return false;
+        if (Text(b,"key")==selected) return true;
         const auto p=a.at("position"), q=b.at("position");
         return s*p.value("x",0.f)+c*p.value("y",0.f) > s*q.value("x",0.f)+c*q.value("y",0.f);
     });
@@ -176,8 +258,8 @@ void OpenRgbRoom(const Json& view) {
         // Show the actual calculated color. The outline keeps black points visible.
         const auto color=enabled ? ImGui::ColorConvertFloat4ToU32({rgb.value("x",0.f),rgb.value("y",0.f),rgb.value("z",0.f),1}) : IM_COL32(50,55,65,255);
         draw->AddCircleFilled(point,9,color);
-        draw->AddCircle(point,key==rgbSelected?13.f:10.f,key==rgbSelected?IM_COL32(50,220,210,255):IM_COL32(150,165,185,255),0,2);
-        if (key==rgbSelected) {
+        draw->AddCircle(point,key==selected?13.f:10.f,key==selected?IM_COL32(50,220,210,255):IM_COL32(150,165,185,255),0,2);
+        if (key==selected) {
             const auto name=Text(d,"name"); const auto textSize=ImGui::CalcTextSize(name.c_str());
             const float labelX=point.x+13+textSize.x > at.x+size.x-8 ? point.x-13-textSize.x : point.x+13;
             draw->AddText({std::max(at.x+6,labelX),point.y-7},IM_COL32(205,215,230,255),name.c_str());
@@ -460,8 +542,8 @@ void Lighting(const Json& view) {
 }
 void OutputSummary(const Json& view) {
     ImGui::SeparatorText("Calculated light output");
-    const auto channels = view.value("channels", Json::array());
-    if (channels.empty()) { Wrap("Connect your bridge and select an Entertainment area in Setup."); return; }
+    const auto channels = HueEnabled(view) ? view.value("channels", Json::array()) : Json::array();
+    if (channels.empty() && HueEnabled(view)) Wrap("Hue: connect a bridge and select an Entertainment area in Setup.");
     std::vector<int> shown;
     const auto drawOutput = [](const std::string& label, const std::vector<const Json*>& members) {
         if (members.empty()) return;
@@ -506,13 +588,41 @@ void OutputSummary(const Json& view) {
         if (std::find(shown.begin(), shown.end(), id) != shown.end()) continue;
         ImGui::PushID(id); drawOutput(Text(channel, "label"), {&channel}); ImGui::PopID();
     }
+    bool deviceOutput = false;
+    for (const auto* roomKey : {"openRgbRoom", "tuyaRoom"}) {
+        const auto room = view.value(roomKey, Json::object());
+        if (!room.value("enabled", false)) continue;
+        ImGui::PushID(roomKey);
+        for (const auto& device : room.value("devices", Json::array())) {
+            if (!device.value("enabled", false)) continue;
+            deviceOutput = true;
+            ImGui::PushID(Text(device, "key").c_str());
+            drawOutput(Text(device, "name"), {&device}); ImGui::PopID();
+        }
+        ImGui::PopID();
+    }
+    if (channels.empty() && !deviceOutput) Wrap("Choose outputs in Setup and configure devices in their own tabs.");
     Wrap("Levels are calculated for your lamps; segmented lights show their average.");
 }
 void Setup(const Json& view) {
     static Shortcut chosen;
     static bool shortcutSeeded = false;
     if (!shortcutSeeded && view.value("ready", false)) { chosen = CurrentShortcut(); shortcutSeeded = true; }
-    ImGui::SeparatorText("Connection");
+    ImGui::SeparatorText("Lighting outputs");
+    OutputCheckbox(view, "Philips Hue Entertainment", "hue", "hueEnabled");
+    OutputCheckbox(view, "OpenRGB", "openRgb", "openRgbEnabled");
+    OutputCheckbox(view, "Tuya LAN (3.5)", "tuya", "tuyaEnabled");
+    Wrap("Use any output independently, or combine them. Stop sync before changing the selected outputs.");
+    Wrap(Text(view.value("outputs", Json::object()), "status"));
+    static std::array<char, 2048> bridge{}, telemetry{};
+    static bool seeded = false;
+    if (!seeded && view.value("ready", false)) {
+        strcpy_s(bridge.data(), bridge.size(), Text(view, "bridgeAddress").c_str());
+        strcpy_s(telemetry.data(), telemetry.size(), Text(view, "telemetryAddress").c_str()); seeded = true;
+    }
+    const bool enabled = view.value("canSetup", false);
+    if (HueEnabled(view)) {
+    ImGui::SeparatorText("Hue connection");
     const bool connected = view.value("bridgeConnected", false);
     ImGui::TextColored(connected ? ImVec4(.19f, .87f, .82f, 1) : ImVec4(.98f, .74f, .36f, 1),
         "%s", connected ? "CONNECTED" : "NOT CONNECTED");
@@ -522,13 +632,6 @@ void Setup(const Json& view) {
         Wrap("2. When found, press the round link button ON the bridge, then click Trust bridge & pair within 30 seconds.");
         Wrap("3. Wait for CONNECTED, then select your Entertainment area.");
     }
-    static std::array<char, 2048> bridge{}, telemetry{};
-    static bool seeded = false;
-    if (!seeded && view.value("ready", false)) {
-        strcpy_s(bridge.data(), bridge.size(), Text(view, "bridgeAddress").c_str());
-        strcpy_s(telemetry.data(), telemetry.size(), Text(view, "telemetryAddress").c_str()); seeded = true;
-    }
-    const bool enabled = view.value("canSetup", false);
     ImGui::BeginDisabled(!enabled);
     ImGui::InputText("Bridge IPv4", bridge.data(), bridge.size());
     ImGui::EndDisabled();
@@ -568,6 +671,10 @@ void Setup(const Json& view) {
     if (connected && !areas.empty()) ImGui::Text("%d Entertainment area(s) available", static_cast<int>(areas.size()));
     if (Button("Refresh areas", view.value("canRefresh", false) && enabled)) Action("refresh");
     Wrap(Text(view, "layout")); Wrap("Create and position channels in the Hue app. Imported positions are preserved.");
+    } else {
+        Wrap("Hue is off. A Hue bridge and Entertainment area are only needed when Hue output is enabled.");
+        Wrap("Configure OpenRGB and Tuya LAN in their own tabs.");
+    }
     if (ImGui::CollapsingHeader("Telemetry connection")) {
         ImGui::BeginDisabled(!enabled);
         ImGui::InputText("Telemetry WebSocket", telemetry.data(), telemetry.size());
@@ -680,9 +787,12 @@ void DrawUi(const Json& view, bool& visible, float scale) {
     if (ImGui::Begin("CrimsonHue - live lighting mixer", &open, ImGuiWindowFlags_NoCollapse)) {
         ImGui::TextColored({49.f/255, 221.f/255, 208.f/255, 1}, "CRIMSONHUE  /  %s", ShortcutLabel(CurrentShortcut()).c_str());
         if (InputHandoffPending()) Wrap("Release held keys and mouse buttons to use this panel.");
-        const bool bridgeConnected = view.value("bridgeConnected", false);
-        ImGui::TextColored(bridgeConnected ? ImVec4(.19f, .87f, .82f, 1) : ImVec4(.98f, .74f, .36f, 1),
-            "%s", bridgeConnected ? "HUE BRIDGE: CONNECTED" : "HUE BRIDGE: NOT CONNECTED - open Setup");
+        Wrap(Text(view.value("outputs", Json::object()), "status"));
+        if (HueEnabled(view)) {
+            const bool bridgeConnected = view.value("bridgeConnected", false);
+            ImGui::TextColored(bridgeConnected ? ImVec4(.19f, .87f, .82f, 1) : ImVec4(.98f, .74f, .36f, 1),
+                "%s", bridgeConnected ? "HUE BRIDGE: CONNECTED" : "HUE BRIDGE: NOT CONNECTED - open Setup");
+        }
         const bool simple = HasLightingProfile(view);
         if (simple) Assessment(view);
         else { Wrap(Text(view, "telemetry")); Wrap(Text(view, "capture")); Wrap(Text(view, "ambient")); }
@@ -691,13 +801,14 @@ void DrawUi(const Json& view, bool& visible, float scale) {
             const float left = std::max(350 * scale, ImGui::GetContentRegionAvail().x * .47f);
             bool advanced = !simple;
             rgbTabActive = false;
+            tuyaTabActive = false;
             ImGui::BeginChild("Mixer", {left, -110 * scale}, ImGuiChildFlags_Borders);
             if (ImGui::BeginTabBar("MixerTabs")) {
                 static bool previousWallPreview = false;
                 const bool selectRoom = view.value("wallPreview", false) && !previousWallPreview && testTab.empty();
                 previousWallPreview = view.value("wallPreview", false);
-                const std::vector<const char*> tabs = simple ? std::vector<const char*>{"Lighting", "Room", "OpenRGB", "Setup", "Advanced"} :
-                    std::vector<const char*>{"Output", "Ambient", "Color", "Space", "Room", "OpenRGB", "Setup", "Presets"};
+                const std::vector<const char*> tabs = simple ? std::vector<const char*>{"Lighting", "Room", "OpenRGB", "Tuya LAN", "Setup", "Advanced"} :
+                    std::vector<const char*>{"Output", "Ambient", "Color", "Space", "Room", "OpenRGB", "Tuya LAN", "Setup", "Presets"};
                 for (const auto* group : tabs) {
                     const bool choose = (selectRoom && strcmp(group, "Room") == 0) || testTab == group ||
                         (simple && strcmp(group, "Advanced") == 0 && AdvancedTab(testTab));
@@ -705,9 +816,13 @@ void DrawUi(const Json& view, bool& visible, float scale) {
                         if (testTab == group) testTab.clear();
                         if (strcmp(group, "Lighting") == 0) Lighting(view);
                         else if (strcmp(group, "OpenRGB") == 0) { rgbTabActive=true; OpenRgbControls(view); }
+                        else if (strcmp(group, "Tuya LAN") == 0) { tuyaTabActive=true; TuyaControls(view); }
                         else if (strcmp(group, "Advanced") == 0) { advanced = true; Advanced(view); }
                         else if (strcmp(group, "Setup") == 0) Setup(view);
-                        else if (strcmp(group, "Room") == 0) WallWash(view);
+                        else if (strcmp(group, "Room") == 0) {
+                            if (HueEnabled(view)) WallWash(view);
+                            else Wrap("Hue room calibration is optional. Enable Hue in Setup to use it. OpenRGB and Tuya positions are edited in their own tabs.");
+                        }
                         else if (strcmp(group, "Presets") == 0) Presets(view);
                         else Controls(view, group);
                         ImGui::EndTabItem();
@@ -715,15 +830,19 @@ void DrawUi(const Json& view, bool& visible, float scale) {
                 }
                 ImGui::EndTabBar();
             }
+            if (!rgbTabActive) rgbRoomState.dragging.clear();
+            if (!tuyaTabActive) tuyaRoomState.dragging.clear();
             ImGui::EndChild(); ImGui::SameLine();
             ImGui::BeginChild("Monitor", {0, -110 * scale}, ImGuiChildFlags_Borders);
             bool demo = view.value("demo", false);
             ImGui::BeginDisabled(view.value("canStop", false) || view.value("smoke", false));
             if (ImGui::Checkbox("Demo preview only", &demo)) Command({{"action", "demo"}, {"value", demo}});
             ImGui::EndDisabled();
-            if (rgbTabActive) OpenRgbRoom(view);
+            if (rgbTabActive) DeviceRoom(view, "openRgbRoom", "openRgb", rgbRoomState);
+            else if (tuyaTabActive) DeviceRoom(view, "tuyaRoom", "tuya", tuyaRoomState);
             else if (simple) {
-                Room(view);
+                if (HueEnabled(view)) Room(view);
+                else Wrap("Use the OpenRGB or Tuya LAN tab to arrange those devices in the room.");
                 OutputSummary(view);
                 if (advanced && ImGui::CollapsingHeader("Channel details")) {
                     Wrap(Text(view, "boundary"));
