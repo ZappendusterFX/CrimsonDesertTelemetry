@@ -1,5 +1,11 @@
 # Current checkpoint — 2026-11-04, build26423880 complete-path recovery on main
 
+GitHub main pushed through ce16f13; CI41806973251 succeeded (managed/API/package
+and native/UI checks). CI's default native target remains the validated26361232;
+the new26423880 candidate has the separate local evidence below. Hue main pushed
+through2d1f00a. No tags, public assets or Nexus writes. Both owner-install ZIPs are
+ready; finish the handoff and resume only after owner installation/restart report.
+
 Owner requests recovering the overnight update and merging both OpenRGB branches
 to main. Both local branches fast-forwarded. New EXE1.0.0.3527/SHA DC4237F2...,
 Steam26423880 is preserved. Installed PID6340's old native gate refuses it; old
