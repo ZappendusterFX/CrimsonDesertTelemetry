@@ -138,3 +138,16 @@ Offline guard verification and synthetic fixtures passed, including foreign-type
 filtering, field widths, registry changes, oversized-vector refusal before array
 read, and null chains. Logs are `synthetic-check.log` and `offline-validation.log`
 in the instance artifact folder. No live process opened during preparation.
+
+## First labeled live comparison — 2026-11-04
+
+Same PID16716/start17:30:10UTC. Owner-labeled gameplay18:47:58CET and
+Skills18:49:17CET each yield three stable registry samples,144subscriptions,
+six matching roots, no rejected roots,11660bytes/sample. Exact guards pass.
+Only emitted-field change: SkillTree root+0xBA goes0 ->1 and stays1 in all three
+Skills samples. All six A4/A8 remain593, AC/B0/B4 remain0; other roots and identities
+are unchanged. This is an activation candidate, not a proven general menu flag.
+Gameplay return and another menu/control are not yet measured.
+
+Evidence: `artifacts/menu-state-gameplay-20261104-184757-378-bf992a97a14545619c5d8afd8a3d0e75.json`
+and `artifacts/menu-state-skills-20261104-184916-617-81e54805303046e19fd6270411c39e6a.json`.

@@ -1,4 +1,15 @@
-# Current checkpoint — 2026-11-04, gameplay menu-state baseline captured; next Skills
+# Current checkpoint — 2026-11-04, Skills flips root byte BA; next gameplay return
+
+Owner's "Skills" captured three stable samples at18:49:17CET in the SAME PID16716.
+All guards pass,144subscriptions/six roots/no rejections. Only captured difference
+from gameplay is SkillTree root+BA:0 ->1 (opaqueB8ToC1 00010000000000000000 ->
+00010100000000000000), stable in all three samples. Root addresses/owners, other
+five roots, A4/A8=593 and transition fields stay unchanged. Evidence:
+artifacts/menu-state-skills-20261104-184916-617-81e54805303046e19fd6270411c39e6a.json.
+Promising correlation, NOT yet proven menu flag/general detection. Next: owner
+closes Skills, returns to gameplay and replies "Spiel"; immediately run
+& ./scripts/Read-MenuStateCandidates.ps1 -Label gameplay FROM CDT, compare BA
+against both prior samples. No rebuild, live writes, installation or polling.
 
 On owner's "Spiel", prepared reader completed three stable samples at18:47:58CET,
 PID16716 (started17:30:10UTC). All exact-code/vtable guards passed. Each sample:
@@ -6,9 +17,8 @@ PID16716 (started17:30:10UTC). All exact-code/vtable guards passed. Each sample:
 all six roots have A4=A8=593, transitionsAC/B0/B4=0, B8..C1=00010000000000000000.
 Evidence: artifacts/menu-state-gameplay-20261104-184757-378-bf992a97a14545619c5d8afd8a3d0e75.json.
 This validates the bounded lookup for this sample, NOT menu-open/closed semantics.
-Next owner action: open Skills, leave it open, reply "Skills". Then immediately
-run & ./scripts/Read-MenuStateCandidates.ps1 -Label skills FROM CDT and compare
-to the baseline. LightSync may remain off. No live writes or package checks.
+Skills comparison now captured above. LightSync may remain off. No live writes
+or package checks.
 
 Owner asks how to implement menu lighting. Continue automatic menu detection work,
 not the withdrawn OpenRGB/Razer diagnosis. No package installation/restart has
