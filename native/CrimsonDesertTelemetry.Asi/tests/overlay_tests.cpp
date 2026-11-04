@@ -599,7 +599,7 @@ void RecoveryNoticeTests()
         {"progress", nullptr}}}};
     auto parsed = ParseRecoveryHealth(health.dump());
     Require(parsed && !parsed->progress && parsed->state == "waiting-for-world", "Indeterminate world wait parse");
-    for (const auto* state : {"waiting-for-world", "scanning", "validating", "activating", "ready", "failed"})
+    for (const auto* state : {"waiting-for-world", "waiting-for-simulation", "scanning", "validating", "activating", "ready", "failed"})
     {
         health["recovery"]["state"] = state;
         for (const int progress : {0, 55, 100})
@@ -679,6 +679,52 @@ void RecoveryNoticeTests()
     ClearRecoveryStatus();
     Require(TryRead(local) && !local.recovery, "Native handoff did not clear local recovery ownership");
     std::cout << "PASS recovery health bounds, persistent stages, progress, completion and local ownership\n";
+}
+
+void IntentionalPauseNoticeTests()
+{
+    Config config; config.notifications = true;
+    config.lightsExpected = config.renderedExpected = config.upstreamExpected = true;
+    const auto now = Clock::time_point{} + std::chrono::seconds(10);
+    View view; view.connected = view.hasSample = true; view.received = now;
+    view.sample.playerPosition = Vec3{1, 2, 3}; view.sample.cameraPosition = Vec3{4, 5, 6};
+    for (const auto* state : {"loading", "playing"})
+        for (const auto* reason : {"simulation-paused", "awaiting-post-resume-capture"})
+        {
+            view.sample.state = state;
+            for (auto* light : {&view.sample.authoredLights, &view.sample.renderedLights, &view.sample.upstreamLights})
+            { light->status = "unavailable"; light->unavailableReason = reason; }
+            NoticeTracker tracker;
+            Require(!tracker.Update(view, config, now), "Intentional pause/resume was reported as a light error");
+            view.received = now + std::chrono::minutes(1);
+            Require(!tracker.Update(view, config, view.received), "Intentional wait acquired an error timeout");
+            view.received = now;
+            for (const auto* failure : {"native-fault", "bridge-invalid", "unsupported-build", "unexpected-reader-failure"})
+            {
+                view.sample.renderedLights.unavailableReason = failure;
+                const auto notice = tracker.Update(view, config, now);
+                Require(notice && notice->error, "Intentional pause hid a separate real light failure");
+            }
+            view.sample.renderedLights.unavailableReason = reason;
+            view.sample.renderedLights.status = "invalid";
+            Require(tracker.Update(view, config, now)->error, "A pause reason hid malformed light data");
+            view.sample.renderedLights.status = "unavailable";
+        }
+    view.sample.state = "loading";
+    view.recovery = RecoveryStatus{"waiting-for-simulation", "Lighting acquisition paused",
+        "Waiting for simulation progress.", std::nullopt};
+    NoticeTracker recovery;
+    Require(!recovery.Update(view, config, now) && Status(view, now, 1000) == "SIMULATION PAUSED",
+        "Intentional recovery suspension was shown as an actionable recovery notice");
+    view.sample.renderedLights.unavailableReason = "native-fault";
+    Require(recovery.Update(view, config, now)->error, "Recovery suspension hid an independent native fault");
+    view.sample.renderedLights.unavailableReason = "simulation-paused";
+    view.healthStatus = "error"; view.healthError = "Actual host failure";
+    Require(recovery.Update(view, config, now)->error, "Recovery suspension hid a host error");
+    view.healthStatus.clear(); view.healthError.clear();
+    view.localFaults.push_back({"native", "Actual local failure", "Fixture."});
+    Require(recovery.Update(view, config, now)->error, "Intentional pause hid a process-local fault");
+    std::cout << "PASS intentional pause/resume notices stay silent while genuine failures remain actionable\n";
 }
 
 void NoticeTests()
@@ -1071,6 +1117,7 @@ int main(int argc, char** argv)
         Require(std::abs(sample.sourceAgeMs - 1500) < 0.1, "Source timestamp age");
         std::cout << "PASS overlay source age includes time before receipt\n";
         NoticeTests();
+        IntentionalPauseNoticeTests();
         RecoveryNoticeTests();
         return 0;
     }

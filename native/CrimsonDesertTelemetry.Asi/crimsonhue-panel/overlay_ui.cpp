@@ -398,10 +398,15 @@ void Lighting(const Json& view) {
             Command({{"action", "menuLighting"}, {"brightness", brightness / 100.0f}});
         const auto color = menu->value("color", Json::object());
         float rgb[]{color.value("x", 1.0f), color.value("y", .65f), color.value("z", .35f)};
+        ImGui::TextUnformatted("Menu color");
         ImGui::SetNextItemWidth(-1);
-        if (ImGui::ColorEdit3("Menu color", rgb, ImGuiColorEditFlags_NoInputs))
+        if (ImGui::ColorEdit3("##menuColor", rgb, ImGuiColorEditFlags_DisplayHex))
             Command({{"action", "menuLighting"}, {"color", {{"r", rgb[0]}, {"g", rgb[1]}, {"b", rgb[2]}}}});
+        Wrap("Click the color swatch or enter a hex color. Changes apply live while paused.");
+        if (Button("Gold preset")) Command({{"action", "menuLighting"}, {"preset", "gold"}});
+        ImGui::SameLine();
         if (Button("Reset menu lighting")) Command({{"action", "menuLighting"}, {"reset", true}});
+        if (Button("Save menu lighting")) Action("save");
         if (menu->value("active", false)) Wrap("Menu light active");
         ImGui::Spacing();
     }

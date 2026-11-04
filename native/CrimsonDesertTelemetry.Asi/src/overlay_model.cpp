@@ -691,7 +691,7 @@ std::optional<RecoveryStatus> ParseRecoveryHealth(const std::string_view text)
     };
     RecoveryStatus result{bounded("state", 32, true), bounded("title", 128, true),
         bounded("detail", 512, false), std::nullopt};
-    if (result.state != "waiting-for-world" && result.state != "scanning" &&
+    if (result.state != "waiting-for-world" && result.state != "waiting-for-simulation" && result.state != "scanning" &&
         result.state != "validating" && result.state != "activating" &&
         result.state != "ready" && result.state != "failed")
         throw std::runtime_error("Unknown recovery state");
@@ -708,7 +708,8 @@ std::optional<RecoveryStatus> ParseRecoveryHealth(const std::string_view text)
 std::string Status(const View& view, const Clock::time_point now, const int staleMs)
 {
     if (view.recovery && view.recovery->state != "ready")
-        return view.recovery->state == "failed" ? "RECOVERY STOPPED" : "UPDATE RECOVERY";
+        return view.recovery->state == "failed" ? "RECOVERY STOPPED" :
+            view.recovery->state == "waiting-for-simulation" ? "SIMULATION PAUSED" : "UPDATE RECOVERY";
     if (!view.connected) return view.connection;
     if (!view.hasSample) return "WAITING FOR DATA";
     if (AgeMs(view, now) > staleMs) return "STALE DATA";
@@ -732,6 +733,11 @@ NoticeState LightNotice(const LightSummary& light)
     if (light.status == "invalid")
         return {"lights-invalid", {"Light data is incompatible",
             "Install matching ASI and telemetry host versions, then restart Crimson Desert.", true}};
+    // Explicit host acquisition policy, not a native capture/read failure. Keep
+    // these quiet even while the first post-resume sample is still pending.
+    if (light.status == "unavailable" &&
+        (reason == "simulation-paused" || reason == "awaiting-post-resume-capture"))
+        return {"lights-intentional-wait", {}, NoticeState::Silent};
     if (reason == "unsupported-build")
         return {reason, {"Light capture needs an update",
             "Install a telemetry version compatible with this Crimson Desert build.", true}};
@@ -766,7 +772,7 @@ NoticeState NextNotice(const View& view, const Config& config, Clock::time_point
         const auto& fault = view.localFaults.front();
         return {"local-" + fault.source, {fault.title, fault.detail, true}};
     }
-    if (view.recovery)
+    if (view.recovery && view.recovery->state != "waiting-for-simulation")
     {
         const auto& recovery = *view.recovery;
         const bool failed = recovery.state == "failed", ready = recovery.state == "ready";
