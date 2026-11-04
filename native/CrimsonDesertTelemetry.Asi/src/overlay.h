@@ -16,6 +16,11 @@ void Publish(View view);
 // its bounded actionable fault; notifications still respect the user's opt-out.
 void SetLocalFault(std::string_view source, std::string_view title, std::string_view detail) noexcept;
 void ClearLocalFault(std::string_view source) noexcept;
+// Local native progress remains visible without HTTP. Clear it when handing
+// progress ownership to the host. Negative progress means indeterminate.
+void SetRecoveryStatus(std::string_view state, std::string_view title,
+    std::string_view detail, int progress = -1) noexcept;
+void ClearRecoveryStatus() noexcept;
 // Blocking receive loop for a dedicated worker; the ASI keeps it for process lifetime.
 void RunClient(Config config, HANDLE stopEvent);
 void DrawHud(const View& view, const Config& config, bool details);

@@ -335,6 +335,7 @@ int wmain(int argc, wchar_t** argv)
         Config config; config.details = true;
         Require(!InstallGraphics(config), "Disabled HUD installed graphics hooks");
         const bool allOn = argc > 1 && (_wcsicmp(argv[1], L"--all-ui") == 0 || _wcsicmp(argv[1], L"--scrgb-all-ui") == 0);
+        const bool recoveryMode = argc > 1 && _wcsicmp(argv[1], L"--recovery") == 0;
         const bool scRgbNotices = argc > 1 && _wcsicmp(argv[1], L"--scrgb-notices") == 0;
         const bool scRgb = scRgbNotices || (argc > 1 && (_wcsicmp(argv[1], L"--scrgb") == 0 || _wcsicmp(argv[1], L"--scrgb-all-ui") == 0));
         const bool noticesOnly = scRgbNotices || (argc > 1 && _wcsicmp(argv[1], L"--notices") == 0);
@@ -342,7 +343,7 @@ int wmain(int argc, wchar_t** argv)
         const bool engineLights = argc > 1 && _wcsicmp(argv[1], L"--engine-lights") == 0;
         const bool lightsMode = allOn || lightsOnly || engineLights || (argc > 1 && _wcsicmp(argv[1], L"--lights") == 0);
         config.enabled = !noticesOnly && !lightsOnly;
-        config.notifications = allOn || noticesOnly;
+        config.notifications = allOn || noticesOnly || recoveryMode;
         config.lightOverlay = lightsMode;
         // Regression control: InitiallyVisible=0 must still allow the runtime
         // F10 state to enable drawing; the immutable startup config stays false.
@@ -439,6 +440,41 @@ int wmain(int argc, wchar_t** argv)
         MaintainGraphics();
         Require(std::string(GraphicsStatus()).find("Overlay ready") != std::string::npos,
             "HUD did not adopt the replacement swapchain");
+        if (recoveryMode)
+        {
+            Check(chain->ResizeBuffers(3, 1920, 1080, swapchainFormat, 0));
+            MaintainGraphics();
+            View view;
+            view.recovery = RecoveryStatus{"scanning", "Finding updated game data",
+                "The game update moved known code. Checking light, ambient and physics entry points before enabling capture.", 55};
+            SetVisibleForTest(true);
+            const auto both = frame(false, argc > 2 ? argv[2] : nullptr, &view, true);
+            Require(both.Changed(20, 20, 530, 350) > 1000 && both.Changed(550, 20, 1170, 300) > 1000,
+                "Recovery HUD and independent progress notice must both be visible");
+            view.recovery->progress = 80;
+            const auto progressed = frame(false, nullptr, &view, true);
+            Require(both.Different(progressed, 20, 20, 1170, 350) > 300,
+                "Recovery percentage changes did not update drawn progress bars");
+            SetVisibleForTest(false);
+            const auto noticeOnly = frame(false, nullptr, &view, true);
+            Require(noticeOnly.Changed(20, 20, 640, 300) > 1000 &&
+                noticeOnly.Changed(650, 20, 1300, 350) == 0,
+                "Recovery notice must survive hiding the full HUD without a second panel");
+            view.recovery.reset();
+            SetRecoveryStatus("failed", "Recovery needs a plugin update",
+                "A required code layout changed. Capture remains disabled; check the telemetry log for details.");
+            const auto failure = frame(false, argc > 3 ? argv[3] : nullptr, &view, true);
+            Require(failure.Different(noticeOnly, 20, 20, 640, 300) > 500,
+                "Native recovery failure did not replace host progress");
+            ClearRecoveryStatus();
+            const auto cleared = frame(false, nullptr, &view, true);
+            Require(cleared.Changed(0, 0, 1920, 1080) == 0,
+                "Explicitly cleared recovery remained on screen");
+            Check(gpu.device->GetDeviceRemovedReason());
+            std::cout << "PASS recovery HUD/notice progress, hidden-HUD visibility, native failure and clear; synthetic WARP only\n";
+            DestroyWindow(window);
+            return 0;
+        }
         if (engineLights)
         {
             // Engine-input view: the renderer's selection plus current lights it did

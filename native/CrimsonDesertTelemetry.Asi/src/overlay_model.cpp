@@ -673,8 +673,42 @@ std::string LightFeedStatus(const View& view, const Clock::time_point now, const
     return view.sample.upstreamLights.status == "not-reported" ? "LIVE RENDERED LIGHTS"
         : "RENDERED ONLY / ENGINE INPUT UNAVAILABLE";
 }
+std::optional<RecoveryStatus> ParseRecoveryHealth(const std::string_view text)
+{
+    if (text.size() > 16384) throw std::runtime_error("Health size limit");
+    const auto json = Json::parse(text);
+    if (!json.is_object()) throw std::runtime_error("Invalid health object");
+    if (!json.contains("recovery") || json["recovery"].is_null()) return std::nullopt;
+    const auto& value = json["recovery"];
+    if (!value.is_object()) throw std::runtime_error("Invalid recovery status");
+    const auto bounded = [&](const char* key, size_t maximum, bool required)
+    {
+        const auto result = value.at(key).get<std::string>();
+        if (result.size() > maximum || (required && result.empty()) ||
+            std::any_of(result.begin(), result.end(), [](unsigned char c) { return c < 32 || c == 127; }))
+            throw std::runtime_error("Invalid recovery text");
+        return result;
+    };
+    RecoveryStatus result{bounded("state", 32, true), bounded("title", 128, true),
+        bounded("detail", 512, false), std::nullopt};
+    if (result.state != "waiting-for-world" && result.state != "scanning" &&
+        result.state != "validating" && result.state != "activating" &&
+        result.state != "ready" && result.state != "failed")
+        throw std::runtime_error("Unknown recovery state");
+    if (value.contains("progress") && !value["progress"].is_null())
+    {
+        const auto& progress = value["progress"];
+        if (!progress.is_number_integer() || progress < 0 || progress > 100)
+            throw std::runtime_error("Invalid recovery progress");
+        result.progress = progress.get<int>();
+    }
+    return result;
+}
+
 std::string Status(const View& view, const Clock::time_point now, const int staleMs)
 {
+    if (view.recovery && view.recovery->state != "ready")
+        return view.recovery->state == "failed" ? "RECOVERY STOPPED" : "UPDATE RECOVERY";
     if (!view.connected) return view.connection;
     if (!view.hasSample) return "WAITING FOR DATA";
     if (AgeMs(view, now) > staleMs) return "STALE DATA";
@@ -690,7 +724,7 @@ struct NoticeState
 {
     std::string key;
     Notice notice;
-    enum Kind { Silent, Waiting, Ready, Error } kind = Error;
+    enum Kind { Silent, Waiting, Ready, Error, Progress, Recovered } kind = Error;
 };
 NoticeState LightNotice(const LightSummary& light)
 {
@@ -731,6 +765,14 @@ NoticeState NextNotice(const View& view, const Config& config, Clock::time_point
     {
         const auto& fault = view.localFaults.front();
         return {"local-" + fault.source, {fault.title, fault.detail, true}};
+    }
+    if (view.recovery)
+    {
+        const auto& recovery = *view.recovery;
+        const bool failed = recovery.state == "failed", ready = recovery.state == "ready";
+        return {"recovery-" + recovery.state,
+            {recovery.title, recovery.detail, failed, !ready, recovery.progress},
+            failed ? NoticeState::Error : ready ? NoticeState::Recovered : NoticeState::Progress};
     }
     if (!live && (view.healthStatus == "unsupported-build" || view.healthStatus == "error"))
         return {"health-" + view.healthStatus, {
@@ -804,7 +846,7 @@ std::optional<Notice> NoticeTracker::Update(const View& view, const Config& conf
     }
     const auto visible = [&]() -> std::optional<Notice>
     {
-        return current_ && (current_->error || now - shownAt_ < std::chrono::milliseconds(
+        return current_ && (current_->error || current_->persistent || now - shownAt_ < std::chrono::milliseconds(
             std::clamp(config.notificationDurationMs, 5000, 10000))) ? current_ : std::nullopt;
     };
     // A confirmed non-playing state arms one new ready toast for the next
@@ -814,6 +856,12 @@ std::optional<Notice> NoticeTracker::Update(const View& view, const Config& conf
         (view.healthStatus == "loading" || view.healthStatus == "discovering" || view.healthStatus == "waiting"));
     if (sceneWaiting) readyForScene_ = false;
     auto next = NextNotice(view, config, now);
+    if (currentKey_.starts_with("recovery-") && !view.recovery)
+    {
+        // The owner explicitly cleared this recovery status. Never leave a
+        // scanning/failed card behind after the host/native handoff completes.
+        current_.reset(); currentKey_.clear();
+    }
     if (currentKey_.starts_with("local-") && next.kind != NoticeState::Error)
     {
         // The owning local source explicitly cleared its fault. Do not keep
@@ -839,6 +887,7 @@ std::optional<Notice> NoticeTracker::Update(const View& view, const Config& conf
         if (readyForScene_ && (!current_ || !current_->error)) return visible();
         readyForScene_ = true;
     }
+    if (next.kind == NoticeState::Recovered) readyForScene_ = true;
     if (next.key == currentKey_)
     {
         // Updated diagnostics from the same source must not freeze old text.

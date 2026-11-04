@@ -24,6 +24,7 @@ struct Shared
     View view;
     std::string healthStatus, healthError;
     std::vector<View::LocalFault> localFaults;
+    std::optional<RecoveryStatus> localRecovery, healthRecovery;
     AmbientSummary ambient;
     Clock::time_point ambientReceived{};
     bool hasAmbient{};
@@ -153,6 +154,7 @@ void PollHealth(unsigned short port)
     // This is a bounded diagnostic read on the maintenance worker, never on the
     // game's render thread. Unsupported builds do not produce stream snapshots.
     std::string status, error;
+    std::optional<RecoveryStatus> recovery;
     try
     {
         HttpHandle session(WinHttpOpen(L"CrimsonDesertTelemetryStatus/1", WINHTTP_ACCESS_TYPE_NO_PROXY,
@@ -186,6 +188,7 @@ void PollHealth(unsigned short port)
         if (json.contains("error") && json["error"].is_string()) error = json["error"].get<std::string>();
         if (status.size() > 64) status = "error";
         if (error.size() > 300) error.resize(300);
+        recovery = ParseRecoveryHealth(body);
     }
     catch (...) { status = "host-unreachable"; }
     auto& shared = SharedView();
@@ -196,6 +199,10 @@ void PollHealth(unsigned short port)
         std::erase_if(shared.localFaults, [](const auto& fault) { return fault.source == "bootstrap"; });
     shared.healthStatus = std::move(status);
     shared.healthError = std::move(error);
+    // Keep a diagnosed recovery failure through a lost health response; a valid
+    // response without recovery explicitly clears the optional extension.
+    if (shared.healthStatus != "host-unreachable" || !shared.healthRecovery ||
+        shared.healthRecovery->state != "failed") shared.healthRecovery = std::move(recovery);
 }
 void PollAmbient(unsigned short port)
 {
@@ -266,16 +273,17 @@ DWORD WINAPI Worker(void* parameter)
         while (WaitForSingleObject(args->stop, 50) == WAIT_TIMEOUT)
         {
             MaintainGraphics();
-            if (args->config.notifications && Clock::now() - lastHealth >= std::chrono::seconds(2))
+            if ((args->config.notifications || args->config.enabled) && Clock::now() - lastHealth >= std::chrono::seconds(2))
             {
                 View current;
                 TryRead(current);
-                if (!IsLive(current, Clock::now(), args->config.staleMs)) PollHealth(args->config.port);
+                if (!IsLive(current, Clock::now(), args->config.staleMs) || current.recovery) PollHealth(args->config.port);
                 else
                 {
                     auto& shared = SharedView();
                     std::lock_guard guard(shared.mutex);
                     shared.healthStatus.clear(); shared.healthError.clear();
+                    shared.healthRecovery.reset();
                 }
                 lastHealth = Clock::now();
             }
@@ -314,6 +322,8 @@ bool TryRead(View& view)
     view.ambient=shared.ambient;view.ambientReceived=shared.ambientReceived;view.hasAmbient=shared.hasAmbient;
     view.healthStatus = shared.healthStatus;
     view.healthError = shared.healthError;
+    if (shared.localRecovery) view.recovery = shared.localRecovery;
+    else if (shared.healthRecovery) view.recovery = shared.healthRecovery;
     view.localFaults.insert(view.localFaults.end(), shared.localFaults.begin(), shared.localFaults.end());
     return true;
 }
@@ -347,6 +357,31 @@ void ClearLocalFault(std::string_view source) noexcept
         auto& shared = SharedView();
         std::lock_guard lock(shared.mutex);
         std::erase_if(shared.localFaults, [&](const auto& fault) { return fault.source == source; });
+    }
+    catch (...) { }
+}
+void SetRecoveryStatus(std::string_view state, std::string_view title, std::string_view detail, int progress) noexcept
+{
+    try
+    {
+        // Use exactly the same bounds/state vocabulary as the optional host
+        // status. No local call can create an unbounded draw/log payload.
+        nlohmann::json value = {{"state", state}, {"title", title}, {"detail", detail}};
+        value["progress"] = progress < 0 ? nlohmann::json(nullptr) : nlohmann::json(progress);
+        const auto recovery = ParseRecoveryHealth(nlohmann::json{{"recovery", value}}.dump());
+        auto& shared = SharedView();
+        std::lock_guard lock(shared.mutex);
+        shared.localRecovery = recovery;
+    }
+    catch (...) { } // Progress reporting must never terminate the game.
+}
+void ClearRecoveryStatus() noexcept
+{
+    try
+    {
+        auto& shared = SharedView();
+        std::lock_guard lock(shared.mutex);
+        shared.localRecovery.reset();
     }
     catch (...) { }
 }

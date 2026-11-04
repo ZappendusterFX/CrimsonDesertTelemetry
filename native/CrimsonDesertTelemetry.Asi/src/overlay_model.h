@@ -78,6 +78,12 @@ struct Sample
     // Current engine lights before view selection, same capture as renderedLights.
     LightSummary upstreamLights;
 };
+struct RecoveryStatus
+{
+    std::string state, title, detail;
+    // Stage-based completion only. No invented percentage while waiting for a world.
+    std::optional<int> progress;
+};
 struct View
 {
     Sample sample;
@@ -85,6 +91,7 @@ struct View
     bool connected{}, hasSample{};
     std::string connection = "CONNECTING";
     std::string healthStatus, healthError;
+    std::optional<RecoveryStatus> recovery;
     // Process-local bootstrap/native failures survive disconnected stream views.
     struct LocalFault { std::string source, title, detail; };
     std::vector<LocalFault> localFaults;
@@ -115,6 +122,8 @@ struct Notice
 {
     std::string title, detail;
     bool error = false;
+    bool persistent = false;
+    std::optional<int> progress;
 };
 class NoticeTracker
 {
@@ -129,6 +138,8 @@ private:
 // Reject malformed/oversize/incompatible data; never interpret missing vectors as zero.
 Sample ParseSample(std::string_view json, std::chrono::system_clock::time_point now);
 AmbientSummary ParseAmbient(std::string_view json);
+// Optional health extension; old hosts omit it. Malformed status is rejected.
+std::optional<RecoveryStatus> ParseRecoveryHealth(std::string_view json);
 std::optional<float> Heading(Vec3 direction);
 struct ScreenPoint { float x{}, y{}, depth{}; };
 // World positions are already reconstructed with the capture-paired camera.

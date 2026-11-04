@@ -287,7 +287,15 @@ void DrawRadar(ImDrawList* draw, const View& view, const Sample& sample,
 void DrawHud(const View& view, const Config& config, const bool details)
 {
     auto& io = ImGui::GetIO();
-    const float naturalHeight = HudNaturalHeight(config,details);
+    const bool recovering = view.recovery && view.recovery->state != "ready";
+    const auto* recovery = recovering ? &*view.recovery : nullptr;
+    const float recoveryTitleHeight = recovery
+        ? ImGui::GetFont()->CalcTextSizeA(18, 470, 470, recovery->title.c_str()).y : 0;
+    const float recoveryDetailHeight = recovery
+        ? ImGui::GetFont()->CalcTextSizeA(15, 470, 470, recovery->detail.c_str()).y : 0;
+    const float naturalHeight = recovery
+        ? 110 + recoveryTitleHeight + recoveryDetailHeight + (recovery->progress ? 42 : 0)
+        : HudNaturalHeight(config,details);
     const float scale = HudScale(io.DisplaySize.x, io.DisplaySize.y, config, details);
     if (scale < 0.3f) return;
     const float width = 510 * scale, height = naturalHeight * scale;
@@ -310,6 +318,25 @@ void DrawHud(const View& view, const Config& config, const bool details)
     const bool live = IsLive(view, now, config.staleMs);
     text(272, 24, live ? Cyan : Amber, Status(view, now, config.staleMs), 14);
     draw->AddLine(point(20, 70), point(490, 70), IM_COL32(40, 61, 76, 255));
+
+    if (recovery)
+    {
+        const auto accent = recovery->state == "failed" ? Amber : Cyan;
+        auto* font = ImGui::GetFont();
+        draw->AddText(font, 18 * scale, point(20, 85), accent,
+            recovery->title.c_str(), nullptr, 470 * scale);
+        const float detailTop = 93 + recoveryTitleHeight;
+        draw->AddText(font, 15 * scale, point(20, detailTop), White,
+            recovery->detail.c_str(), nullptr, 470 * scale);
+        if (recovery->progress)
+        {
+            const float top = detailTop + recoveryDetailHeight + 12;
+            text(20, top, Muted, std::format("Recovery progress: {}%", *recovery->progress), 12);
+            draw->AddRectFilled(point(20, top + 21), point(490, top + 27), IM_COL32(40, 61, 76, 255), 3 * scale);
+            draw->AddRectFilled(point(20, top + 21), point(20 + 4.7f * *recovery->progress, top + 27), accent, 3 * scale);
+        }
+        return;
+    }
 
     const Sample empty{};
     const auto& sample = live ? view.sample : empty;
@@ -717,9 +744,12 @@ void DrawNotice(const Notice& notice, const Config& config, bool hudVisible, boo
     float x = margin, y = margin;
     auto* font = ImGui::GetFont();
     const float wrap = width - 36 * scale;
+    const auto titleSize = font->CalcTextSizeA(18 * scale, wrap, wrap,
+        notice.title.c_str(), nullptr);
     const auto detailSize = font->CalcTextSizeA(15 * scale, wrap, wrap,
         notice.detail.c_str(), nullptr);
-    const float height = 60 * scale + detailSize.y;
+    const float detailTop = 37 * scale + titleSize.y;
+    const float height = detailTop + detailSize.y + (notice.progress ? 44 : 10) * scale;
     // Default HUD uses top-left too. Place notices beside it when possible,
     // otherwise below. Bottom-left/right HUDs do not consume this origin.
     if (hudVisible && config.corner == 0)
@@ -736,7 +766,16 @@ void DrawNotice(const Notice& notice, const Config& config, bool hudVisible, boo
     draw->AddRectFilled(start, end, IM_COL32(9,20,30,240), 8 * scale);
     draw->AddRect(start, end, accent, 8 * scale);
     draw->AddText(font, 13 * scale, ImVec2(x+18*scale,y+10*scale), Muted, "CRIMSON DESERT TELEMETRY");
-    draw->AddText(font, 18 * scale, ImVec2(x+18*scale,y+29*scale), accent, notice.title.c_str());
-    draw->AddText(font, 15 * scale, ImVec2(x+18*scale,y+55*scale), White, notice.detail.c_str(), nullptr, wrap);
+    draw->AddText(font, 18 * scale, ImVec2(x+18*scale,y+29*scale), accent, notice.title.c_str(), nullptr, wrap);
+    draw->AddText(font, 15 * scale, ImVec2(x+18*scale,y+detailTop), White, notice.detail.c_str(), nullptr, wrap);
+    if (notice.progress)
+    {
+        const float top = y + detailTop + detailSize.y + 9 * scale;
+        const auto label = std::format("{}%", *notice.progress);
+        draw->AddText(font, 12 * scale, ImVec2(x+18*scale,top), Muted, label.c_str());
+        const ImVec2 begin(x+58*scale,top+4*scale), finish(x+width-18*scale,top+10*scale);
+        draw->AddRectFilled(begin, finish, IM_COL32(40,61,76,255), 3 * scale);
+        draw->AddRectFilled(begin, ImVec2(begin.x+(finish.x-begin.x)*(*notice.progress/100.f),finish.y), accent, 3 * scale);
+    }
 }
 }

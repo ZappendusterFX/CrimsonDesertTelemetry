@@ -588,6 +588,99 @@ void UpstreamLightTests(nlohmann::json json,std::chrono::system_clock::time_poin
         "A single unavailable input sample must not raise the refusal error");
     std::cout<<"PASS HUD engine-input lights: preference, fallback, behind-camera counts, selection flags, isolation and notices\n";
 }
+void RecoveryNoticeTests()
+{
+    using Json = nlohmann::json;
+    Require(!ParseRecoveryHealth(R"({"status":"playing"})") &&
+        !ParseRecoveryHealth(R"({"status":"loading","recovery":null})"),
+        "Older hosts and absent recovery must remain compatible");
+    Json health = {{"status", "discovering"}, {"recovery", {{"state", "waiting-for-world"},
+        {"title", "Game update detected"}, {"detail", "Load a save to continue the compatibility checks."},
+        {"progress", nullptr}}}};
+    auto parsed = ParseRecoveryHealth(health.dump());
+    Require(parsed && !parsed->progress && parsed->state == "waiting-for-world", "Indeterminate world wait parse");
+    for (const auto* state : {"waiting-for-world", "scanning", "validating", "activating", "ready", "failed"})
+    {
+        health["recovery"]["state"] = state;
+        for (const int progress : {0, 55, 100})
+        {
+            health["recovery"]["progress"] = progress;
+            parsed = ParseRecoveryHealth(health.dump());
+            Require(parsed && parsed->state == state && parsed->progress == progress, "Valid stage progress rejected");
+        }
+    }
+    const auto rejects = [&](const Json& invalid)
+    {
+        bool rejected = false;
+        try { ParseRecoveryHealth(invalid.dump()); } catch (...) { rejected = true; }
+        Require(rejected, "Malformed recovery status must be rejected");
+    };
+    for (const Json& value : {Json(-1), Json(101), Json(1.5), Json("50"), Json(true), Json(1e30)})
+    {
+        auto invalid = health; invalid["recovery"]["progress"] = value; rejects(invalid);
+    }
+    for (const auto* key : {"state", "title", "detail"})
+    {
+        auto invalid = health; invalid["recovery"].erase(key); rejects(invalid);
+        invalid = health; invalid["recovery"][key] = std::string(1024, 'x'); rejects(invalid);
+        invalid = health; invalid["recovery"][key] = "line\nline"; rejects(invalid);
+        invalid = health; invalid["recovery"][key] = 12; rejects(invalid);
+    }
+    auto invalid = health; invalid["recovery"]["state"] = "pretend-tested"; rejects(invalid);
+    invalid = health; invalid["recovery"]["title"] = ""; rejects(invalid);
+    invalid = health; invalid["recovery"] = Json::array(); rejects(invalid);
+
+    Config config; config.notifications = true; config.notificationDurationMs = 6000;
+    const auto start = Clock::time_point{} + std::chrono::seconds(100);
+    View view;
+    view.recovery = RecoveryStatus{"waiting-for-world", "Game update detected", "Load a save to continue.", std::nullopt};
+    NoticeTracker tracker;
+    auto notice = tracker.Update(view, config, start);
+    Require(notice && notice->persistent && !notice->error && !notice->progress,
+        "World wait must be clear without claiming percentage or failure");
+    Require(tracker.Update(view, config, start + std::chrono::minutes(10)).has_value(),
+        "Active recovery must not expire while waiting for the player");
+    view.recovery = RecoveryStatus{"scanning", "Finding updated game data", "Checking known code patterns.", 40};
+    notice = tracker.Update(view, config, start + std::chrono::minutes(11));
+    Require(notice && notice->progress == 40 && notice->persistent, "Scanning stage did not replace waiting");
+    view.recovery->progress = 65;
+    view.recovery->detail = "Checking physics entry points.";
+    notice = tracker.Update(view, config, start + std::chrono::minutes(12));
+    Require(notice && notice->progress == 65 && notice->detail == view.recovery->detail,
+        "Progress and detail updates must not freeze within a stage");
+    view.recovery = RecoveryStatus{"failed", "Recovery could not finish", "A code layout changed; a plugin update is needed.", std::nullopt};
+    notice = tracker.Update(view, config, start + std::chrono::minutes(13));
+    Require(notice && notice->error && tracker.Update(view, config, start + std::chrono::hours(1))->error,
+        "An actionable recovery failure must persist until explicitly cleared");
+    view.recovery = RecoveryStatus{"ready", "Compatibility checks passed", "Fresh telemetry is available.", 100};
+    const auto completed = start + std::chrono::hours(2);
+    notice = tracker.Update(view, config, completed);
+    Require(notice && !notice->error && !notice->persistent && notice->progress == 100,
+        "Recovery success must replace failure without claiming a tested build");
+    Require(tracker.Update(view, config, completed + std::chrono::milliseconds(5999)).has_value() &&
+        !tracker.Update(view, config, completed + std::chrono::seconds(6)),
+        "Recovery ready toast must expire without repeated refreshes restarting it");
+    view.recovery.reset();
+    Require(!tracker.Update(view, config, completed + std::chrono::seconds(7)), "Cleared recovery remained on screen");
+    view.recovery = RecoveryStatus{"scanning", "Finding updated game data", "Checking known patterns.", 50};
+    config.notifications = false;
+    Require(!tracker.Update(view, config, completed + std::chrono::seconds(8)), "Recovery ignores notification opt-out");
+
+    Publish(View{}); ClearRecoveryStatus();
+    SetRecoveryStatus("validating", "Validating live game data", "Waiting for progressing frames.", 80);
+    View local;
+    Require(TryRead(local) && local.recovery && local.recovery->progress == 80,
+        "Local recovery status must work before any host response");
+    Publish(View{});
+    Require(TryRead(local) && local.recovery, "Reconnect publication must not erase local recovery");
+    SetRecoveryStatus("unknown", "Invalid", "Ignored.", 101);
+    Require(TryRead(local) && local.recovery && local.recovery->progress == 80,
+        "Invalid local progress replaced a valid recovery state");
+    ClearRecoveryStatus();
+    Require(TryRead(local) && !local.recovery, "Native handoff did not clear local recovery ownership");
+    std::cout << "PASS recovery health bounds, persistent stages, progress, completion and local ownership\n";
+}
+
 void NoticeTests()
 {
     Config config;
@@ -978,6 +1071,7 @@ int main(int argc, char** argv)
         Require(std::abs(sample.sourceAgeMs - 1500) < 0.1, "Source timestamp age");
         std::cout << "PASS overlay source age includes time before receipt\n";
         NoticeTests();
+        RecoveryNoticeTests();
         return 0;
     }
     catch (const std::exception& error) { std::cerr << "FAIL " << error.what() << '\n'; return 1; }
