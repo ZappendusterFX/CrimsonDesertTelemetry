@@ -1,4 +1,28 @@
-# Current checkpoint — 2026-11-04, owner-installed cold recovery passed in game
+# Current checkpoint — 2026-11-04, public2.2.8 ready for authorized GitHub release
+
+Owner requests release, GitHub push and updated descriptions for the paired work.
+Public2.2.8 promotes the current26423880 profile based on the owner-installed
+recovery.2 acceptance below: paired statuses and three confidence fields are
+locally-validated, legacy autoallowlist staysfalse, exact bytes/offsets unchanged.
+Production defaults/CI now target26423880 with research/bypassOFF; explicit263
+archived coverage retained. Normal featuresON and RecoveryTestOnce empty.
+README, public description, package instructions, API/recovery docs and release
+notes updated. Regular configuration86/86managed and42/42native; package checks
+and exact embedded-profile/config verification passed. Hue1.0.6 paired OpenRGB
+render passed. See releases/v2.2.8-validation.md for evidence and limits.
+
+Immutable artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.8-ModManagers.zip:
+1143204bytes, payload6909f522f1cf3dd6fef921dc5e440eee7496b895,
+SHA256164EF5F9A19C37A7291215D169B03CC9D2526D1EDF36B3740EFDA9B33516B8AF.
+Receipt artifacts/release-2.2.8-package-receipt.json; SHA256SUMS besideZIP.
+Companion Hue1.0.6 is a new public-docs package; immutable1.0.5 preserved.
+No installation/retest of regular ZIP required; assistant did not deploy anything.
+
+Next: push both main branches/tags, attach exact local archives to GitHub drafts,
+verify workflows then publish stable Latest and verify asset digests. Update
+repository descriptions. Nexus remains untouched; NEXUS_AUTO_PUBLISH=false.
+
+# Previous checkpoint — 2026-11-04, owner-installed cold recovery passed in game
 
 Owner installed recovery.2 and reported ingame, very fast check and passed.
 Read-only verification confirms PID29952/build26423880 uses the exact packaged
