@@ -1,4 +1,32 @@
-# Current checkpoint — 2026-11-04, controller-only Skills symptom; plausible game issue
+# Current checkpoint — 2026-11-04, menu.3 suppresses repeated ready notices after pause
+
+Owner reports "Telemetry is ready" after every pause. Proven regression:
+NoticeTracker treated intentional loading/simulation-paused as a new scene and
+reset readyForScene. Source98b8859 recognizes fresh explicit pause/resume markers
+independently of displayed light layers; normal menu return does not rearm ready.
+Initial readiness, genuine scene reloads, expired-marker handling and actual
+error/recovery notices remain. No acquisition, input or Hue runtime changes.
+
+Regression reproduced before fix and passes after; production overlay-model CTest
+1/1 PASS, independent review passed. Tests cover repeated/quick pauses, three light
+layers plus recovery marker, delayed health, initial paused state, real reload,
+stale markers, error->pause->ready and compatibility progress/completion.
+Logs artifacts/menu-ready-notice-{red,green}-{build,test}-20261104.log.
+
+Fresh validated CDT-only ZIP:
+C:/DEV/CrimsonDesertTelemetry/artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.9-menu.3-ModManagers.zip
+SHA256 A1AD6449411E261D3FA299FBF4D4D3C869CF99F261AE85602F0D5FD81CF17AA2
+Production, Research OFF, build26423880, Pause1/Diagnostics0. Current game EXE hash
+still matches preserved26423880. Maintained builder/self-test/folder/ZIP validation
+pass. Receipt artifacts/menu3-package-receipt-20261104.json; build log
+artifacts/menu3-package-20261104.log. Existing Hue1.0.7-menu.2 works with this update.
+Not installed/game-tested; old ZIPs and deployed files untouched.
+
+Next OWNER ONLY: Stop sync, close game, install this CDT ZIP through DMM, restart.
+No Hue replacement required. End turn at handoff, no waiting/polling. Accept the
+notification fix separately from the unresolved controller-only Skills stall.
+
+# Previous checkpoint — 2026-11-04, controller-only Skills symptom; plausible game issue
 
 Owner clarifies bug is ONLY WITH CONTROLLER and suggests Crimson Desert itself.
 Stop-LightSync comparison is NOT confirmed by this clarification. Focused source
