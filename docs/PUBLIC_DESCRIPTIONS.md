@@ -1,6 +1,6 @@
-# Public descriptions — 2.2.7, 2026-11-03
+# Public descriptions — 2.2.8, 2026-11-04
 
-Current GitHub/product text for CDT 2.2.7 and optional CrimsonHue 1.0.4.
+Current GitHub/product text for CDT 2.2.8 and optional CrimsonHue 1.0.6.
 The historical Nexus 2.2.5 text remains in [NEXUS_DESCRIPTION.bbcode](NEXUS_DESCRIPTION.bbcode)
 and [NEXUS-2.2.5.md](NEXUS-2.2.5.md); it has not been updated or uploaded here.
 The owner publishes Nexus manually. GitHub publication does not imply a Nexus upload.
@@ -8,7 +8,7 @@ Historical release notes remain unchanged.
 
 ## GitHub About text
 
-Live light, player, camera and ambient telemetry for Crimson Desert: all-around lights, physics collision checks, HTTP/WebSocket API, HUD, 3D radar and optional CrimsonHue integration.
+Live light, player, camera and ambient telemetry for Crimson Desert, with guarded update recovery, local APIs, 3D radar and optional Hue/OpenRGB integration through CrimsonHue.
 
 ## Feature description — English
 
@@ -17,16 +17,27 @@ Crimson Desert Telemetry provides a 3D light radar, fullscreen markers, status
 notices and local HTTP/WebSocket APIs for overlays, tools and lighting integrations.
 It works independently and does not itself drive physical lamps.
 
-**Fixed in 2.2.7:** retired light positions no longer fill the bounded visibility
-cache and prevent current lights from being queried during rapidly changing
-effects. New targets still require their own fresh measurement. Query limits,
-unknown handling, native game hooks and the neutral API remain unchanged.
+**New in 2.2.8:** restores the complete telemetry path for Steam build 26423880
+and adds automatic recovery for compatible game updates. CDT checks whether
+recovery is needed, waits for valid in-game player/camera data, then finds and
+validates the required addresses. The HUD shows progress and a clear result.
+Saved addresses are rechecked before reuse. The known build follows the normal
+quick startup, and the release has no forced diagnostic test enabled. Updates
+that change engine layouts, physics or shader semantics can still need a mod update.
 
-Install the separate **CrimsonHue 1.0.4** companion for Philips Hue Entertainment
-lighting and an in-game mixer. CDT hosts that optional panel
+Install the separate **CrimsonHue 1.0.6** companion for Philips Hue Entertainment,
+optional parallel OpenRGB lighting and an in-game mixer. CDT hosts that optional panel
 inside its existing renderer; CrimsonHue owns the headless lamp controller.
 There is no second graphics renderer and no Hue controller bundled in the CDT ZIP.
 The neutral telemetry API and raw light values remain unchanged.
+
+The separate OpenRGB page discovers devices through the local SDK server and
+lets you select and place them in a three-dimensional room. Each device receives
+a color from its virtual position. Independent Light coverage and Background
+light controls help local effects remain distinct from ambient fill. OpenRGB is
+disabled by default and uses the common Start/Stop alongside Hue; a configured
+Hue bridge/Entertainment area remains required. Other applications controlling
+the same RGB devices should be closed.
 
 The mixer offers Lighting, Room, Setup and Advanced tabs; bridge/Entertainment
 setup; ordinary and segmented wall-light calibration; Recommended and preserved
@@ -61,8 +72,9 @@ The existing Telemetry features remain available:
 - Configurable HUD/radar, fullscreen markers, notices, HTTP snapshots, schema,
   health and WebSocket streams on loopback port 27311 by default.
 
-Target: **Crimson Desert patch 2.04.05** on Steam for Windows (EXE `1.0.0.3479`,
-Steam build `26361232`). Native capture rejects unknown executables. No NVIDIA,
+Validated reference: **Crimson Desert Steam build 26423880** on Windows
+(EXE `1.0.0.3527`). Changed executables require successful recovery before native
+capture can start; unsupported layouts remain disabled. No NVIDIA,
 DLSS, Streamline, Nsight or PIX runtime dependency is required.
 
 ## Visibility and data limits
@@ -117,7 +129,7 @@ Keep CFG filenames unchanged and migrate useful INI preferences into the current
 template. Importing without activating/deploying is insufficient. Other manager
 lifecycle coverage remains limited.
 
-For Hue, install **CrimsonHue 1.0.4 separately**, plus .NET 8 Desktop Runtime
+For Hue/OpenRGB, install **CrimsonHue 1.0.6 separately**, plus .NET 8 Desktop Runtime
 (x64). It is optional. Stop Hue sync and wait for stopped status before exiting
 the game; process termination cannot guarantee bridge restoration. No stream
 starts just by loading the modules. Hot unloading is unsupported.

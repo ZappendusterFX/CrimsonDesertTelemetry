@@ -1,15 +1,16 @@
 # Crimson Desert Telemetry
 
-Main includes the OpenRGB companion HUD and conditional in-plugin update recovery.
-The private `2.2.8-recovery.2` test candidate uses build26423880 as its reference and
-pairs with CrimsonHue1.0.5. Owner installation and game acceptance are pending;
-public 2.2.7 is unchanged. This candidate arms one full in-game recovery test even
-on the known EXE; subsequent starts use ordinary compatibility checks.
-[Automatic recovery, the one-time test and its limits](docs/RUNTIME_RECOVERY.md).
-
 **Live light, player, camera and local ambient data for Crimson Desert, with HTTP/WebSocket APIs, fullscreen light markers and a 3D radar.**
 
 Inspect positions, colors and brightness of current light contributions from fires, candles, lanterns and glass/crystal lamps, alongside the player and render camera. Use the data in your own overlays, tools and lighting integrations.
+
+**New in 2.2.8:** restores the complete telemetry path for Steam build **26423880**
+and adds automatic recovery for compatible game updates. When the game's addresses
+change, CDT waits for valid in-game data, finds and checks the required addresses,
+and shows progress in the HUD. Known builds keep their normal quick start; saved
+recovery addresses are checked again before reuse. Updates that change engine
+layouts or data semantics can still require a mod update.
+[2.2.8 release notes](docs/releases/v2.2.8.md) · [Recovery details](docs/RUNTIME_RECOVERY.md).
 
 **Fixed in 2.2.7:** retired light positions no longer fill the visibility cache
 and prevent current lights from being queried during rapid effect changes.
@@ -21,8 +22,10 @@ and per-light physics data for **Crimson Desert patch 2.04.05** (Steam build
 26361232), verified with the new DLC installed. See the
 [2.2.6 release notes](docs/releases/v2.2.6.md).
 
-**Optional [CrimsonHue 1.0.4](https://github.com/ZappendusterFX/CrimsonHue)**
-provides Philips Hue Entertainment lighting and an interactive in-game mixer.
+**Optional [CrimsonHue 1.0.6](https://github.com/ZappendusterFX/CrimsonHue)**
+provides Philips Hue Entertainment lighting, parallel OpenRGB output and an
+interactive in-game mixer. Its separate OpenRGB page discovers devices and lets
+you place them in a 3D room, with independent light coverage and background balance.
 CDT hosts that panel in its existing renderer; CrimsonHue owns the lamp controller
 without a second set of graphics hooks. Install CrimsonHue separately; CDT's
 telemetry, radar and markers work independently. The current companion includes
@@ -56,8 +59,8 @@ sky RGB itself remains unoccluded.
 The product goal is to answer both **how exposed the player/camera location is to
 the sky and environment** and **which individual nearby game lights can actually
 reach it through world geometry**, including sources off-screen or behind the
-camera. The current source targets **Crimson Desert patch 2.04.05** on Steam
-for Windows. Internal EXE/Steam identifiers are listed under Compatibility.
+camera. The current validated reference is **Steam build 26423880** on Windows.
+Its exact EXE identity and automatic-recovery limits are listed under Compatibility.
 
 Per-light visibility is a sampled collision estimate, not a measurement of how
 much light gets through: any free ray counts as visible, all nine blocked as
@@ -84,7 +87,7 @@ Methods and limits are in [source visibility](docs/SOURCE_VISIBILITY.md).
 | **Local API** | HTTP snapshots and health, WebSocket streaming, JSON Schema and JSON Lines recordings |
 | **Ambient / sky** | Global sky RGB; optional camera-local sky visibility and derived working RGB when a valid spatial sample arrives (nullable fields). |
 | **Status notices** | Brief success when data becomes ready; actionable startup/build/capture errors |
-| **Optional Hue mixer** | With the separately installed CrimsonHue 1.0.0 controller: Hue Entertainment setup, spatial room calibration and lighting controls in CDT's shared renderer |
+| **Optional lighting mixer** | With the separately installed CrimsonHue 1.0.6 controller: Hue Entertainment setup, OpenRGB devices in a 3D room, spatial calibration and lighting controls in CDT's shared renderer |
 
 Lighting, both HUD views and status notices are enabled in the supplied configuration. Each can be configured separately; the HUD is not required to consume the API.
 
@@ -106,7 +109,7 @@ Requirements:
 4. Import **and activate/deploy** the new package in Definitive Mod Manager (DMM) or JSON Mod Manager. Keep all included files together.
 5. Start the game and load a save. The local host starts automatically.
 
-For Philips Hue lighting, also install the separate **CrimsonHue 1.0.0** package
+For Philips Hue and optional OpenRGB lighting, also install the separate **CrimsonHue 1.0.6** package
 and Microsoft **.NET 8 Desktop Runtime (x64)**. CrimsonHue is optional and is not
 bundled in the Telemetry ZIP. See its
 [installation instructions](https://github.com/ZappendusterFX/CrimsonHue).
@@ -271,10 +274,10 @@ The external host alone can read player/camera and supported authored lights. **
 
 ## Compatibility and limits
 
-The public 2.2.7 package targets **Crimson Desert patch 2.04.05** on Steam for Windows.
-Technical identity: EXE file version `1.0.0.3479`, Steam build ID `26361232`,
-and the exact validated EXE SHA-256. The file version is not the public game
-patch version. Older
+The 2.2.8 package's validated reference is **Steam build 26423880** on Windows:
+EXE file version `1.0.0.3527`, SHA-256
+`DC4237F21D6CE1E49F8E5D6FA89BF803FBBE6549123078EFDC393265C7BF6841`.
+The file version and Steam build ID are not the public game patch number. Older
 player/camera profiles remain preserved; they do not establish compatibility of
 the current native package with an older or unknown game executable.
 
@@ -284,14 +287,17 @@ Native capture validates the EXE, hook instructions and surrounding caller/bindi
 dotnet run --project .\src\CrimsonDesertTelemetry.Cli -- check-update 'C:\path\to\CrimsonDesert.exe'
 ```
 
-The report **does not enable an unknown build**. The new recovery candidate also
+The report **does not enable an unknown build**. The installed plugin also
 contains a separate automatic runtime path: an unknown EXE or failed instruction
 guard requests discovery once, waits for a valid player and progressing camera,
 checks the complete acquisition contract, and displays its progress in the HUD.
+No development tools, downloaded offsets or manual INI editing are needed.
 Saved addresses are keyed by EXE and template hashes and revalidated on later
 starts. Compatibility is labelled `recovered`, never `tested`. This handles
 address relocation within the existing engine layout; changed layouts, register
 roles, physics semantics or shader-only asset changes can still need a mod update.
+The release ships with the one-time diagnostic test disabled. Success requires
+fresh requested light/ambient captures and physics measurements where applicable.
 See [runtime recovery](docs/RUNTIME_RECOVERY.md) and the [manual recovery reference](docs/UPDATE_RECOVERY.md).
 
 Important boundaries:
@@ -326,7 +332,7 @@ under the normal packaged filename. See [INI validation](docs/INI_VALIDATION.md)
 
 GitHub CI covers managed/API tests and native capture, guard and UI tests. Current acceptance and outstanding checks are recorded in [the handover](docs/HANDOVER.md); historical test totals are not a result for a new package.
 
-See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.7.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [current public description drafts](docs/PUBLIC_DESCRIPTIONS.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
+See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.8.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [current public description drafts](docs/PUBLIC_DESCRIPTIONS.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
 
 ## Credits and scope
 

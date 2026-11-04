@@ -14,6 +14,17 @@ Included telemetry features:
   cages, closed collision hulls and colliding glass can exclude visibly shining
   lamps; noncolliding geometry may fail to block. F11 shows only fresh clear ones.
 
+New in 2.2.8:
+- Restores the complete telemetry path for Steam build 26423880.
+- Automatically recovers changed addresses when an update retains the supported
+  engine layout. The full search runs only when needed, after valid in-game data
+  is available. HUD notices show waiting, progress, validation or a clear failure.
+- Checks recovered code and live data before capture; saved addresses are
+  revalidated on later starts. Changed layouts or data semantics can still
+  require a mod update. No development tools or downloaded offsets are needed.
+- Adds the optional CrimsonHue 1.0.6 OpenRGB page for device discovery, 3D room
+  placement, and independent light coverage/background controls alongside Hue.
+
 Fixed in 2.2.7:
 - Retired source positions no longer fill the visibility cache and prevent
   current lights from being queried during rapidly changing effects.
@@ -23,7 +34,8 @@ Fixed in 2.2.7:
 Fixed in 2.2.6:
 - Restores camera/player, filtered and all-around light data, Ambient/GI and
   per-light physics checks for game patch2.04.05, Steam build26361232.
-- Exact EXE and instruction/context guards remain; unknown executables fail closed.
+- Exact EXE and instruction/context guards were retained; see 2.2.8 above for
+  the new conditional recovery path.
 
 Fixed in 2.2.4:
 - Camera-local sky visibility and the local ambient estimate no longer stay
@@ -34,15 +46,16 @@ Fixed in 2.2.4:
   presentation queue when the HUD, markers or notices are enabled.
 
 Source and support: https://github.com/ZappendusterFX/CrimsonDesertTelemetry
-Validation: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/releases/v2.2.7-validation.md
+Release notes: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/releases/v2.2.8.md
 API: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/API.md
 
 Requirements and installation
 -----------------------------
 Windows x64, Microsoft .NET 8 ASP.NET Core Runtime (x64), one x64 ASI loader,
-and Crimson Desert patch version 2.04.05 on Steam for Windows. Technical identity:
-EXE file version 1.0.0.3479, Steam build ID 26361232. Native capture rejects
-unknown EXEs. The file/Steam numbers are not the game's public patch version.
+and Crimson Desert on Steam for Windows. Validated reference identity:
+EXE file version 1.0.0.3527, Steam build ID 26423880. Changed executables enter
+conditional recovery; capture starts only after its checks pass. The file/Steam
+numbers are not the game's public patch version. Unsupported layouts stay disabled.
 Close the game, back up useful INI preferences and disable previous telemetry
 packages and any separate legacy console ASI, if installed.
 Import and enable the complete ZIP in DMM. Keep your existing loader and other
@@ -93,6 +106,8 @@ INI changes require a game restart; display keys work immediately.
 
 Research, Console, Explorer, the broad player/all-source bridge and OcclusionTest
 remain absent from this production build. Merge preferences into the new template.
+Compatibility.RecoveryTestOnce is empty in this release; leave it empty for
+normal operation. The automatic update-recovery path requires no diagnostic token.
 Configuration ranges, dependencies and tests:
 https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/INI_VALIDATION.md
 
@@ -171,8 +186,8 @@ Nine rays go from the camera to fixed points around each light: any free ray
 counts as clear. Dense cages, closed collision hulls and colliding glass can
 exclude visibly shining lamps. Thin gaps may be missed; geometry without suitable
 collision (foliage, some decorations) may not block. Renderer selection does not
-prove optical visibility. It runs
-only on the exact supported game build; otherwise every light stays unknown.
+prove optical visibility. It runs after the exact reference or a recovered
+contract passes validation; unavailable or failed checks leave results unknown.
 SourceVisibility.Enabled=0 switches it off. The normal light, smoothed-light and
 ambient streams do not depend on this setting.
 The complete source and preserved research are on GitHub. Forks are welcome.
@@ -181,9 +196,10 @@ Created by ZappendusterFX, developed with Claude and Codex (OpenAI).
 See THIRD-PARTY-NOTICES.txt for dependency licenses.
 Unofficial community project; not affiliated with Pearl Abyss.
 
-New in 2.2.5: optional CrimsonHue 1.0.0 panel
--------------------------------------------
-Install CrimsonHue 1.0.0 separately for Philips Hue Entertainment lighting.
+Optional CrimsonHue 1.0.6 panel
+------------------------------
+Install CrimsonHue 1.0.6 separately for Philips Hue Entertainment lighting and
+optional parallel OpenRGB output.
 CDT remains independently usable; its ZIP does not contain the Hue controller.
 CDT hosts the mixer inside its existing D3D12/ImGui renderer. The separate Hue
 ASI owns the headless controller, protected settings and lamp communication;
@@ -194,12 +210,20 @@ Lighting / Room / Setup / Advanced provide bridge/Entertainment setup, spatial
 calibration, Recommended and preserved Custom controls, presets and diagnostics.
 Weights: Point lights 0-200%, Spotlights 0-1000%, Own lantern 0-100%.
 Point/spot are independent of standalone/grouped. Recommended own lantern
-starts at 10%; matching uses a conservative complete pair on build 25477059.
+starts at 10%; matching uses the complete emission/cone pair near the player,
+including swinging motion, without a separate game-build allowlist.
 Unknown/partial/ambiguous lanterns retain ordinary type weighting.
 Room supports ordinary Point and segmented Wall areas. Horizontal washers use
 different Side offsets and equal Height angles; Segment width is per segment.
 Recommended spatial defaults: 30-degree radius, softness 20%, focus 4.
 Refresh changed Entertainment layouts before restarting lighting sync.
+
+OpenRGB: start its local SDK server (default port 6742), enable the OpenRGB page,
+read/select devices and place them in the 3D room. Each selected device receives
+one spatially mapped color. Light coverage and Background light are independent
+of the Hue room settings. OpenRGB starts disabled for new users and uses the
+common Start/Stop; a configured Hue bridge/Entertainment area is still required.
+Close other RGB applications controlling the same devices.
 
 Ctrl+Shift+H opens/hides Hue; change its binding in Setup. Title-bar X and Hide
 settings also hide without stopping sync. Use Stop to end it, and wait for stopped
