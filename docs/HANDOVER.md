@@ -1,4 +1,26 @@
-# Current checkpoint — 2026-11-04, root 130 rejected; control-state comparison prepared
+# Current checkpoint — 2026-11-04, Skills control bits clear on gameplay return
+
+Owner confirmed gameplay; v3 capture at 19:17:12 CET, same PID 16716/start time,
+three stable samples, no rejected roots, 13328 bytes/sample. Control byte 27D
+changes 03 -> 00 for BOTH SkillTree and MainMenu versus Skills 19:07:51.
+27C stays 01; other four controls and identities remain unchanged. Root 130
+still does not track the transition. This is a useful menu-state candidate,
+not yet generic pause semantics or a proven UI parent relationship.
+Evidence: artifacts/menu-state-gameplay-20261104-191711-945-2548b59bdfb745c5bcefc5627904d613.json
+against artifacts/menu-state-skills-20261104-190750-303-bbcf916a91664aa1ba7b9272ed4a9e10.json.
+
+Owner confirms ALL in-game menus pause the game. Accept pause as sufficient for
+fixed menu light/acquisition bypass; per-menu distinction is not a requirement.
+World Builder's no-tick timeout could be a heuristic, but its particular hooked
+tick has not been compared here; do not confuse host poll liveness with simulation
+or a missing tick with a verified pause flag. The observed UI control is now the
+more direct candidate. No production/menu-output changes or installation yet.
+Next owner opens INVENTORY, leaves it open and replies "Inventar". Immediately
+run & ./scripts/Read-MenuStateCandidates.ps1 -Label inventory FROM CDT. Compare
+MainMenu and InventoryEquipment controls against this gameplay baseline to test
+coverage beyond Skills. No rebuild or owner polling.
+
+# Previous checkpoint — 2026-11-04, root 130 rejected; control-state comparison prepared
 
 Owner-confirmed Skills at 19:03:20 CET, PID 16716, produced three stable v2 samples
 identical to gameplay 18:58 in every emitted root/control field. SkillTree 130=0

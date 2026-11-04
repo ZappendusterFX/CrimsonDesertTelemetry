@@ -238,3 +238,23 @@ Every backlink equals its indexed entry. Root 130 remains unchanged.
 Evidence: `artifacts/menu-state-skills-20261104-190750-303-bbcf916a91664aa1ba7b9272ed4a9e10.json`.
 These control fields were absent from earlier gameplay captures; a new owner
 gameplay handoff is required before comparing them. No semantic verdict yet.
+
+### Gameplay return and pause requirement
+
+Owner-confirmed gameplay at 19:17:12 CET produces three stable samples in the
+same PID 16716, with unchanged root/entry/control identities and no rejected
+roots. SkillTree and MainMenu control byte 27D both change 03 -> 00 compared
+with Skills 19:07:51; byte 27C stays 01. The four other controls stay unchanged.
+Evidence: `artifacts/menu-state-gameplay-20261104-191711-945-2548b59bdfb745c5bcefc5627904d613.json`.
+This establishes an observed Skills-to-gameplay correlation for those bits.
+It does not yet establish general pause semantics, the precise meaning of each
+bit, or that MainMenu is the parent of SkillTree. The next owner handoff is
+Inventory to test whether MainMenu also tracks a distinct menu.
+
+The owner explicitly confirms every in-game menu pauses the game. A reliable
+pause signal therefore suffices for the desired fixed light and acquisition
+bypass; identifying individual menus is not required. World Builder's paused
+indicator is a tick-age heuristic, not an explicit engine pause field. Its
+specific tick has not been compared during this test, and normal host polling
+must not be mistaken for that simulation tick. No need to reject pause as a
+product criterion; the remaining task is validating a reliable observation.
