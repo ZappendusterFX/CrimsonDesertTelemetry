@@ -1,11 +1,36 @@
-# Public descriptions — 2.2.9, 2026-11-04
+# Public descriptions — stable 2.2.9 and unpublished output candidate
 
-Current GitHub/product text for CDT 2.2.9 and optional CrimsonHue 1.0.7.
-Prepared Nexus text is in [NEXUS_DESCRIPTION.bbcode](NEXUS_DESCRIPTION.bbcode)
-and [NEXUS-2.2.9.md](NEXUS-2.2.9.md); it has not been uploaded here.
+The stable GitHub/product text below describes CDT 2.2.9 and optional CrimsonHue 1.0.7.
+The new private test pair is **CDT 2.2.10-outputs.1 / CrimsonHue 1.0.8-outputs.1**;
+package validation is pending and no live Tuya acceptance is claimed.
+Prepared upcoming Nexus drafts are [NEXUS_DESCRIPTION.bbcode](NEXUS_DESCRIPTION.bbcode)
+and [NEXUS-2.2.10.md](NEXUS-2.2.10.md); they have not been uploaded here.
+Stable short fields remain in [NEXUS-2.2.9.md](NEXUS-2.2.9.md).
 Historical copy fields remain in [NEXUS-2.2.5.md](NEXUS-2.2.5.md).
 The owner publishes Nexus manually. GitHub publication does not imply a Nexus upload.
 Historical release notes remain unchanged.
+
+## Unpublished candidate description
+
+The next shared HUD selects Hue, OpenRGB and Tuya independently in Setup and adds
+a Tuya device/room page. OpenRGB-only and Tuya-only need no Hue bridge. Fresh setups
+select no output; existing saved Hue pairing keeps Hue enabled. Common Start/Stop
+controls configured selected outputs, and one failed output leaves healthy outputs
+running. The published 2.2.9 / 1.0.7 pair retains its Hue requirement for OpenRGB
+and does not include Tuya.
+
+CrimsonHue owns direct Wi-Fi protocol 3.5 Tuya output, per-lamp positions, shared
+tuning/menu color and a 25% initial output cap. A separate Windows dialog collects
+connection data and keys into one atomically saved, current-user DPAPI-protected
+bundle; credentials never enter CDT's shared HUD. The TCP check is reachability
+only. At least 300 ms between changed-color writes, one replaceable desired color
+per lamp and 2.5-second failure backoff bound work without blocking other outputs.
+Stop restores a supported prior state only after a successful query and ownership
+comparison; the last state may remain when that cannot be confirmed. No live Tuya
+performance, 3.3/3.4 support or controller Skills-menu fix is claimed.
+
+This is preparation for future 2.2.10 / 1.0.8 descriptions, not a publication or
+validation record. [Candidate setup](https://github.com/ZappendusterFX/CrimsonHue/blob/main/docs/USER-GUIDE.md#independent-output-candidate-unpublished).
 
 ## GitHub About text
 

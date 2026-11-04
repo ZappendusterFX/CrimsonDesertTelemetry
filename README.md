@@ -4,6 +4,15 @@
 
 Inspect positions, colors and brightness of current light contributions from fires, candles, lanterns and glass/crystal lamps, alongside the player and render camera. Use the data in your own overlays, tools and lighting integrations.
 
+**Unpublished output candidate:** the next private pair is **CDT 2.2.10-outputs.1 /
+CrimsonHue 1.0.8-outputs.1**. Its shared HUD selects Hue, OpenRGB and Tuya LAN
+independently and adds a Tuya device/room page. OpenRGB-only and Tuya-only no longer
+require Hue hardware. CrimsonHue owns output and protected configuration; CDT
+still supplies only telemetry and the shared renderer. Package validation is
+pending, and no live Tuya acceptance is claimed. The published **2.2.9 / 1.0.7**
+pair below retains its Hue requirement for OpenRGB and has no Tuya output.
+[Candidate setup](https://github.com/ZappendusterFX/CrimsonHue/blob/main/docs/USER-GUIDE.md#independent-output-candidate-unpublished).
+
 **New in 2.2.9:** pauses acquisition when the game simulation pauses and exposes
 an independent activity API. With **CrimsonHue 1.0.7**, choose a steady menu color
 and brightness in **Lighting → Menu lighting**, then save it. New gameplay captures
