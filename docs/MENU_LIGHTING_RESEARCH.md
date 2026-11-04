@@ -146,8 +146,43 @@ Skills18:49:17CET each yield three stable registry samples,144subscriptions,
 six matching roots, no rejected roots,11660bytes/sample. Exact guards pass.
 Only emitted-field change: SkillTree root+0xBA goes0 ->1 and stays1 in all three
 Skills samples. All six A4/A8 remain593, AC/B0/B4 remain0; other roots and identities
-are unchanged. This is an activation candidate, not a proven general menu flag.
-Gameplay return and another menu/control are not yet measured.
+are unchanged. Gameplay return18:51:08CET keeps SkillTree+BA=1 in all three samples:
+the BA open/closed hypothesis is REJECTED. This may record another lifecycle event;
+its actual meaning is unresolved. Do not infer menu state from this field.
 
 Evidence: `artifacts/menu-state-gameplay-20261104-184757-378-bf992a97a14545619c5d8afd8a3d0e75.json`
 and `artifacts/menu-state-skills-20261104-184916-617-81e54805303046e19fd6270411c39e6a.json`.
+Return: `artifacts/menu-state-gameplay-20261104-185107-324-a9a1637548714070a2377a9ccd7589fd.json`.
+
+## Observer v2: reversible field and UI-entry prerequisites
+
+Offline shared slot6 getter0xEE43C0 jumps to0xA188F90: validate root+8 owner,
+UInt16 owner+8A !=FFFF, then owner+58 ->+B0 ->+B8 vector(data+0,count+8), requiring
+index<count and entry!=null; only then return root+130. Slot146 atFFBCE0 jumps
+toA3CD5A0 and sets130=1 on event0E, clears130=0 on0F. Field128 is also set/cleared.
+These are proven accesses, not verified named SHOW/HIDE events or rendered visibility.
+Owner itself has no established plain vtable; never invent that identity check.
+Evidence in `artifacts/menu-owner-fields-20261104-185229/` and
+`artifacts/menu-owner-20261104-1856/FINDINGS.md`.
+
+Observer v2 extends each root read to0x132 bytes; records opaque128..131, the
+getter's indexed-entry prerequisites, and a separate optional owner+28 ->+10
+control byte4E from callbackDEF900. Exact eight code guards and six vtable anchors
+are checked before reads. Optional null/unreadable/changed chains stay explicit;
+no game function is called and no automatic menu verdict is produced.
+Synthetic field/control/race tests and sentinel/out-of-range/null-entry checks
+pass, as does -ValidateOnly against the preserved EXE. Final logs:
+`artifacts/menu-state-v2-indexed-synthetic-20261104.log` and
+`artifacts/menu-state-v2-indexed-offline-20261104.log`.
+
+Latest v2 gameplay baseline18:58:47CET in PID16716 is three stable samples, no
+rejected roots,13028bytes/sample. All six indexed entries exist and remain stable
+in a153entry vector. SkillTree/Pause/Inventory/SkillList130=0, WorldMap130=0/131=1,
+but MainMenu130=1 already in gameplay. Therefore a blanket OR over these roots is
+invalid even with the getter's entry prerequisite. All field128 values are zero;
+all secondary DEF900 controls are absent. Scope the next comparison to actual
+Skills entry/exit; general menu coverage and hierarchy remain unresolved.
+
+Baseline: `artifacts/menu-state-gameplay-20261104-185846-409-1f87c270dcbf4ce790435177aac5d5da.json`.
+An earlier extended baseline without indexed fields is retained at
+`artifacts/menu-state-gameplay-20261104-185556-481-b736fd93080a41f2b6a4c69787edaab1.json`.

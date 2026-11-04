@@ -10,7 +10,11 @@ function Get-MenuCandidateProfile {
             @{ Rva = [uint64]0xFF93DF; Hex = '4C8BE1488B055F4B1C064C8BB8B00000004C897D40498BBF380A000033DB84D2' },
             @{ Rva = [uint64]0xFF9513; Hex = '8B474848C1E00548034740C5FC1045C0C5FC1100FF4748' },
             @{ Rva = [uint64]0xFF98B2; Hex = '8B47488BF385C0746C4C8B4740488D159A8D020066660F1F840000000000448BF649C1E6054B8D0C304C3B217506483B51087408' },
-            @{ Rva = [uint64]0x1022660; Hex = 'E9BB81FDFF' }
+            @{ Rva = [uint64]0x1022660; Hex = 'E9BB81FDFF' },
+            @{ Rva = [uint64]0xDEF90D; Hex = '488B41084C8B4028498B40104885C0741D80784E00' },
+            @{ Rva = [uint64]0xA3CD697; Hex = 'C6873001000001' },
+            @{ Rva = [uint64]0xA3CD6D5; Hex = 'C6813001000000' },
+            @{ Rva = [uint64]0xA188F90; Hex = '488B41084989C94885C0743E440FB7808A000000B9FFFF0000664139C8742B488B4058488B90B00000004C8B92B8000000453B42087313498B024A833CC0007409410FB68130010000C330C0C3' }
         )
         Types = @(
             @{ Name = 'GamePause'; Vtable = [uint64]0x59F4458; FirstMethod = [uint64]0xEDD4B0 },
@@ -45,6 +49,47 @@ function Read-MenuCandidateSample {
     function D([byte[]]$bytes, [int]$offset) { [BitConverter]::ToUInt32($bytes, $offset) }
     function Pointer([uint64]$address) { Q (Bytes $address 8) }
     function Hex([uint64]$value) { '0x{0:X}' -f $value }
+    function IndexedControlCandidate([uint64]$root, [uint64]$owner) {
+        # Read the prerequisites used by the game's common getter at A188F90.
+        # No game function is called; an existing entry is not a visibility verdict.
+        try {
+            if ($owner -eq 0) { return @{ status = 'absent-owner' } }
+            $index = [BitConverter]::ToUInt16((Bytes ($owner + 0x8A) 2), 0)
+            if ($index -eq 0xFFFF) { return @{ status = 'absent-index'; index = $index } }
+            $context = Pointer ($owner + 0x58)
+            $manager = Pointer ($context + 0xB0)
+            $vector = Pointer ($manager + 0xB8)
+            $header = Bytes $vector 12
+            $data = Q $header; $size = D $header 8
+            if ($size -gt 65536) { throw 'Indexed control count rejected.' }
+            if ($index -ge $size) { return @{ status = 'index-outside-vector'; index = $index; count = $size } }
+            $entry = Pointer ($data + [uint64]$index * 8)
+            $stable = (Pointer ($root + 8)) -eq $owner -and
+                [BitConverter]::ToUInt16((Bytes ($owner + 0x8A) 2), 0) -eq $index -and
+                (Pointer ($owner + 0x58)) -eq $context -and (Pointer ($context + 0xB0)) -eq $manager -and
+                (Pointer ($manager + 0xB8)) -eq $vector -and
+                [Convert]::ToHexString((Bytes $vector 12)) -eq [Convert]::ToHexString($header) -and
+                (Pointer ($data + [uint64]$index * 8)) -eq $entry
+            return @{ status = $(if (-not $stable) { 'changed' } elseif ($entry -eq 0) { 'absent-entry' } else { 'present' })
+                index = $index; count = $size; entry = Hex $entry; stableChain = $stable }
+        } catch { return @{ status = 'unreadable'; error = 'Indexed control chain unreadable or bounded read rejected.' } }
+    }
+    function ControlCandidate([uint64]$root, [uint64]$owner) {
+        # The shared callback at DEF900 follows these pointers before reading4E.
+        # Capture the raw value only: visibility/active semantics are not proven.
+        try {
+            if ($owner -eq 0) { return @{ status = 'absent-owner' } }
+            $node = Pointer ($owner + 0x28)
+            if ($node -eq 0) { return @{ status = 'absent-node' } }
+            $control = Pointer ($node + 0x10)
+            if ($control -eq 0) { return @{ status = 'absent-control' } }
+            $value = (Bytes ($control + 0x4E) 1)[0]
+            $stable = (Pointer ($root + 8)) -eq $owner -and
+                (Pointer ($owner + 0x28)) -eq $node -and (Pointer ($node + 0x10)) -eq $control
+            return @{ status = $(if ($stable) { 'read' } else { 'changed' }); stableChain = $stable
+                node = Hex $node; control = Hex $control; opaque4E = $value }
+        } catch { return @{ status = 'unreadable'; error = 'Optional control chain unreadable or bounded read rejected.' } }
+    }
 
     $application = Pointer ($ImageBase + $menuProfile.GlobalRva)
     $manager = Pointer ($application + 0xB0)
@@ -69,7 +114,9 @@ function Read-MenuCandidateSample {
             $type = @($menuProfile.Types | Where-Object { $vtable -eq $ImageBase + $_.Vtable })
             if ($type.Count -ne 1) { continue }
             if ($roots.Count -ge 64) { throw 'Too many matching menu roots.' }
-            $bytes = Bytes $root 0xC2
+            $bytes = Bytes $root 0x132
+            $controlCandidate = ControlCandidate $root (Q $bytes 8)
+            $indexedControl = IndexedControlCandidate $root (Q $bytes 8)
             if ((Q $bytes) -ne $vtable -or (Pointer $root) -ne $vtable) { throw 'Root identity changed during sample.' }
             $roots.Add([ordered]@{
                 type = $type[0].Name; address = Hex $root; vtable = Hex $vtable
@@ -78,6 +125,10 @@ function Read-MenuCandidateSample {
                 stateA4 = D $bytes 0xA4; stateA8 = D $bytes 0xA8
                 transitionAC = D $bytes 0xAC; transitionB0 = D $bytes 0xB0; transitionB4 = D $bytes 0xB4
                 opaqueB8ToC1 = [Convert]::ToHexString($bytes, 0xB8, 10)
+                opaque128To12F = [Convert]::ToHexString($bytes, 0x128, 8)
+                opaque130To131 = [Convert]::ToHexString($bytes, 0x130, 2)
+                controlCandidate = $controlCandidate
+                indexedControlCandidate = $indexedControl
             })
         } catch {
             $failures.Add(@{ address = Hex $root; error = 'Root unreadable, changed, or bounded read rejected.' })

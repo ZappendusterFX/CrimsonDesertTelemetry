@@ -1,4 +1,39 @@
-# Current checkpoint — 2026-11-04, Skills flips root byte BA; next gameplay return
+# Current checkpoint — 2026-11-04, BA rejected; extended menu observer ready for Skills
+
+Owner's gameplay return18:51:08CET, samePID16716, disproves root+BA as an open flag:
+SkillTree stays1 in all three stable samples. Full old observed state equals the
+Skills capture. Evidence menu-state-gameplay-20261104-185107-324-a9a1637548714070a2377a9ccd7589fd.json.
+Do NOT implement automatic menu detection from BA.
+
+Offline follow-up found shared slot 6 getter 0xEE43C0 -> 0xA188F90 returning root+130
+after bounded owner/index/entry validation. Shared slot 146 (0xFFBCE0 -> 0xA3CD5A0)
+handles event 0E by setting 130=1 and 0F by clearing 130=0; 128 is also
+set/cleared. Named show/hide semantics remain unproven. Evidence:
+artifacts/menu-owner-fields-20261104-185229/{FINDINGS.md,guards-and-getters.json,root130-setter.json}.
+
+Observer v2 now reads0x132 root prefix, opaque128..131, optional DEF900 control4E
+chain and exact getter's indexed-entry validation (never calls it). Eight exact
+code guards, six vtables, existing byte/time caps; synthetic added absent/changed
+controls plus index sentinel/range/null tests pass. -ValidateOnly passes. Logs:
+artifacts/menu-state-v2-indexed-{synthetic,offline}-20261104.log. Early wrappers
+reported exit1 despite PASS because LASTEXITCODE was unset; confirmed reruns and
+final indexed checks exit0. No test failure or game write was involved.
+
+Latest extended gameplay baseline on owner's last confirmed state18:58:47CET:
+artifacts/menu-state-gameplay-20261104-185846-409-1f87c270dcbf4ce790435177aac5d5da.json.
+SamePID, three stable samples,13028bytes each, no rejected roots, all six indexed
+entries present/stable(count153). SkillTree/Pause/Inventory/SkillList130=0;
+WorldMap130=0,131=1; MainMenu130=1 already in gameplay, so NEVER OR all six raw flags
+as general menu state. All128=0; DEF900 downstream controls are absent for all six.
+Earlier v2 baseline18:55:57 without indexed fields remains preserved.
+
+Next: owner opens Skills again, leaves it open, replies "Skills". Immediately run
+& ./scripts/Read-MenuStateCandidates.ps1 -Label skills FROM CDT. Compare opaque130,
+128 and indexed validity against latest18:58 baseline, then require separate
+owner gameplay return. No rebuild, installation, physical output or owner polling.
+Scope remains diagnosis; no production menu mode or stall fix implemented.
+
+Earlier samples and preparation follow (latest checkpoint above supersedes them).
 
 Owner's "Skills" captured three stable samples at18:49:17CET in the SAME PID16716.
 All guards pass,144subscriptions/six roots/no rejections. Only captured difference
@@ -6,10 +41,7 @@ from gameplay is SkillTree root+BA:0 ->1 (opaqueB8ToC1 00010000000000000000 ->
 00010100000000000000), stable in all three samples. Root addresses/owners, other
 five roots, A4/A8=593 and transition fields stay unchanged. Evidence:
 artifacts/menu-state-skills-20261104-184916-617-81e54805303046e19fd6270411c39e6a.json.
-Promising correlation, NOT yet proven menu flag/general detection. Next: owner
-closes Skills, returns to gameplay and replies "Spiel"; immediately run
-& ./scripts/Read-MenuStateCandidates.ps1 -Label gameplay FROM CDT, compare BA
-against both prior samples. No rebuild, live writes, installation or polling.
+The apparent BA activation correlation was rejected by gameplay return above.
 
 On owner's "Spiel", prepared reader completed three stable samples at18:47:58CET,
 PID16716 (started17:30:10UTC). All exact-code/vtable guards passed. Each sample:
