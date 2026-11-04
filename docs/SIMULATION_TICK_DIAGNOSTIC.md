@@ -31,6 +31,18 @@ This is the progressing control; a separately owner-confirmed Skills-preview
 recording is next. No acquisition gating, fixed menu light or menu-semantic
 acceptance follows from this gameplay control alone.
 
+### Skills preview stops the candidate tick
+
+Owner-confirmed Skills with preview at 19:53:42-45 CET, same PID 32972 and start
+time: 47 fresh observing samples all report no-tick-500ms, with counter fixed at
+25475 and no errors. Publication sequence advances 24314 -> 24408 and native
+observer timestamps advance 2937 ms; progress age rises 18062 -> 20997 ms.
+Thus the observer continues running while this function does not advance.
+Evidence: `artifacts/simulation-ticks-skills-20261104-195342-032-fb797840242046b2bccea0cf341eed8e.json`.
+The pending owner return to gameplay must confirm renewed progress. This is
+positive evidence for the targeted Skills menu; it does not itself verify every
+menu, capture-pause behavior or physical menu-light output.
+
 ## Proven discovery, pending runtime semantics
 
 World Builder locates a movement-pump function with

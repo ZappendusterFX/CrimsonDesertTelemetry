@@ -1,4 +1,12 @@
-# Current checkpoint — 2026-11-04, tick probe installed; gameplay control progresses
+# Current checkpoint — 2026-11-04, tick stops in Skills; resume comparison next
+
+Owner-confirmed Skills with preview at 19:53:42-45 CET: same PID 32972/start,
+47 fresh observing samples, all no-tick-500ms, no errors. Counter stays 25475;
+publisher time advances 2937 ms and sequence 24314 -> 24408, so the diagnostic
+observer remains alive while the candidate function stops. Progress age grows
+18.062 -> 20.997 seconds. This is a positive Skills-pause observation, not an
+observer/bridge outage. Evidence:
+artifacts/simulation-ticks-skills-20261104-195342-032-fb797840242046b2bccea0cf341eed8e.json.
 
 Owner reports installing 2.2.9-tick.1 and returning to gameplay. New game PID
 32972, start 19:40:59 CET. Loaded ASI and five executable/config companions all
@@ -11,12 +19,11 @@ fresh/observing/running, zero errors, hook RVA 0x4585370. Counter 22018 -> 22320
 over 3000 ms of publisher timestamps (~100.7 function entries/sec, NOT FPS or
 lighting rate). No recorded inactivity; progressAgeMs=0 for all observations.
 Evidence: artifacts/simulation-ticks-gameplay-20261104-195207-550-5ef478405e6342a695786d43e6fc143d.json.
-This validates a progressing gameplay control and the installed readout; it
-does not yet prove that Skills preview pauses this function.
+This supplies the progressing gameplay control for the Skills stop above.
 
-Next owner opens Skills, leaves a preview running and replies "Skills".
-Immediately run & ./scripts/Read-SimulationTickDiagnostic.ps1 -Label skills FROM
-CDT; compare counter advancement and fresh observer states against this control.
+Next owner closes Skills, returns to gameplay and replies "Spiel".
+Immediately run & ./scripts/Read-SimulationTickDiagnostic.ps1 -Label gameplay FROM
+CDT; verify renewed counter advancement/running state to complete the return control.
 No rebuild, extra install or waiting/polling for owner. Menu light/capture pause
 remain unimplemented until runtime semantics are established.
 
