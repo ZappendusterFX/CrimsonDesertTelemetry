@@ -1,4 +1,31 @@
-# Current checkpoint — 2026-11-04, Ahplla's older crash logs reviewed
+# Current checkpoint — 2026-11-04, live visibility stopped and low-FPS report
+
+Owner reports abnormal CDT/Hue behavior, about30FPS and high CPU. Read-only checks
+of gamePID22684/host26180 at17:32-17:34CET confirm tested26423880, fresh advancing
+raw/upstream/Ambient and no health error, but ALL143/142 upstream sources are
+unknown/physics-stopped-restart-required. Native log explicitly records
+"Continuous physics visibility stopped until restart: unknown-fan-time-budget".
+The continuous fan's elapsed/context-age guard latches replayFaulted; later batches
+return code3 until process restart. This is a real local-light output outage,
+not proof that the timing guard caused the reported FPS/CPU change.
+
+Passive Hue immutable snapshot confirms Live0/142, Hue still streaming identical
+neutral Ambient colors, and OpenRGB stopped with SDK connection unavailable and
+incomplete restoration for four devices. OpenRGB's underlying disconnect reason
+is not retained in this status. Public2.2.8 native/Core and Hue1.0.6 ASI hashes
+exactly match deployed files; no wrong-package finding. One host owns27311.
+
+Two performance snapshots: game22.0-37.8%, host2.9-5.6% of16 logical processors;
+one GPU3D sample45%. Over33.45s the paired engine counter advanced35.07/s and light
+captures14.20/s (20Hz configured); this is not a Present/display-FPS measurement.
+Native/Hue work runs inside the game, so process CPU cannot attribute its cost.
+No profiler, settings/game actions, installation, runtime writes or source fix.
+Evidence copied before restart: artifacts/runtime-visibility-stop-20261104-173252-pid22684/
+(original logs, health/raw/Ambient, credential-free Hue snapshot, CPU/counter data).
+Next: owner restarts the game; after their report recheck visibility/OpenRGB and
+performance. Do not poll for owner action. Root cause of the slowdown remains open.
+
+# Previous checkpoint — 2026-11-04, Ahplla's older crash logs reviewed
 
 Owner relays intermittent save/offshore-DLC crashes on Nov3, third attempt worked.
 Five unchanged logs in Messages/Ahplla contain no dump/game crash log or exact
