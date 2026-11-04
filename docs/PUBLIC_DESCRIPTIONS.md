@@ -2,7 +2,7 @@
 
 The stable GitHub/product text below describes CDT 2.2.9 and optional CrimsonHue 1.0.7.
 The new private test pair is **CDT 2.2.10-outputs.1 / CrimsonHue 1.0.8-outputs.1**;
-package validation is pending and no live Tuya acceptance is claimed.
+it is intended for owner testing and no live Tuya acceptance is claimed.
 Prepared upcoming Nexus drafts are [NEXUS_DESCRIPTION.bbcode](NEXUS_DESCRIPTION.bbcode)
 and [NEXUS-2.2.10.md](NEXUS-2.2.10.md); they have not been uploaded here.
 Stable short fields remain in [NEXUS-2.2.9.md](NEXUS-2.2.9.md).

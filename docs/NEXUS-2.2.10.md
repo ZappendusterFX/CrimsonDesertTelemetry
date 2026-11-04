@@ -1,7 +1,7 @@
 # Nexus draft — upcoming Crimson Desert Telemetry 2.2.10 (unpublished)
 
 Preparation only. The next private pair is **CDT 2.2.10-outputs.1 / CrimsonHue
-1.0.8-outputs.1**; package validation is pending and no live Tuya acceptance is
+1.0.8-outputs.1**, intended for owner testing. No live Tuya acceptance is
 claimed. Public **2.2.9 / 1.0.7** still requires Hue setup for OpenRGB and has no
 Tuya output. Do not publish these fields as the stable version. Nexus publication
 is owner-only; no upload is performed by preparing this file.

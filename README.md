@@ -8,8 +8,8 @@ Inspect positions, colors and brightness of current light contributions from fir
 CrimsonHue 1.0.8-outputs.1**. Its shared HUD selects Hue, OpenRGB and Tuya LAN
 independently and adds a Tuya device/room page. OpenRGB-only and Tuya-only no longer
 require Hue hardware. CrimsonHue owns output and protected configuration; CDT
-still supplies only telemetry and the shared renderer. Package validation is
-pending, and no live Tuya acceptance is claimed. The published **2.2.9 / 1.0.7**
+still supplies only telemetry and the shared renderer. This candidate is intended
+for owner testing; no live Tuya acceptance is claimed. The published **2.2.9 / 1.0.7**
 pair below retains its Hue requirement for OpenRGB and has no Tuya output.
 [Candidate setup](https://github.com/ZappendusterFX/CrimsonHue/blob/main/docs/USER-GUIDE.md#independent-output-candidate-unpublished).
 
