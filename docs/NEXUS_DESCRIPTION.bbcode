@@ -3,22 +3,35 @@
 
 Telemetry reads current light contributions before the renderer's view selection, including sources behind the camera. Optional physics queries estimate collision on camera-to-light paths. Raw data remains available independently of that estimate.
 
-[b]Supports Crimson Desert patch 2.03.02 on Steam for Windows (build 25477059).[/b]
+[b]Validated reference: Crimson Desert Steam build 26423880 on Windows, EXE 1.0.0.3527.[/b] Guarded automatic recovery supports compatible address changes; changed engine layouts or semantics can still require a mod update.
 
-[size=4][b]New in 2.2.5: optional CrimsonHue integration[/b][/size]
-Install [url=https://github.com/ZappendusterFX/CrimsonHue]CrimsonHue 1.0.0[/url] separately for Philips Hue Entertainment lighting and an interactive in-game mixer. [b]CDT works independently; the Hue controller is optional and is not included in this ZIP.[/b]
+[size=4][b]New in 2.2.9: simulation pause and menu lighting[/b][/size]
+After 500 ms without simulation progress, CDT pauses new light, ambient and visibility acquisition and managed pose/camera sampling. An independent observer keeps running; resume requires fresh captures and discards old capture/smoothing history. The new activity API reports running, paused or unknown. Missing or stale observers become unknown.
 
-CDT draws the Hue mixer in its existing D3D12 renderer. CrimsonHue owns bridge communication, protected settings, spatial calibration and lighting output, without a second graphics-hook set. Raw telemetry and the neutral API remain unchanged.
+Install [url=https://github.com/ZappendusterFX/CrimsonHue/releases/tag/v1.0.7]CrimsonHue 1.0.7[/url] separately for Philips Hue Entertainment, optional parallel OpenRGB output and an interactive in-game mixer. [b]CDT works independently; CrimsonHue is optional and is not included in this ZIP.[/b]
+
+CDT draws the mixer in its existing D3D12 renderer. CrimsonHue owns bridge communication, protected settings, spatial calibration and lighting output, without a second graphics-hook set. Existing raw light data and routes remain compatible; activity is a separate API.
+
+[list]
+[*][b]Steady menu light:[/b] in Lighting > Menu lighting, select brightness and color/hex, then Save menu lighting. Hue and enabled OpenRGB devices use this color while paused and blend back over 500 ms once fresh gameplay data returns.[/*]
+[*][b]Preserved choices:[/b] Reset menu lighting restores warm white at 20%; Gold preset is an optional choice. Existing settings are not changed automatically. Overall brightness and OpenRGB output limits still apply.[/*]
+[*][b]OpenRGB reset and cleanup:[/b] Reset OpenRGB settings disables OpenRGB, restores its defaults and moves current devices to the default front position while preserving the SDK port and Hue settings. Remove disconnected devices preserves connected placements and output settings. Both require stopped sync; cleanup also requires a fresh Read devices result. Reset view changes only the view angle.[/*]
+[*][b]Quiet pause/resume:[/b] intentional pauses and pending fresh post-resume captures no longer produce light-reader error notices or repeat Telemetry is ready. Startup, actual scene loads, genuine errors and compatibility recovery retain their notifications.[/*]
+[/list]
+
+[b]This detects simulation pauses, not individual menu IDs.[/b] Other simulation stalls can also trigger it. The reported controller-only Skills-menu stutter and rapid hover sounds remain unresolved; this release does not claim to fix them. The production INI enables [Pause] Enabled=1; use 0 to disable this policy. The monitor-only diagnostic is off.
+
+[size=4][b]Optional lighting mixer[/b][/size]
 
 [list]
 [*][b]Lighting / Room / Setup / Advanced:[/b] bridge and Entertainment-area setup, ordinary and segmented wall-light calibration, Recommended/Custom controls, presets and diagnostic data.[/*]
 [*][b]Lighting weights:[/b] Point lights 0-200%, Spotlights 0-1000%, Own lantern 0-100%. Point/spot is independent of standalone/grouped contributions. Own-lantern matching uses a conservative complete-pair signature for the supported build; missing or ambiguous matches keep ordinary type weighting.[/*]
 [*][b]Consistent hiding:[/b] Ctrl+Shift+H, Hide settings and title-bar X hide the mixer while lighting sync continues. Use Stop to end sync, and wait for stopped status before game exit.[/*]
-[*][b]Input and cursor corrections:[/b] held delivered game presses finish releasing before panel capture; panel-owned releases finish on hiding. Raw mouse motion has a fallback, and the duplicate native cursor is suppressed inside the owned foreground game client. Release held keys/buttons if prompted.[/*]
+[*][b]Input handoff:[/b] held delivered game presses finish releasing before panel capture; panel-owned releases finish on hiding. Raw mouse motion has a fallback, and the duplicate native cursor is suppressed inside the owned foreground game client. Release held keys/buttons if prompted.[/*]
 [*][b]Room controls:[/b] Point/Wall setup, per-segment wall-washer calibration including horizontal arrangements, and sharper Recommended spatial defaults. Refresh changed Entertainment layouts before restarting sync.[/*]
 [/list]
 
-The input changes have mocked-input/shared-renderer coverage; not every independently polled or buffered game-input route has been proven. Neither module starts physical lighting just by loading.
+Input handoff has mocked-input/shared-renderer coverage; not every independently polled or buffered game-input route has been proven. Neither module starts physical lighting just by loading. OpenRGB is disabled by default and requires a local SDK server and a configured Hue bridge/Entertainment area.
 
 [size=4][b]Telemetry features[/b][/size]
 [list]
@@ -29,13 +42,14 @@ The input changes have mocked-input/shared-renderer coverage; not every independ
 [*][b]Player and camera:[/b] player position/root orientation plus independent native render-camera position, orientation and projection.[/*]
 [*][b]Ambient/sky:[/b] global sky RGB, optional camera-local sky visibility and a derived local ambient estimate. Local fields can be null.[/*]
 [*][b]HUD and API:[/b] fullscreen markers, player-centered 3D radar, notices, local HTTP snapshots/health/schema and WebSocket streams.[/*]
+[*][b]Independent activity feed:[/b] /v1/activity and /v1/activity/stream expose simulation state, observer age, acquisition pause and session/epoch information using schema 1.0. The normal snapshot/light schema remains 1.6.[/*]
 [*][b]SDR/HDR UI:[/b] SDR, HDR10 and scRGB support. Automated rendering tests are separate from live display/game acceptance.[/*]
 [/list]
 
 The 2.2.4 sky-readback and world-entry queue corrections remain included.
 
 [url=https://youtu.be/eyRkkTXAU64]Watch the telemetry and HUD demonstration[/url]
-The video shows an earlier version; it does not demonstrate the new Hue mixer.
+The video and screenshot show an earlier version; they do not demonstrate the current menu-light controls.
 [img]https://raw.githubusercontent.com/ZappendusterFX/CrimsonDesertTelemetry/v2.2.5/media/screenshot1.jpg[/img]
 
 [size=4][b]Important visibility limitation[/b][/size]
@@ -60,14 +74,14 @@ If measurements are unavailable, the feed reports unavailable. Setting [SourceVi
 [size=4][b]Install or upgrade[/b][/size]
 Requires:
 [list]
-[*]Windows x64 and Crimson Desert patch [b]2.03.02[/b] on Steam.[/*]
+[*]Windows x64 and Crimson Desert on Steam. Validated reference: [b]build 26423880[/b].[/*]
 [*]Microsoft [b].NET 8 ASP.NET Core Runtime (x64)[/b].[/*]
 [*]One compatible x64 ASI loader installed for the game.[/*]
 [/list]
 [list]
 [*]Close the game before installing, updating or removing the mod.[/*]
 [*]Back up useful INI preferences. Disable/remove older Telemetry packages and any separate legacy console ASI.[/*]
-[*]Import and [b]activate/deploy[/b] the complete CrimsonDesertTelemetry-v2.2.5-ModManagers.zip. Importing alone is insufficient.[/*]
+[*]Import and [b]activate/deploy[/b] the complete CrimsonDesertTelemetry-v2.2.9-ModManagers.zip. Importing alone is insufficient.[/*]
 [*]Keep all six runtime files from the same version together beside the game EXE.[/*]
 [*]Merge preferences into the supplied INI, launch the game and load a save.[/*]
 [/list]
@@ -81,7 +95,7 @@ crimson-desert-telemetry.runtimeconfig.cfg[/code]
 
 [b]DMM upgrade note:[/b] DMM 2.8.1/3.1.1 can leave both DLL and both lowercase CFG companions behind after removal. With the game closed and the old package removed, delete only stale Telemetry companions before redeploying. Preserve your ASI loader and customized INI. Keep .cfg names unchanged; loose .json files can be interpreted as game patches.
 
-[b]Optional Hue:[/b] install [b]CrimsonHue 1.0.0 separately[/b], plus Microsoft [b].NET 8 Desktop Runtime (x64)[/b]. Use the matching release pair. CDT does not require Hue hardware or the Hue controller. Stop Hue sync and wait for stopped status before game exit. Hot unloading is unsupported.
+[b]Optional Hue/OpenRGB:[/b] install [b]CrimsonHue 1.0.7 separately[/b], plus Microsoft [b].NET 8 Desktop Runtime (x64)[/b]. Use the matching release pair. CDT does not require Hue hardware or the Hue controller. OpenRGB additionally requires its local SDK server and the companion's configured Hue bridge/Entertainment area. Stop sync and wait for stopped status before game exit. Hot unloading is unsupported.
 
 [size=4][b]Controls[/b][/size]
 [list]

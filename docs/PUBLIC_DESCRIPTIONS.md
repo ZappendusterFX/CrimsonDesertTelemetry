@@ -1,14 +1,15 @@
-# Public descriptions — 2.2.8, 2026-11-04
+# Public descriptions — 2.2.9, 2026-11-04
 
-Current GitHub/product text for CDT 2.2.8 and optional CrimsonHue 1.0.6.
-The historical Nexus 2.2.5 text remains in [NEXUS_DESCRIPTION.bbcode](NEXUS_DESCRIPTION.bbcode)
-and [NEXUS-2.2.5.md](NEXUS-2.2.5.md); it has not been updated or uploaded here.
+Current GitHub/product text for CDT 2.2.9 and optional CrimsonHue 1.0.7.
+Prepared Nexus text is in [NEXUS_DESCRIPTION.bbcode](NEXUS_DESCRIPTION.bbcode)
+and [NEXUS-2.2.9.md](NEXUS-2.2.9.md); it has not been uploaded here.
+Historical copy fields remain in [NEXUS-2.2.5.md](NEXUS-2.2.5.md).
 The owner publishes Nexus manually. GitHub publication does not imply a Nexus upload.
 Historical release notes remain unchanged.
 
 ## GitHub About text
 
-Live light, player, camera and ambient telemetry for Crimson Desert, with guarded update recovery, local APIs, 3D radar and optional Hue/OpenRGB integration through CrimsonHue.
+Live light, player, camera and ambient telemetry for Crimson Desert, with simulation pause, guarded update recovery, local APIs, 3D radar and optional Hue/OpenRGB lighting through CrimsonHue.
 
 ## Feature description — English
 
@@ -17,19 +18,38 @@ Crimson Desert Telemetry provides a 3D light radar, fullscreen markers, status
 notices and local HTTP/WebSocket APIs for overlays, tools and lighting integrations.
 It works independently and does not itself drive physical lamps.
 
-**New in 2.2.8:** restores the complete telemetry path for Steam build 26423880
-and adds automatic recovery for compatible game updates. CDT checks whether
+**New in 2.2.9:** pauses acquisition after 500 ms without simulation progress.
+The independent observer continues while native light/ambient/visibility work and
+managed pose/camera sampling pause. New captures replace old results and smoothing
+history on resume. `/v1/activity` and `/v1/activity/stream` provide a separate schema
+1.0 activity feed; stale or missing observers become `unknown`.
+
+With **CrimsonHue 1.0.7**, use **Lighting → Menu lighting** to select brightness and
+color/hex, then **Save menu lighting**. Hue and enabled OpenRGB devices use that
+steady color while paused and blend back over 500 ms after fresh gameplay data
+returns. **Reset menu lighting** restores warm white at 20%; **Gold preset** is an
+optional choice. Existing settings are preserved. Intentional pauses and pending
+post-resume captures no longer produce light errors or repeat “Telemetry is ready.”
+Startup, actual scene loads, genuine errors and compatibility recovery keep their
+notifications.
+
+This detects simulation pauses, not individual menu IDs; other simulation stalls
+can also trigger it. The controller-only Skills-menu stutter and rapid hover sounds
+remain unresolved. `[Pause] Enabled=1` is the production default; use `0` to disable it.
+
+Automatic recovery from 2.2.8 remains available for compatible game updates.
+The validated reference is Steam build 26423880. CDT checks whether
 recovery is needed, waits for valid in-game player/camera data, then finds and
 validates the required addresses. The HUD shows progress and a clear result.
 Saved addresses are rechecked before reuse. The known build follows the normal
 quick startup, and the release has no forced diagnostic test enabled. Updates
 that change engine layouts, physics or shader semantics can still need a mod update.
 
-Install the separate **CrimsonHue 1.0.6** companion for Philips Hue Entertainment,
+Install the separate **CrimsonHue 1.0.7** companion for Philips Hue Entertainment,
 optional parallel OpenRGB lighting and an in-game mixer. CDT hosts that optional panel
 inside its existing renderer; CrimsonHue owns the headless lamp controller.
 There is no second graphics renderer and no Hue controller bundled in the CDT ZIP.
-The neutral telemetry API and raw light values remain unchanged.
+Existing light routes and raw light values remain compatible; the activity feed is additive.
 
 The separate OpenRGB page discovers devices through the local SDK server and
 lets you select and place them in a three-dimensional room. Each device receives
@@ -38,6 +58,12 @@ light controls help local effects remain distinct from ambient fill. OpenRGB is
 disabled by default and uses the common Start/Stop alongside Hue; a configured
 Hue bridge/Entertainment area remains required. Other applications controlling
 the same RGB devices should be closed.
+
+**Reset OpenRGB settings** disables OpenRGB, restores its defaults and moves current
+devices to the default front position while preserving the SDK port and Hue settings.
+**Remove disconnected devices** preserves connected placements and output settings.
+Both require stopped sync; cleanup also requires a fresh **Read devices** result.
+**Reset view** changes only the view angle.
 
 The mixer offers Lighting, Room, Setup and Advanced tabs; bridge/Entertainment
 setup; ordinary and segmented wall-light calibration; Recommended and preserved
@@ -129,7 +155,7 @@ Keep CFG filenames unchanged and migrate useful INI preferences into the current
 template. Importing without activating/deploying is insufficient. Other manager
 lifecycle coverage remains limited.
 
-For Hue/OpenRGB, install **CrimsonHue 1.0.6 separately**, plus .NET 8 Desktop Runtime
+For Hue/OpenRGB, install **CrimsonHue 1.0.7 separately**, plus .NET 8 Desktop Runtime
 (x64). It is optional. Stop Hue sync and wait for stopped status before exiting
 the game; process termination cannot guarantee bridge restoration. No stream
 starts just by loading the modules. Hot unloading is unsupported.

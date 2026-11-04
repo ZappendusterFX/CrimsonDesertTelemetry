@@ -4,6 +4,15 @@
 
 Inspect positions, colors and brightness of current light contributions from fires, candles, lanterns and glass/crystal lamps, alongside the player and render camera. Use the data in your own overlays, tools and lighting integrations.
 
+**New in 2.2.9:** pauses acquisition when the game simulation pauses and exposes
+an independent activity API. With **CrimsonHue 1.0.7**, choose a steady menu color
+and brightness in **Lighting → Menu lighting**, then save it. New gameplay captures
+replace old data on resume. Intentional menu pauses no longer produce light-error
+notices or repeat “Telemetry is ready”; initial startup, genuine scene loads and
+error recovery retain their notices. The shared OpenRGB page also gains reset and
+disconnected-device cleanup controls. This does not fix the controller-specific
+Skills-menu stutter. [2.2.9 release notes](docs/releases/v2.2.9.md).
+
 **New in 2.2.8:** restores the complete telemetry path for Steam build **26423880**
 and adds automatic recovery for compatible game updates. When the game's addresses
 change, CDT waits for valid in-game data, finds and checks the required addresses,
@@ -22,7 +31,7 @@ and per-light physics data for **Crimson Desert patch 2.04.05** (Steam build
 26361232), verified with the new DLC installed. See the
 [2.2.6 release notes](docs/releases/v2.2.6.md).
 
-**Optional [CrimsonHue 1.0.6](https://github.com/ZappendusterFX/CrimsonHue)**
+**Optional [CrimsonHue 1.0.7](https://github.com/ZappendusterFX/CrimsonHue)**
 provides Philips Hue Entertainment lighting, parallel OpenRGB output and an
 interactive in-game mixer. Its separate OpenRGB page discovers devices and lets
 you place them in a 3D room, with independent light coverage and background balance.
@@ -84,10 +93,10 @@ Methods and limits are in [source visibility](docs/SOURCE_VISIBILITY.md).
 | **Camera** | Native render-camera position, orientation, vertical FOV, aspect ratio and near plane |
 | **Fullscreen light overlay** | Markers at projected light positions; aim toward a source to inspect position, color, brightness and distance |
 | **3D light radar** | All nearby lights with height (filled = renderer-selected, hollow = outside the current view), blocked lights dimmed, player heading and a camera frustum that follows pitch and roll |
-| **Local API** | HTTP snapshots and health, WebSocket streaming, JSON Schema and JSON Lines recordings |
+| **Local API** | HTTP snapshots, health and independent simulation activity; WebSocket streaming, JSON Schema and JSON Lines recordings |
 | **Ambient / sky** | Global sky RGB; optional camera-local sky visibility and derived working RGB when a valid spatial sample arrives (nullable fields). |
 | **Status notices** | Brief success when data becomes ready; actionable startup/build/capture errors |
-| **Optional lighting mixer** | With the separately installed CrimsonHue 1.0.6 controller: Hue Entertainment setup, OpenRGB devices in a 3D room, spatial calibration and lighting controls in CDT's shared renderer |
+| **Optional lighting mixer** | With the separately installed CrimsonHue 1.0.7 controller: Hue Entertainment setup, OpenRGB devices in a 3D room, spatial calibration and editable menu lighting in CDT's shared renderer |
 
 Lighting, both HUD views and status notices are enabled in the supplied configuration. Each can be configured separately; the HUD is not required to consume the API.
 
@@ -109,7 +118,7 @@ Requirements:
 4. Import **and activate/deploy** the new package in Definitive Mod Manager (DMM) or JSON Mod Manager. Keep all included files together.
 5. Start the game and load a save. The local host starts automatically.
 
-For Philips Hue and optional OpenRGB lighting, also install the separate **CrimsonHue 1.0.6** package
+For Philips Hue and optional OpenRGB lighting, also install the separate **CrimsonHue 1.0.7** package
 and Microsoft **.NET 8 Desktop Runtime (x64)**. CrimsonHue is optional and is not
 bundled in the Telemetry ZIP. See its
 [installation instructions](https://github.com/ZappendusterFX/CrimsonHue).
@@ -190,6 +199,7 @@ DurationMilliseconds=6000
 - `[Lights] Enabled=0` disables both authored and rendered light feeds. `ManyLights=0` disables only the native GPU light capture.
 - `[Lights] Upstream=1` (default) also captures the renderer's light **input** with every sample: all current engine lights, including behind the camera. HUD, radar, visibility and smoothing then use it; `0` keeps only the view-filtered output.
 - `[Ambient] Enabled=1` enables the separate sky/ambient path and requires native ManyLights capture.
+- `[Pause] Enabled=1` (default) suspends new acquisition after 500 ms without simulation progress. Its independent 20 Hz observer keeps running. Resume discards old captures and waits for fresh data. This detects simulation pauses, not individual menu types; other simulation stalls can also trigger it. `0` disables this policy.
 - `NearbyRadius` controls the API's player-centered light radius; `LightOverlay.Radius` controls both light views. Distances are **game units**, not a claimed metre conversion.
 - Disable **Overlay, LightOverlay and Notifications**, plus optional **CrimsonHue** integration, to skip all UI hooks/client. Without a compatible Hue controller, disabling the three telemetry views is sufficient. The server and light capture have their own switches. Without any UI, native capture locates its submission hook with its own queue at world entry, as before 2.2.4.
 - `InitiallyVisible=0` hides an enabled view at launch; hotkeys cannot enable a view whose `Enabled=0`.
@@ -233,6 +243,7 @@ Connect through **HTTP** at `http://127.0.0.1:27311` or **WebSocket** at `ws://1
 |---|---|
 | `GET /v1/snapshot` | Latest telemetry snapshot |
 | `GET /v1/health` | Game, compatibility and capture health |
+| `GET /v1/activity`, `WS /v1/activity/stream` | Independent `running` / `paused` / `unknown` simulation activity and whether acquisition is paused; schema 1.0. Stale or missing observers become unknown. |
 | `GET /v1/schema` | JSON Schema for the active payload |
 | `WS /v1/stream` | Live JSON messages |
 | `GET /v1/lights/smoothed`, `WS /v1/lights/smoothed/stream` | All current grouped/smoothed light contributions, regardless of visibility. |
@@ -276,7 +287,7 @@ The external host alone can read player/camera and supported authored lights. **
 
 ## Compatibility and limits
 
-The 2.2.8 package's validated reference is **Steam build 26423880** on Windows:
+The 2.2.9 package's validated reference is **Steam build 26423880** on Windows:
 EXE file version `1.0.0.3527`, SHA-256
 `DC4237F21D6CE1E49F8E5D6FA89BF803FBBE6549123078EFDC393265C7BF6841`.
 The file version and Steam build ID are not the public game patch number. Older
@@ -334,7 +345,7 @@ under the normal packaged filename. See [INI validation](docs/INI_VALIDATION.md)
 
 GitHub CI covers managed/API tests and native capture, guard and UI tests. Current acceptance and outstanding checks are recorded in [the handover](docs/HANDOVER.md); historical test totals are not a result for a new package.
 
-See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.8.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [current public description drafts](docs/PUBLIC_DESCRIPTIONS.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
+See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.9.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [current public description drafts](docs/PUBLIC_DESCRIPTIONS.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
 
 ## Credits and scope
 

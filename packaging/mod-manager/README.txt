@@ -4,17 +4,23 @@ Live light contributions, player/render-camera telemetry and local ambient data,
 with a corner HUD, 3D light radar, fullscreen markers and startup/error notices.
 Local HTTP/WebSocket APIs support other tools. This mod does not drive lamps.
 
-Menu-mode preview (paired with CrimsonHue 1.0.7-menu.2):
+New in 2.2.9 (paired with optional CrimsonHue 1.0.7):
 - After 500 ms without simulation progress, suspend new light, ambient and
   visibility acquisition. Tick observation stays active for automatic resume.
 - Expose pause state independently at /v1/activity and /v1/activity/stream.
   CrimsonHue uses fixed menu light, then blends fresh gameplay data on resume.
+- Edit menu brightness and color/hex in Lighting > Menu lighting, then Save.
+  Reset restores warm white at 20%; Gold preset is optional. Existing choices
+  are preserved, and overall brightness/OpenRGB output limits still apply.
+- OpenRGB adds Reset OpenRGB settings and Remove disconnected devices. Stop
+  sync first; cleanup also requires Read devices on the current SDK port.
 - Pause.Enabled=1 in this production profile. Research is compiled out.
 - Intentional menu pauses and the short fresh-capture wait no longer show a
   light-failure notification or repeat "Telemetry is ready" on resume.
   Genuine reader/native failures stay visible.
 - The tick signal passed gameplay/Skills/gameplay. The owner still reports
   controller-specific Skills-menu stutter; menu lighting does not resolve it.
+  Simulation stalls outside menus can also trigger pause; this is not a menu-ID API.
 
 Included telemetry features:
 - Lights all around you. Telemetry reads the game's light list before the
@@ -58,7 +64,7 @@ Fixed in 2.2.4:
   presentation queue when the HUD, markers or notices are enabled.
 
 Source and support: https://github.com/ZappendusterFX/CrimsonDesertTelemetry
-Release notes: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/releases/v2.2.8.md
+Release notes: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/releases/v2.2.9.md
 API: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/API.md
 
 Requirements and installation
@@ -154,6 +160,8 @@ WebSocket: ws://127.0.0.1:27311/v1/stream
 Ambient:   http://127.0.0.1:27311/v1/ambient
 Smoothed:  http://127.0.0.1:27311/v1/lights/smoothed
 Visible:   http://127.0.0.1:27311/v1/lights/visible  (clear contributions only)
+Activity:  http://127.0.0.1:27311/v1/activity  (independent 20 Hz heartbeat)
+Activity WS: ws://127.0.0.1:27311/v1/activity/stream
 
 The host listens on loopback only. Do not launch another host on its port.
 Routes remain v1; light-enabled snapshots use additive schema 1.6, otherwise 1.1.
@@ -210,15 +218,16 @@ Created by ZappendusterFX, developed with Claude and Codex (OpenAI).
 See THIRD-PARTY-NOTICES.txt for dependency licenses.
 Unofficial community project; not affiliated with Pearl Abyss.
 
-Optional CrimsonHue 1.0.6 panel
+Optional CrimsonHue 1.0.7 panel
 ------------------------------
-Install CrimsonHue 1.0.6 separately for Philips Hue Entertainment lighting and
+Install CrimsonHue 1.0.7 separately for Philips Hue Entertainment lighting and
 optional parallel OpenRGB output.
 CDT remains independently usable; its ZIP does not contain the Hue controller.
 CDT hosts the mixer inside its existing D3D12/ImGui renderer. The separate Hue
 ASI owns the headless controller, protected settings and lamp communication;
-there is no second set of graphics hooks. Raw telemetry and the neutral API stay
-unchanged. Hue additionally requires .NET 8 Desktop Runtime (x64).
+there is no second set of graphics hooks. Existing raw telemetry stays unchanged;
+the new neutral activity feed supplies menu-light state. Hue additionally requires
+.NET 8 Desktop Runtime (x64).
 
 Lighting / Room / Setup / Advanced provide bridge/Entertainment setup, spatial
 calibration, Recommended and preserved Custom controls, presets and diagnostics.
@@ -238,6 +247,10 @@ one spatially mapped color. Light coverage and Background light are independent
 of the Hue room settings. OpenRGB starts disabled for new users and uses the
 common Start/Stop; a configured Hue bridge/Entertainment area is still required.
 Close other RGB applications controlling the same devices.
+Reset OpenRGB settings disables that output, restores its defaults and resets
+current placements to the front; it keeps the SDK port and Hue settings.
+Remove disconnected devices keeps connected positions and output settings.
+Reset view only resets the viewing angle.
 
 Ctrl+Shift+H opens/hides Hue; change its binding in Setup. Title-bar X and Hide
 settings also hide without stopping sync. Use Stop to end it, and wait for stopped

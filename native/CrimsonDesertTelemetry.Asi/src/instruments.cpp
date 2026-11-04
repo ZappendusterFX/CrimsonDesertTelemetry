@@ -389,7 +389,7 @@ void RunImpl(HANDLE stopEvent)
 #if CDT_RESEARCH
     if(sourceVisibilityBridge) source_visibility::Close();
 #endif
-    if(simulationTickRequested) simulation_tick_probe::Stop();
+    if(simulationTickStarted) simulation_tick_probe::Stop();
     if(physicsStarted) physics::Stop();
     if(spatialStarted) spatial::Stop();
     if (capturing) render::StopCapture();
