@@ -1,4 +1,26 @@
-# Current checkpoint — 2026-11-04, restart restored visibility and lighting
+# Current checkpoint — 2026-11-04, skill-window recorder prepared, awaiting go
+
+Owner reports erratic LightSync in the game's skill window and requests preparation
+of a 30-second recording. VisibilityRecorder now has optional --lighting (retain
+local RGB and capture the neutral Ambient WebSocket concurrently), --output with
+existing-path refusal, and loopback --port for synthetic verification. Default
+visibility recording/native traces are unchanged; no plugin/package modifications.
+Release build zero warnings/errors; tools/VisibilityRecorder/verify_recorder.py
+passes dual-stream/duration, available/unavailable, existing evidence, disconnect
+partial-failure and offline-replay checks. Synthetic evidence:
+artifacts/tools/recorder-check-7473fd17b9a34bd39191752a56c400ec/.
+
+CrimsonHue owns the composed scripts/Record-LightSyncDiagnostic.ps1 and passive
+5 Hz UI reader. Their build/ValidateOnly and one passive readiness read pass.
+On owner's go: FROM C:/DEV/CrimsonHue run
+& ./scripts/Record-LightSyncDiagnostic.ps1 -Seconds 30
+Collects neutral API RGB/visibility/Ambient, Hue/OpenRGB states, up to 1 Hz CPU/GPU
+and before/after logs. No build/preflight after go, no native trace signal or new
+game queries. Prepared only; no 30-second live recording started this turn.
+Suggested 5s gameplay / 20s skill window / 5s gameplay, owner-operated throughout.
+Next: ready handoff and end turn; resume only on go, no polling for owner action.
+
+# Previous checkpoint — 2026-11-04, restart restored visibility and lighting
 
 Owner restarted after the Deminiss Civil War slowdown and reports about 60 FPS
 and 100% GPU again; the prior session could no longer reach full GPU utilization.

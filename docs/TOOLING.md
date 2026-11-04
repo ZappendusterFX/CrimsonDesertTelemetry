@@ -280,6 +280,17 @@ an observed native profile. All acceptance guards remain unchanged. File I/O
 is outside the physics hook, after normal result publication. No INI change needed.
 This is diagnostic instrumentation, not a pristine baseline or a visibility fix.
 
+For the prepared Hue skill-window comparison, optional `--lighting` retains local
+`colorLinear` and opens the neutral Ambient WebSocket concurrently, writing timestamped
+`ambient.jsonl.gz`. `--output <fresh-directory>` selects a new evidence directory;
+existing paths are refused. Default recording remains visibility-only. `--port`
+changes only the loopback endpoint (default 27311) and supports synthetic checks.
+Run `python tools/VisibilityRecorder/verify_recorder.py` for synthetic dual-stream,
+duration, partial-failure, evidence-preservation and offline-replay checks.
+CrimsonHue's `scripts/Record-LightSyncDiagnostic.ps1 -Seconds 30` composes these
+streams with its passive Hue-state reader and CPU/GPU counters; build and validate
+before the owner's `go`. This mode does not signal native traces or add game queries.
+
 Private physics.6 through .10 use `[Experimental] PhysicsVisibility=1` for automatic HUD/API
 sampling; do NOT send `Start-PhysicsProbe.ps1` commands while this mode is active.
 physics.7 has V2 batch mappings,32800bytes (32-byte header +256x128 entries), not
