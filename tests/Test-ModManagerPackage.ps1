@@ -32,6 +32,7 @@ function Get-ProfileRules([ValidateSet('production', 'research')][string]$Profil
     # Complete offered configuration, with ranges taken from the native readers.
     # This validates a package's requested settings, not runtime availability.
     $rules = @{
+        Compatibility = @{ RecoveryTestOnce = 'recovery-token' }
         Server = @{ Enabled = 'bool'; Port = 'int:1024:65535'; SampleRateHz = 'int:1:240' }
         Notifications = @{ Enabled = 'bool'; DurationMilliseconds = 'int:5000:10000' }
         CrimsonHue = @{ Enabled = 'bool' }
@@ -106,6 +107,14 @@ function Assert-IniConfiguration([string]$Ini, [ValidateSet('production', 'resea
                 throw "$section.$key must be a local filename."
             }
         }
+        elseif ($rule[0] -eq 'recovery-token') {
+            if ($value -and ($value -cnotmatch '^[0-9A-Fa-f]{32}$' -or $value -eq ('0' * 32))) {
+                throw "$section.$key must be empty or a nonzero 32-digit hexadecimal token."
+            }
+            if ($ProfileName -eq 'research' -and $value) {
+                throw 'A forced recovery test requires a production-code diagnostic package.'
+            }
+        }
         else {
             if ($rule[0] -eq 'int' -and $value -cnotmatch '^[0-9]+$') { throw "$section.$key must be an unsigned decimal integer." }
             if ($rule[0] -eq 'number' -and $value.StartsWith('+')) { throw "$section.$key must not have a leading plus sign." }
@@ -119,6 +128,8 @@ function Assert-IniConfiguration([string]$Ini, [ValidateSet('production', 'resea
         }
     }
     foreach ($requiredSection in $rules.Keys) {
+        # Added after 2.2.8-recovery.1. Old packages/INIs retain default disabled.
+        if ($requiredSection -eq 'Compatibility' -and -not $sections.ContainsKey($requiredSection)) { continue }
         if ($requiredSection -eq 'CrimsonHue' -and -not $sections.ContainsKey($requiredSection)) { continue } # old INIs use optional discovery
         # New private opt-in; old research packages remain valid with default OFF.
         if ($requiredSection -eq 'Experimental' -and -not $sections.ContainsKey($requiredSection)) { continue }
@@ -222,6 +233,14 @@ MaxMarkers=1
 MaxLabels=0
 '@
     Assert-IniConfiguration $productionIni 'production'
+    $testToken = '1234567890ABCDEF1234567890ABCDEF'
+    $withCompatibility = $productionIni + "`n[Compatibility]`nRecoveryTestOnce=`n"
+    Assert-IniConfiguration $withCompatibility 'production'
+    Assert-IniConfiguration ($withCompatibility.Replace('RecoveryTestOnce=', "RecoveryTestOnce=$testToken")) 'production'
+    foreach ($invalidToken in @(('0' * 32), '1', ('A' * 31), ('A' * 33), ('G' * 32), '../test', '12345678-90AB-CDEF-1234-567890ABCDEF')) {
+        Assert-Rejected { Assert-IniConfiguration ($withCompatibility.Replace('RecoveryTestOnce=', "RecoveryTestOnce=$invalidToken")) 'production' } 'An invalid recovery test token was accepted.'
+    }
+    Assert-Rejected { Assert-IniConfiguration ($productionIni + "`n[Compatibility]`n") 'production' } 'An incomplete compatibility section was accepted.'
     $otherBounds = $productionIni.Replace('Port=65535', 'Port=1024').Replace('SampleRateHz=240', 'SampleRateHz=1').
         Replace('DurationMilliseconds=10000', 'DurationMilliseconds=5000').Replace('NearbyRadius=1', 'NearbyRadius=100000').
         Replace('ManyLightsSampleRateHz=1', 'ManyLightsSampleRateHz=60').Replace('TimeConstantMilliseconds=0', 'TimeConstantMilliseconds=2000').
@@ -263,6 +282,8 @@ ResultFile=inject_result.txt
 '@
     $researchIni = $productionIni + "`n" + $researchTail
     Assert-IniConfiguration $researchIni 'research'
+    Assert-IniConfiguration ($researchIni + "`n[Compatibility]`nRecoveryTestOnce=`n") 'research'
+    Assert-Rejected { Assert-IniConfiguration ($researchIni + "`n[Compatibility]`nRecoveryTestOnce=$testToken`n") 'research' } 'A forced production recovery test was accepted in research instrumentation.'
     Assert-IniConfiguration ($researchIni.Replace('EnableConsole=0', 'EnableConsole=1').Replace('SpatialProbe=0', 'SpatialProbe=1')) 'research'
     Assert-IniConfiguration ($researchIni.Replace('[Research]', "[Research]`nPhysicsProbe=1")) 'research'
     Assert-IniConfiguration ($researchIni.Replace('[Research]', "[Research]`nManyLightsPair=1")) 'research'
@@ -314,6 +335,45 @@ ResultFile=inject_result.txt
     Assert-Rejected { Assert-Payload $badPe 'production' } 'A non-PE ASI was accepted.'
     $badNotices = $fixture.Clone(); $badNotices['THIRD-PARTY-NOTICES.txt'] = [Text.Encoding]::UTF8.GetBytes('Dear ImGui')
     Assert-Rejected { Assert-Payload $badNotices 'production' } 'Missing dependency attribution was accepted.'
+
+    # Exercise the actual builder gate without invoking publish/build/archive
+    # operations. Only its named validation function is loaded from the AST.
+    $builderTokens = $null; $builderErrors = $null
+    $builderAst = [Management.Automation.Language.Parser]::ParseFile(
+        (Join-Path $PSScriptRoot '..\scripts\Build-ModManagerPackage.ps1'), [ref]$builderTokens, [ref]$builderErrors)
+    if ($builderErrors.Count) { throw 'The package builder contains syntax errors.' }
+    $builderFunction = $builderAst.Find({ param($node)
+        $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Resolve-RecoveryTestToken'
+    }, $false)
+    if ($null -eq $builderFunction) { throw 'Recovery test package guard is missing.' }
+    . ([scriptblock]::Create($builderFunction.Extent.Text))
+    $recoveryDefinition = [pscustomobject]@{ nativeCapture = [pscustomobject]@{
+        support = [pscustomobject]@{ anchors = @(1..11) }; contextSignatures = @(1..7)
+    } }
+    if ((Resolve-RecoveryTestToken '' '2.2.7' $false 'auto' $null $null) -cne '') {
+        throw 'Normal packages unexpectedly enable a recovery test.'
+    }
+    if ((Resolve-RecoveryTestToken $testToken.ToLowerInvariant() '2.2.8-recovery.2' $true 'off' $recoveryDefinition $null) -cne $testToken) {
+        throw 'A valid private diagnostic token was not normalized.'
+    }
+    $matchingOverride = @{ 'Compatibility.RecoveryTestOnce' = $testToken.ToLowerInvariant() }
+    if ((Resolve-RecoveryTestToken $testToken '2.2.8-recovery.2' $true 'off' $recoveryDefinition $matchingOverride) -cne $testToken) {
+        throw 'A matching qualified token override was rejected.'
+    }
+    Assert-Rejected { Resolve-RecoveryTestToken ('0' * 32) '2.2.8-recovery.2' $true 'off' $recoveryDefinition $null } 'The builder accepted an all-zero token.'
+    Assert-Rejected { Resolve-RecoveryTestToken '../test' '2.2.8-recovery.2' $true 'off' $recoveryDefinition $null } 'The builder accepted a malformed token.'
+    Assert-Rejected { Resolve-RecoveryTestToken $testToken '2.2.8' $true 'off' $recoveryDefinition $null } 'A public package enabled the forced diagnostic.'
+    Assert-Rejected { Resolve-RecoveryTestToken $testToken '2.2.8-recovery.2' $false 'off' $recoveryDefinition $null } 'A non-integrated package enabled the forced diagnostic.'
+    Assert-Rejected { Resolve-RecoveryTestToken $testToken '2.2.8-recovery.2' $true 'on' $recoveryDefinition $null } 'A research build enabled the forced diagnostic.'
+    Assert-Rejected { Resolve-RecoveryTestToken $testToken '2.2.8-recovery.2' $true 'auto' $recoveryDefinition $null } 'An implicit research build enabled the forced diagnostic.'
+    Assert-Rejected { Resolve-RecoveryTestToken $testToken '2.2.8-recovery.2' $true 'off' $null $null } 'A profile without recovery metadata enabled the test.'
+    Assert-Rejected { Resolve-RecoveryTestToken '' '2.2.8-recovery.2' $true 'off' $recoveryDefinition $matchingOverride } 'An INI-only override bypassed the explicit diagnostic parameter.'
+    Assert-Rejected { Resolve-RecoveryTestToken $testToken '2.2.8-recovery.2' $true 'off' $recoveryDefinition @{ 'Compatibility.RecoveryTestOnce' = 'ABCDEF1234567890ABCDEF1234567890' } } 'A conflicting diagnostic token override was accepted.'
+    Assert-Rejected { Resolve-RecoveryTestToken $testToken '2.2.8-recovery.2' $true 'off' $recoveryDefinition @{ 'RecoveryTestOnce' = $testToken } } 'An unqualified token override was accepted.'
+    foreach ($template in @('CrimsonDesertTelemetry.ini', 'CrimsonDesertTelemetry.research.ini')) {
+        $templateIni = Get-Content -LiteralPath (Join-Path $PSScriptRoot "..\packaging\mod-manager\$template") -Raw
+        if ($templateIni -notmatch '(?m)^RecoveryTestOnce=\r?$') { throw 'A default INI does not leave the recovery test disabled.' }
+    }
     Write-Output 'PASS package profiles, nondefault settings, bounds and companion-file regression cases (in-memory only)'
 }
 

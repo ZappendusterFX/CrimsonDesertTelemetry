@@ -22,8 +22,41 @@ param(
     [switch]$IntegratedDiagnostic,
     # Keep the filtered-only private diagnostic visible: host, HUDs and notices ON;
     # unvalidated Ambient, source visibility and upstream input remain OFF.
-    [switch]$DiagnosticHud
+    [switch]$DiagnosticHud,
+    # Explicit, consumed-once cold recovery test; never remove or falsify the
+    # reference EXE/profile to exercise the normal recovery path.
+    [string]$RecoveryTestOnce = ''
 )
+
+function Resolve-RecoveryTestToken([string]$Token, [string]$PackageVersion,
+    [bool]$Integrated, [string]$ResearchMode, [object]$Definition, [hashtable]$Overrides) {
+    if ($Token -and ($Token -cnotmatch '^[0-9A-Fa-f]{32}$' -or $Token -eq ('0' * 32))) {
+        throw 'RecoveryTestOnce must be a nonzero 32-digit hexadecimal GUID-N token.'
+    }
+    $normalized = ([string]$Token).ToUpperInvariant()
+    if ($null -eq $Overrides) { $Overrides = @{} }
+    foreach ($key in @($Overrides.Keys)) {
+        if (($key -split '\.', 2)[-1] -ine 'RecoveryTestOnce') { continue }
+        $override = [string]$Overrides[$key]
+        if ($key -ine 'Compatibility.RecoveryTestOnce' -or
+            ($override -and (-not $normalized -or $override.ToUpperInvariant() -cne $normalized))) {
+            throw 'Use the explicit -RecoveryTestOnce parameter; conflicting or unqualified INI overrides are refused.'
+        }
+        if ($normalized -and $override.ToUpperInvariant() -cne $normalized) {
+            throw 'The RecoveryTestOnce INI override conflicts with the explicit diagnostic token.'
+        }
+    }
+    if (-not $normalized) { return '' }
+    if ($PackageVersion -notmatch '-' -or -not $Integrated -or $ResearchMode -ne 'off') {
+        throw 'RecoveryTestOnce requires a private prerelease with -IntegratedDiagnostic -Research off.'
+    }
+    if ($null -eq $Definition -or $null -eq $Definition.nativeCapture.support -or
+        @($Definition.nativeCapture.support.anchors).Count -ne 11 -or
+        @($Definition.nativeCapture.contextSignatures).Count -ne 7) {
+        throw 'RecoveryTestOnce requires a reference with complete native recovery metadata.'
+    }
+    return $normalized
+}
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -69,6 +102,11 @@ if ($privateDiagnostic) {
         }
         $IniOverrides[$key] = $forced[$key]
     }
+}
+$RecoveryTestOnce = Resolve-RecoveryTestToken $RecoveryTestOnce $Version ([bool]$IntegratedDiagnostic) $Research $definition $IniOverrides
+if ($RecoveryTestOnce) {
+    if (-not $IniOverrides) { $IniOverrides = @{} }
+    $IniOverrides['Compatibility.RecoveryTestOnce'] = $RecoveryTestOnce
 }
 $iniTemplate = Join-Path $repoRoot $(if ($researchEnabled) {
     'packaging\mod-manager\CrimsonDesertTelemetry.research.ini'
