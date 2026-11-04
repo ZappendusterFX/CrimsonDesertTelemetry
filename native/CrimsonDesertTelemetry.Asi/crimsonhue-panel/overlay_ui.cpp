@@ -149,6 +149,8 @@ void TuyaControls(const Json& view) {
     }
     for (const auto& device : devices) if (Text(device, "key") == selected) {
         ImGui::SeparatorText("Selected device");
+        if (device.value("statusFromLastSync", false)) ImGui::TextDisabled("Last sync result");
+        Wrap(Text(device, "status"));
         if (Button("Edit device", canConfigure && !view.value("smoke", false)))
             Command({{"action", "tuyaConfigure"}, {"device", selected}});
         ImGui::SameLine();
