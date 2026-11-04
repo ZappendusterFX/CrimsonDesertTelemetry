@@ -14,6 +14,8 @@ function Get-MenuCandidateProfile {
             @{ Rva = [uint64]0xDEF90D; Hex = '488B41084C8B4028498B40104885C0741D80784E00' },
             @{ Rva = [uint64]0xA3CD697; Hex = 'C6873001000001' },
             @{ Rva = [uint64]0xA3CD6D5; Hex = 'C6813001000000' },
+            @{ Rva = [uint64]0xA3CD743; Hex = '488B89200100004889CA488B4958E85A3F4EF9' },
+            @{ Rva = [uint64]0xA3CD715; Hex = '488B88A00000004885C97406488B4928EB034889D980A17D020000FEF6817D02000002741C80B97C020000007413' },
             @{ Rva = [uint64]0xA188F90; Hex = '488B41084989C94885C0743E440FB7808A000000B9FFFF0000664139C8742B488B4058488B90B00000004C8B92B8000000453B42087313498B024A833CC0007409410FB68130010000C330C0C3' }
         )
         Types = @(
@@ -49,6 +51,24 @@ function Read-MenuCandidateSample {
     function D([byte[]]$bytes, [int]$offset) { [BitConverter]::ToUInt32($bytes, $offset) }
     function Pointer([uint64]$address) { Q (Bytes $address 8) }
     function Hex([uint64]$value) { '0x{0:X}' -f $value }
+    function IndexedControlFlags([uint64]$entry) {
+        # The event handler at A3CD715 follows this entry to the raw control flags.
+        # These bytes and the backlink have no verified menu semantics.
+        try {
+            $holder = Pointer ($entry + 0xA0)
+            if ($holder -eq 0) { return @{ status = 'absent-holder' } }
+            $control = Pointer ($holder + 0x28)
+            if ($control -eq 0) { return @{ status = 'absent-control' } }
+            $flags = Bytes ($control + 0x27C) 2
+            $backlink = Pointer ($control + 0x120)
+            $stable = (Pointer ($entry + 0xA0)) -eq $holder -and
+                (Pointer ($holder + 0x28)) -eq $control -and
+                (Pointer ($control + 0x120)) -eq $backlink
+            return @{ status = $(if ($stable) { 'read' } else { 'changed' }); stableChain = $stable
+                holder = Hex $holder; control = Hex $control; opaque27CTo27D = [Convert]::ToHexString($flags)
+                opaqueBacklink120 = Hex $backlink }
+        } catch { return @{ status = 'unreadable'; error = 'Indexed control flags unreadable or bounded read rejected.' } }
+    }
     function IndexedControlCandidate([uint64]$root, [uint64]$owner) {
         # Read the prerequisites used by the game's common getter at A188F90.
         # No game function is called; an existing entry is not a visibility verdict.
@@ -64,6 +84,7 @@ function Read-MenuCandidateSample {
             if ($size -gt 65536) { throw 'Indexed control count rejected.' }
             if ($index -ge $size) { return @{ status = 'index-outside-vector'; index = $index; count = $size } }
             $entry = Pointer ($data + [uint64]$index * 8)
+            $controlFlags = if ($entry -ne 0) { IndexedControlFlags $entry } else { @{ status = 'absent-entry' } }
             $stable = (Pointer ($root + 8)) -eq $owner -and
                 [BitConverter]::ToUInt16((Bytes ($owner + 0x8A) 2), 0) -eq $index -and
                 (Pointer ($owner + 0x58)) -eq $context -and (Pointer ($context + 0xB0)) -eq $manager -and
@@ -71,7 +92,7 @@ function Read-MenuCandidateSample {
                 [Convert]::ToHexString((Bytes $vector 12)) -eq [Convert]::ToHexString($header) -and
                 (Pointer ($data + [uint64]$index * 8)) -eq $entry
             return @{ status = $(if (-not $stable) { 'changed' } elseif ($entry -eq 0) { 'absent-entry' } else { 'present' })
-                index = $index; count = $size; entry = Hex $entry; stableChain = $stable }
+                index = $index; count = $size; entry = Hex $entry; stableChain = $stable; controlFlags = $controlFlags }
         } catch { return @{ status = 'unreadable'; error = 'Indexed control chain unreadable or bounded read rejected.' } }
     }
     function ControlCandidate([uint64]$root, [uint64]$owner) {

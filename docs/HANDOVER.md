@@ -1,4 +1,30 @@
-# Current checkpoint — 2026-11-04, BA rejected; extended menu observer ready for Skills
+# Current checkpoint — 2026-11-04, root 130 rejected; control-state comparison prepared
+
+Owner-confirmed Skills at 19:03:20 CET, PID 16716, produced three stable v2 samples
+identical to gameplay 18:58 in every emitted root/control field. SkillTree 130=0
+in both; no need for a redundant return test of this candidate (owner agrees).
+Evidence: artifacts/menu-state-skills-20261104-190320-160-4078ef02eff24049a7bc7918b3e03dc4.json.
+
+Observer v3 adds guarded indexedEntry+A0 -> holder+28 -> raw control 27C/27D,
+plus opaque backlink +120. Ten code guards, existing bounds and chain rechecks;
+synthetic null/changed-chain checks and exact-EXE validation pass, peer reviewed.
+Logs: artifacts/menu-state-v3-{synthetic,offline}-20261104.log. Offline evidence:
+artifacts/menu-control-flags-20261104-190607/ and menu-owner-20261104-1856/INSTANCE_FOLLOWUP.md.
+
+Skills v3 at 19:07:51 CET on last confirmed owner state: same PID, three stable
+samples, no rejected roots, 13328 bytes/sample. Control 27C/27D: SkillTree=0103,
+MainMenu=0103, Pause=0140, SkillList=0180, Inventory=0120, Map=0100. Every backlink
+equals its indexed entry. These fields were NOT in the earlier gameplay samples.
+Evidence: artifacts/menu-state-skills-20261104-190750-303-bbcf916a91664aa1ba7b9272ed4a9e10.json.
+World Builder follow-up searched all 120 tracked text files and read relevant
+implementations; no ready-made game-menu detector found. Editor flag and tick
+freshness are the actual checks. Remote main still 6ad72dcb. Coverage/limits:
+artifacts/worldbuilder-menu-coverage-20261104-1930/FINDINGS.md and coverage.json.
+Next: owner closes Skills, returns to gameplay and replies "Spiel". Immediately
+run & ./scripts/Read-MenuStateCandidates.ps1 -Label gameplay FROM CDT and compare
+v3 control fields. No installation/output change or polling. No menu fix yet.
+
+# Previous checkpoint — 2026-11-04, BA rejected; extended menu observer ready for Skills
 
 Owner's gameplay return18:51:08CET, samePID16716, disproves root+BA as an open flag:
 SkillTree stays1 in all three stable samples. Full old observed state equals the

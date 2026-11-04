@@ -53,7 +53,7 @@ if (-not $OutPath) {
 $OutPath = [IO.Path]::GetFullPath($OutPath)
 $output = [IO.File]::Open($OutPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::Read)
 $reader = $null
-$report = [ordered]@{ observerVersion = 2; scope = 'Read-only opaque menu candidates; no verified open/closed detection.'; label = $Label
+$report = [ordered]@{ observerVersion = 3; scope = 'Read-only opaque menu candidates; no verified open/closed detection.'; label = $Label
     labelSource = 'Caller/owner supplied, not automatically detected'; requestedSamples = $Samples; samples = @(); complete = $false }
 try {
     $games = @(Get-Process CrimsonDesert -ErrorAction Stop)

@@ -52,6 +52,28 @@ then validate menu entry/exit independently of preview playback and stalled fram
 
 ## Integration boundaries once the signal is validated
 
+### World Builder follow-up coverage
+
+On owner request, a repository-wide targeted search covered all 120 tracked text
+files (124 tracked files including four PNGs); relevant implementations and callers
+were read. Remote main still resolves to the pinned 6ad72dcb commit. No ready-made
+game-menu visibility detector was found. This is not a line-by-line audit of every
+dependency, historical commit or issue.
+
+`overlay.cpp:1137-1142` assigns g_menuOpen from editor::IsOpen()/Placing().
+`editor.cpp:5621-5626` labels the game paused after 500 ms without PumpTicks changes.
+GameClockNow uses 2000 ms tick freshness; ServerFieldTicking uses 3000 ms for the
+mod's load/play-mode lifecycle. Standalone Freecam only checks camera availability.
+None distinguishes actual Skills visibility from other unavailable/stalled states.
+Menu-class identifiers occur in the RTTI inventory, not a runtime menu reader.
+
+Evidence and exact search patterns/hit logs:
+`artifacts/worldbuilder-menu-coverage-20261104-1930/FINDINGS.md` and `coverage.json`.
+All tracked files were present; no git submodules. External ImGui/MinHook build
+dependencies were not downloaded or audited. No foreign source was executed.
+
+### Producer and consumer changes
+
 CDT must own and publish a fresh neutral menu/capture-pause status. Hue consumes
 it for constant output. A constant Hue value alone does not pause native work.
 
@@ -186,3 +208,33 @@ Skills entry/exit; general menu coverage and hierarchy remain unresolved.
 Baseline: `artifacts/menu-state-gameplay-20261104-185846-409-1f87c270dcbf4ce790435177aac5d5da.json`.
 An earlier extended baseline without indexed fields is retained at
 `artifacts/menu-state-gameplay-20261104-185556-481-b736fd93080a41f2b6a4c69787edaab1.json`.
+
+The owner-confirmed Skills capture at 19:03:20 CET has the same values for every
+emitted v2 field in all three stable samples (same PID). SkillTree 130 stays zero.
+This candidate does not distinguish Skills from gameplay; the owner agrees a
+redundant close comparison is unnecessary. Evidence:
+`artifacts/menu-state-skills-20261104-190320-160-4078ef02eff24049a7bc7918b3e03dc4.json`.
+
+## Observer v3: indexed UI control flags
+
+The event handler at RVA 0xA3CD715 follows indexedEntry+A0 -> holder+28 to bytes
+control+27C/27D. Code at 0xA3CD743 also accesses a backlink at control+120. V3
+records these raw values with separate absent/unreadable/changed statuses and
+pointer rechecks. It does not invoke the handler or infer visible/closed state.
+Two added exact guards bring the total to ten. The optional A0 block is not a
+script root or a virtual object; do not invent a vtable validation for it.
+Offline evidence: `artifacts/menu-control-flags-20261104-190607/FINDINGS.md` and
+`artifacts/menu-owner-20261104-1856/INSTANCE_FOLLOWUP.md`.
+
+Synthetic tests cover missing holder/control and changed chains; exact-EXE
+validation also passes. Logs: `artifacts/menu-state-v3-synthetic-20261104.log`
+and `artifacts/menu-state-v3-offline-20261104.log`. Read-only peer review found
+no concrete chain, width or guard discrepancy.
+
+Skills capture 19:07:51 CET (last owner-confirmed state), same PID, three stable
+samples, no rejected roots, 13328 bytes/sample: 27C/27D = SkillTree 0103,
+MainMenu 0103, Pause 0140, SkillList 0180, Inventory 0120, WorldMap 0100.
+Every backlink equals its indexed entry. Root 130 remains unchanged.
+Evidence: `artifacts/menu-state-skills-20261104-190750-303-bbcf916a91664aa1ba7b9272ed4a9e10.json`.
+These control fields were absent from earlier gameplay captures; a new owner
+gameplay handoff is required before comparing them. No semantic verdict yet.

@@ -9,7 +9,7 @@ $menuProfile = Get-MenuCandidateProfile
 [uint64]$testBase = 0x140000000
 $memory = [Collections.Generic.Dictionary[uint64,byte[]]]::new()
 $reads = [Collections.Generic.List[object]]::new()
-$controls = @{ HeaderReads = 0; ChangeHeader = $false; OwnerReads = 0; ChangeOwner = $false }
+$controls = @{ HeaderReads = 0; ChangeHeader = $false; OwnerReads = 0; ChangeOwner = $false; HolderReads = 0; ChangeHolder = $false }
 $memory[$testBase + $menuProfile.GlobalRva] = [BitConverter]::GetBytes([uint64]0x20000)
 $memory[0x200B0] = [BitConverter]::GetBytes([uint64]0x30000)
 $memory[0x30A38] = [BitConverter]::GetBytes([uint64]0x40000)
@@ -34,9 +34,17 @@ $memory[0xC00B8] = [BitConverter]::GetBytes([uint64]0xD0000)
 $indexHeader = [byte[]]::new(12); PutQ $indexHeader 0 0xE0000; PutD $indexHeader 8 2
 $memory[0xD0000] = $indexHeader
 $memory[0xE0008] = [BitConverter]::GetBytes([uint64]0xF0000)
+$memory[0xF00A0] = [BitConverter]::GetBytes([uint64]0x100000)
+$memory[0x100028] = [BitConverter]::GetBytes([uint64]0x110000)
+$memory[0x11027C] = [byte[]]@(1, 2)
+$memory[0x110120] = [BitConverter]::GetBytes([uint64]0xF0000)
 $fakeRead = {
     param([uint64]$address, [int]$length)
     $reads.Add(@{ address = $address; length = $length })
+    if ($address -eq 0xF00A0) {
+        $controls.HolderReads++
+        if ($controls.ChangeHolder -and $controls.HolderReads -gt 1) { $memory[0xF00A0] = [BitConverter]::GetBytes([uint64]0) }
+    }
     if ($address -eq 0x40040) {
         $controls.HeaderReads++
         if ($controls.ChangeHeader -and $controls.HeaderReads -gt 1) { $memory[0x40040][8] = 1 }
@@ -60,8 +68,21 @@ Assert ($sample.candidateRoots.Count -eq 1 -and $sample.candidateRoots[0].type -
 Assert ($sample.candidateRoots[0].stateA4 -eq 7 -and $sample.candidateRoots[0].stateA8 -eq 9 -and $sample.candidateRoots[0].header20To23 -eq '78563412') 'Opaque fields lost or misdecoded.'
 Assert ($sample.candidateRoots[0].opaque130To131 -eq '0102' -and $sample.candidateRoots[0].controlCandidate.status -eq 'read' -and $sample.candidateRoots[0].controlCandidate.opaque4E -eq 1) 'Extended root/control fields lost or misdecoded.'
 Assert ($sample.candidateRoots[0].indexedControlCandidate.status -eq 'present' -and $sample.candidateRoots[0].indexedControlCandidate.index -eq 1) 'Indexed control lookup lost the matching entry.'
+Assert ($sample.candidateRoots[0].indexedControlCandidate.controlFlags.status -eq 'read' -and $sample.candidateRoots[0].indexedControlCandidate.controlFlags.opaque27CTo27D -eq '0102') 'Indexed control flags lost or misdecoded.'
 Assert (-not $sample.Contains('menuOpen')) 'Diagnostic invented an open/closed verdict.'
 Assert ($sample.readBytes -lt 1024) 'Small fixture unexpectedly read unrelated memory.'
+$memory[0xF00A0] = [BitConverter]::GetBytes([uint64]0); $reads.Clear()
+$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase
+Assert ($sample.candidateRoots[0].indexedControlCandidate.controlFlags.status -eq 'absent-holder' -and @($reads | Where-Object address -eq 0x100028).Count -eq 0) 'Absent holder was dereferenced.'
+$memory[0xF00A0] = [BitConverter]::GetBytes([uint64]0x100000)
+$memory[0x100028] = [BitConverter]::GetBytes([uint64]0)
+$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase
+Assert ($sample.candidateRoots[0].indexedControlCandidate.controlFlags.status -eq 'absent-control') 'Absent indexed control fabricated flags.'
+$memory[0x100028] = [BitConverter]::GetBytes([uint64]0x110000)
+$controls.HolderReads = 0; $controls.ChangeHolder = $true
+$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase
+Assert ($sample.candidateRoots[0].indexedControlCandidate.controlFlags.status -eq 'changed' -and -not $sample.candidateRoots[0].indexedControlCandidate.controlFlags.stableChain) 'Changed indexed control accepted as stable.'
+$controls.ChangeHolder = $false; $memory[0xF00A0] = [BitConverter]::GetBytes([uint64]0x100000)
 $memory[0x8008A] = [BitConverter]::GetBytes([uint16]0xFFFF); $reads.Clear()
 $sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase
 Assert ($sample.candidateRoots[0].indexedControlCandidate.status -eq 'absent-index' -and @($reads | Where-Object address -eq 0x80058).Count -eq 0) 'Sentinel index followed the downstream chain.'
