@@ -1,4 +1,36 @@
-# Current checkpoint — 2026-11-04, menu.3 suppresses repeated ready notices after pause
+# Current checkpoint — 2026-11-04, CDT 2.2.9 and CrimsonHue 1.0.7 published
+
+Owner requested stable GitHub releases, updated descriptions and prepared Nexus
+copy. Published Latest: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/tag/v2.2.9
+and https://github.com/ZappendusterFX/CrimsonHue/releases/tag/v1.0.7.
+README, release notes and repository About updated. Nexus remains owner-only:
+docs/NEXUS-2.2.9.md, docs/NEXUS_DESCRIPTION.bbcode and Hue docs/NEXUS.md.
+NEXUS_AUTO_PUBLISH=false; release-triggered run41915295705 skipped as intended.
+
+Production/Research OFF/native26423880/Pause1/Diagnostics0 package:
+artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.9-ModManagers.zip (1,177,457 bytes).
+SHA256 19340C56417A078C3A18D128EBDB3FDCCE262C422E84CF4F0BB4E7DFEC911524.
+Payload source5fd45bf; immutable tag54cfdf2. Public ZIP/checksum downloads match
+local assets. Evidence docs/releases/v2.2.9-validation.md and artifacts receipts
+release-2.2.9-receipt.json / release-2.2.9-github-publication.json; logs preserved.
+
+Local94 managed/45 native tests, package/profile validation, paired Hue177 Core
+tests and both exact packaged shared-renderer smokes pass. GitHub tag/main CI
+41913474881/41913471068 and release41913474969 attempt2 pass, including API smoke.
+Release attempt1 exposed a test-only stale timestamp after cold JSON work:
+400ms delay reproduces exact failure; bcd6cd1 refreshes fixture heartbeat per
+transition, delay removed, full94/94 pass; corrected-fixture CI41914422512 also
+passes. No runtime/tag/package changes for it.
+Release preparation also fixed normal worker shutdown to Stop the tick observer
+when simulationTickStarted, including production Pause1/Diagnostics0 (67af5b0).
+
+Menu lighting and notification fixes are NOT a Skills-stutter fix. Controller-only
+Skills issue remains unresolved. No assistant installation/deployed-file changes,
+physical lamp writes or exact-public-ZIP game acceptance. Prior private menu
+installations remain separate evidence. Next optional owner action: stop sync,
+close game, install both public packages via DMM. Do not poll or install for owner.
+
+# Previous checkpoint — 2026-11-04, menu.3 suppresses repeated ready notices after pause
 
 Owner reports "Telemetry is ready" after every pause. Proven regression:
 NoticeTracker treated intentional loading/simulation-paused as a new scene and
