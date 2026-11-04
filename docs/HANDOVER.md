@@ -1,4 +1,31 @@
-# Current checkpoint — 2026-11-04, CDT 2.2.9 and CrimsonHue 1.0.7 published
+# Current checkpoint — 2026-11-04, independent output HUD candidate complete
+
+Owner requested Hue/OpenRGB independence plus Tuya as third backend, including
+all three concurrently. Hue implements output workers/configuration; CDT hosts
+the synced Setup selection and Tuya3.5 room/device status UI. No telemetry/input
+changes, no Tuya credentials/addresses/device IDs in shared HUD state.
+The controller-only Skills bug remains unresolved.
+
+Private production/Research OFF/native26423880 candidate, NOT published/installed:
+artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.10-outputs.1-ModManagers.zip,
+1,186,599 bytes, source72d699a,
+SHA256 15557E07FBACF886113BA4297E57D9C23836ACCB4126366369EEC072490AC620.
+Required Hue partner: C:/DEV/CrimsonHue/dist/CrimsonHue-1.0.8-outputs.1-asi-win-x64.zip,
+SHA256 4A415B51B25CD098D18FBF368E27A2AF180DDD1C7F03978AD859526FC870B579.
+Adjacent .sha256 and artifacts/independent-outputs-receipt.json saved.
+
+45/45 native, package/profile validators, four shared renderer pages and exact
+packaged Hue OpenRGB-only/Tuya-only smokes pass; paired Hue214/214 Core/controller/
+WPF setup pass. CDT managed code unchanged, not rerun. Shared panel manifest and
+AGENTS/CLAUDE parity verified. See docs/INDEPENDENT-OUTPUTS-VALIDATION.md.
+Descriptions/Nexus drafts updated but not uploaded; public2.2.9/1.0.7 preserved.
+No installation, private key import, physical output, live concurrency or game
+acceptance. Unrelated untracked research files remain untouched.
+
+Next OWNER ONLY: stop sync, close game, install both matching ZIPs via DMM and
+report restart. Do not operate DMM, modify deployed files or wait/poll for owner.
+
+# Previous checkpoint — 2026-11-04, CDT 2.2.9 and CrimsonHue 1.0.7 published
 
 Owner requested stable GitHub releases, updated descriptions and prepared Nexus
 copy. Published Latest: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/tag/v2.2.9
