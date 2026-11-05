@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Deterministic>true</Deterministic>
-    <Version>2.2.10</Version>
+    <Version>2.2.11</Version>
     <Authors>CrimsonDesertTelemetry contributors</Authors>
     <Product>Crimson Desert Telemetry</Product>
   </PropertyGroup>

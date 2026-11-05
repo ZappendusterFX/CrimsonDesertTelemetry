@@ -64,7 +64,7 @@ Fixed in 2.2.4:
   presentation queue when the HUD, markers or notices are enabled.
 
 Source and support: https://github.com/ZappendusterFX/CrimsonDesertTelemetry
-Release notes: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/releases/v2.2.9.md
+Release notes: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/latest
 API: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/API.md
 
 Requirements and installation

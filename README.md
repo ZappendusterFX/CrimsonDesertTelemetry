@@ -6,16 +6,13 @@ Inspect positions, colors and brightness of current light contributions from fir
 
 **New in 2.2.10:** the shared mixer works with **CrimsonHue 2.0.0** to select Hue, OpenRGB and compatible Tuya Wi-Fi 3.5 RGB lighting independently. OpenRGB and Tuya can each run without a Hue bridge. CrimsonHue handles hardware and credentials; CDT provides telemetry and the shared renderer. [2.2.10 release notes](docs/releases/v2.2.10.md).
 
-**Game update verified:** automatic recovery adapted to Steam build **26448710** from the **26423880** reference. Camera-paired lights, Ambient and physics visibility resumed on the owner-installed release candidate. The current source uses 26448710 as its exact reference. [Recovery details](docs/RUNTIME_RECOVERY.md).
+**New in 2.2.11:** starts directly on Steam build **26448710** and uses the guarded game-menu state for capture pause and optional CrimsonHue menu lighting. Simulation ticks remain independently observable, so a tick stall during a cutscene can leave acquisition enabled. [2.2.11 release notes](docs/releases/v2.2.11.md).
 
-**New in 2.2.9:** pauses acquisition when the game simulation pauses and exposes
-an independent activity API. With **CrimsonHue 1.0.7**, choose a steady menu color
-and brightness in **Lighting → Menu lighting**, then save it. New gameplay captures
-replace old data on resume. Intentional menu pauses no longer produce light-error
-notices or repeat “Telemetry is ready”; initial startup, genuine scene loads and
-error recovery retain their notices. The shared OpenRGB page also gains reset and
-disconnected-device cleanup controls. This does not fix the controller-specific
-Skills-menu stutter. [2.2.9 release notes](docs/releases/v2.2.9.md).
+**Since 2.2.9:** CrimsonHue offers a configurable menu color and brightness
+under **Lighting → Menu lighting**. On resume, fresh captures replace old data.
+Intentional menu pauses and resume stay quiet. Genuine scene loads and errors
+retain their notices. The shared OpenRGB page adds reset and disconnected-device
+cleanup controls. [2.2.9 release notes](docs/releases/v2.2.9.md).
 
 **New in 2.2.8:** restores the complete telemetry path for Steam build **26423880**
 and adds automatic recovery for compatible game updates. When the game's addresses
@@ -290,9 +287,9 @@ The external host alone can read player/camera and supported authored lights. **
 
 ## Compatibility and limits
 
-The 2.2.10 package's validated reference is **Steam build 26423880** on Windows:
-EXE file version `1.0.0.3527`, SHA-256
-`DC4237F21D6CE1E49F8E5D6FA89BF803FBBE6549123078EFDC393265C7BF6841`.
+The 2.2.11 package's validated reference is **Steam build 26448710** on Windows,
+EXE file version `1.0.0.3549` and SHA-256
+`25F24E06A1F886E9310FD290F9462F66B480A5E7763D1FE156BFDDAA8D1992B9`.
 The file version and Steam build ID are not the public game patch number. Older
 player/camera profiles remain preserved; they do not establish compatibility of
 the current native package with an older or unknown game executable.
@@ -348,7 +345,7 @@ under the normal packaged filename. See [INI validation](docs/INI_VALIDATION.md)
 
 GitHub CI covers managed/API tests and native capture, guard and UI tests. Current acceptance and outstanding checks are recorded in [the handover](docs/HANDOVER.md); historical test totals are not a result for a new package.
 
-See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.10.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [current public description drafts](docs/PUBLIC_DESCRIPTIONS.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
+See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.11.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [Nexus file copy](docs/NEXUS-2.2.11.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
 
 ## Credits and scope
 
