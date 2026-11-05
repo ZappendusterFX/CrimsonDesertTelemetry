@@ -1,11 +1,17 @@
 #requires -Version 7.4
 # Synthetic byte-addressed fixtures only. Never opens a process.
+param([ValidateSet('26423880', '26448710')][string]$BuildId = '26448710')
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot '../../scripts/MenuStateCandidates.psm1') -Force
 function Assert($value, [string]$message) { if (-not $value) { throw $message } }
 function PutQ([byte[]]$bytes, [int]$offset, [uint64]$value) { [BitConverter]::GetBytes($value).CopyTo($bytes, $offset) }
 function PutD([byte[]]$bytes, [int]$offset, [uint32]$value) { [BitConverter]::GetBytes($value).CopyTo($bytes, $offset) }
-$menuProfile = Get-MenuCandidateProfile
+$menuProfile = Get-MenuCandidateProfile -Identity $BuildId
+$byHash = Get-MenuCandidateProfile -Identity $menuProfile.Sha256
+Assert ($byHash.BuildId -eq $BuildId) 'EXE hash selected the wrong build profile.'
+$rejected = $false
+try { $null = Get-MenuCandidateProfile -Identity ('0' * 64) } catch { $rejected = $true }
+Assert $rejected 'Unknown EXE hash selected a build profile.'
 [uint64]$testBase = 0x140000000
 $memory = [Collections.Generic.Dictionary[uint64,byte[]]]::new()
 $reads = [Collections.Generic.List[object]]::new()
@@ -62,7 +68,7 @@ $fakeRead = {
     }
     throw 'Fixture address unmapped.'
 }.GetNewClosure()
-$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase
+$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase -MenuProfile $menuProfile
 Assert $sample.stableRegistry 'Stable fixture was rejected.'
 Assert ($sample.candidateRoots.Count -eq 1 -and $sample.candidateRoots[0].type -eq 'SkillTree') 'Unrelated root was accepted or matching root lost.'
 Assert ($sample.candidateRoots[0].stateA4 -eq 7 -and $sample.candidateRoots[0].stateA8 -eq 9 -and $sample.candidateRoots[0].header20To23 -eq '78563412') 'Opaque fields lost or misdecoded.'
@@ -72,45 +78,45 @@ Assert ($sample.candidateRoots[0].indexedControlCandidate.controlFlags.status -e
 Assert (-not $sample.Contains('menuOpen')) 'Diagnostic invented an open/closed verdict.'
 Assert ($sample.readBytes -lt 1024) 'Small fixture unexpectedly read unrelated memory.'
 $memory[0xF00A0] = [BitConverter]::GetBytes([uint64]0); $reads.Clear()
-$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase
+$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase -MenuProfile $menuProfile
 Assert ($sample.candidateRoots[0].indexedControlCandidate.controlFlags.status -eq 'absent-holder' -and @($reads | Where-Object address -eq 0x100028).Count -eq 0) 'Absent holder was dereferenced.'
 $memory[0xF00A0] = [BitConverter]::GetBytes([uint64]0x100000)
 $memory[0x100028] = [BitConverter]::GetBytes([uint64]0)
-$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase
+$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase -MenuProfile $menuProfile
 Assert ($sample.candidateRoots[0].indexedControlCandidate.controlFlags.status -eq 'absent-control') 'Absent indexed control fabricated flags.'
 $memory[0x100028] = [BitConverter]::GetBytes([uint64]0x110000)
 $controls.HolderReads = 0; $controls.ChangeHolder = $true
-$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase
+$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase -MenuProfile $menuProfile
 Assert ($sample.candidateRoots[0].indexedControlCandidate.controlFlags.status -eq 'changed' -and -not $sample.candidateRoots[0].indexedControlCandidate.controlFlags.stableChain) 'Changed indexed control accepted as stable.'
 $controls.ChangeHolder = $false; $memory[0xF00A0] = [BitConverter]::GetBytes([uint64]0x100000)
 $memory[0x8008A] = [BitConverter]::GetBytes([uint16]0xFFFF); $reads.Clear()
-$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase
+$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase -MenuProfile $menuProfile
 Assert ($sample.candidateRoots[0].indexedControlCandidate.status -eq 'absent-index' -and @($reads | Where-Object address -eq 0x80058).Count -eq 0) 'Sentinel index followed the downstream chain.'
 $memory[0x8008A] = [BitConverter]::GetBytes([uint16]2); $reads.Clear()
-$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase
+$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase -MenuProfile $menuProfile
 Assert ($sample.candidateRoots[0].indexedControlCandidate.status -eq 'index-outside-vector' -and @($reads | Where-Object address -eq 0xE0010).Count -eq 0) 'Out-of-range index was dereferenced.'
 $memory[0x8008A] = [BitConverter]::GetBytes([uint16]1)
 $memory[0xE0008] = [BitConverter]::GetBytes([uint64]0)
-$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase
+$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase -MenuProfile $menuProfile
 Assert ($sample.candidateRoots[0].indexedControlCandidate.status -eq 'absent-entry') 'Null indexed entry was accepted as present.'
 $memory[0xE0008] = [BitConverter]::GetBytes([uint64]0xF0000)
 $memory[0x90010] = [BitConverter]::GetBytes([uint64]0)
-$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase
+$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase -MenuProfile $menuProfile
 Assert ($sample.candidateRoots.Count -eq 1 -and $sample.candidateRoots[0].controlCandidate.status -eq 'absent-control') 'Absent optional control discarded the valid root or fabricated a field.'
 $memory[0x90010] = [BitConverter]::GetBytes([uint64]0xA0000)
 $controls.OwnerReads = 0; $controls.ChangeOwner = $true
-$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase
+$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase -MenuProfile $menuProfile
 Assert ($sample.candidateRoots[0].controlCandidate.status -eq 'changed' -and -not $sample.candidateRoots[0].controlCandidate.stableChain) 'Changed control chain was accepted as stable.'
 $controls.ChangeOwner = $false; $memory[0x80028] = [BitConverter]::GetBytes([uint64]0x90000)
 $controls.HeaderReads = 0; $controls.ChangeHeader = $true
-$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase
+$sample = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase -MenuProfile $menuProfile
 Assert (-not $sample.stableRegistry) 'Changing registry was accepted as stable.'
 $controls.ChangeHeader = $false
 PutD $header 8 1025; PutD $header 12 1025; $reads.Clear(); $rejected = $false
-try { $null = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase } catch { $rejected = $true }
+try { $null = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase -MenuProfile $menuProfile } catch { $rejected = $true }
 Assert $rejected 'Oversized vector was accepted.'
 Assert (@($reads | Where-Object address -eq 0x50000).Count -eq 0) 'Oversized vector was read before its bounds check.'
 $memory[$testBase + $menuProfile.GlobalRva] = [BitConverter]::GetBytes([uint64]0); $rejected = $false
-try { $null = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase } catch { $rejected = $true }
+try { $null = Read-MenuCandidateSample -ReadMemory $fakeRead -ImageBase $testBase -MenuProfile $menuProfile } catch { $rejected = $true }
 Assert $rejected 'Null root chain was accepted.'
 Write-Output 'PASS synthetic matching/foreign roots, extended root/control fields, indexed entry/sentinel/bounds/null checks, absent/changed optional controls, registry races, oversized-vector refusal and null-chain refusal. No process opened.'

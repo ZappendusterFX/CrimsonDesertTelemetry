@@ -380,9 +380,11 @@ bounded unwind ranges, not complete cross-range control flow or runtime unpackin
 ### Deployment and comparisons
 
 For the prepared game-menu state comparison, use
-`scripts/Read-MenuStateCandidates.ps1 -Label gameplay` or `-Label skills` only after
-the owner confirms that state. `-ValidateOnly` checks the preserved26423880 EXE
-without opening a process; synthetic fixtures are
+`scripts/Read-MenuStateCandidates.ps1 -Label gameplay`, `-Label skills` or
+`-Label cutscene` only after the owner confirms that state. The live reader
+selects the profile by the exact EXE hash. `-ValidateOnly` checks preserved
+build 26448710 without opening a process. Add `-BuildId 26423880` to validate
+the previous build. Synthetic fixtures are
 `tests/scripts/Test-MenuStateCandidates.ps1`. The observer follows a bounded UI
 subscription list, not a heap scan, and reports opaque candidate fields rather
 than an open/closed verdict. Exact code/type guards and before/after consistency

@@ -1,5 +1,43 @@
 # Menu lighting / capture pause — 2026-11-04
 
+## Build 26448710 — UI observer revalidated 2026-11-05
+
+The owner reports that many cutscenes can stop simulation ticks and wants to
+continue investigating the UI signal while keeping the tick path. The UI reader
+now selects the exact EXE profile by SHA-256 at capture time. Both 26423880 and
+26448710 pass offline identity checks for 13 code spans and six vtables, and
+both pass the synthetic bounded reader tests.
+
+| Anchor | 26423880 | 26448710 |
+|---|---:|---:|
+| UI application global RVA | 0x71BDF48 | 0x71BDF48 |
+| Subscription callback RVA | 0x1022660 | 0x1022660 |
+| MainMenu vtable RVA | 0x5A012F0 | 0x5A012F0 |
+| Shared indexed getter body RVA | 0xA188F90 | 0xA13BC90 |
+| Shared event handler body RVA | 0xA3CD5A0 | 0xA370FF0 |
+| Handler sequence following entry +0xA0 → holder +0x28 | 0xA3CD715 | 0xA371169 |
+
+The new executable's MainMenu RTTI resolves to the same vtable and shared slot
+6 and 146 thunks. Following those thunks locates the relocated implementations.
+The relevant getter and control access bytes match, including the accesses to
+control +0x27C/+0x27D and the backlink at +0x120. Both registration and removal
+still reference the same subscription callback.
+
+One unlabeled live read on 26448710 (PID 15612) passed the code and vtable
+guards. It found a stable registry with 144 subscriptions, six readable
+control chains, zero rejected roots, and MainMenu flags 01/00 with a matching
+backlink. Activity reported advancing `running` around the read. The capture
+establishes live addressability. Controlled Skills and cutscene semantics on
+this build remain open. The tick-based runtime behavior stays in place.
+
+Evidence is in `artifacts/menu-relocation-26448710/` and
+`artifacts/menu-state-unknown-20261105-203951-426-a87d18281c90474ea201b1ccb3d7f322.json`.
+Compare owner-confirmed gameplay, Skills, gameplay return and a cutscene with
+stalled simulation ticks. Record the UI flags alongside `/v1/activity` to check
+whether the MainMenu flags separate the two paused states.
+
+## Earlier investigation on build 26423880
+
 Owner reports skill-menu stalls and rapidly repeated hover sounds while the skill
 preview loads, also with Hue alone. Earlier OpenRGB/Razer isolation is withdrawn.
 The requested behavior is fixed room lighting in menus and a real pause of the

@@ -1,4 +1,23 @@
-# Current checkpoint — 2026-11-05, CDT 2.2.10 published on GitHub
+# Current checkpoint — 2026-11-05, menu UI observer revalidated on build 26448710
+
+Owner reports tick stalls during cutscenes and wants to pursue the UI signal while
+retaining ticks. Revalidated the existing read-only observer on preserved build
+26448710 (EXE1.0.0.3549). MainMenu vtable 0x5A012F0, registry global 0x71BDF48,
+callback 0x1022660 and control byte +0x27D retained their locations. The indexed
+getter and event-handler bodies moved to 0xA13BC90 and 0xA370FF0. Both exact
+builds pass 13 offline code guards, six vtable guards and synthetic tests.
+
+Unlabeled live sample on PID15612: stable 144-entry registry, six readable
+controls, zero rejected roots, MainMenu flags 01/00. Activity advanced in
+`running` around the read. No runtime, package or deployment changes. Evidence
+and reproducible commands: `docs/MENU_LIGHTING_RESEARCH.md` and
+`artifacts/menu-relocation-26448710/`.
+
+Next owner handoff: leave Skills open and report it for a labeled read, then
+compare gameplay return and a cutscene with a tick stall. The live read above
+establishes addressability, while menu/cutscene discrimination remains open.
+
+# Previous checkpoint — 2026-11-05, CDT 2.2.10 published on GitHub
 
 Owner chose CDT 2.2.10 with CrimsonHue 2.0.0. Both stable Latest releases are
 public (tags v2.2.10 at 36b8fe5 and v2.0.0 at b670f3b). README, About and

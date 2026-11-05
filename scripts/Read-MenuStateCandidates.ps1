@@ -4,20 +4,19 @@ hooks, heap scan or package installation. Owner label is context, not detection.
 ValidateOnly reads the preserved executable and never opens a game process. #>
 [CmdletBinding()]
 param(
-    [ValidateSet('gameplay', 'skills', 'paused', 'inventory', 'map', 'unknown')][string]$Label = 'unknown',
+    [ValidateSet('gameplay', 'skills', 'paused', 'inventory', 'map', 'cutscene', 'unknown')][string]$Label = 'unknown',
     [string]$OutPath,
     [ValidateRange(1, 3)][int]$Samples = 3,
-    [switch]$ValidateOnly
+    [switch]$ValidateOnly,
+    [ValidateSet('26423880', '26448710')][string]$BuildId = '26448710'
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 Import-Module (Join-Path $PSScriptRoot 'MenuStateCandidates.psm1') -Force
-$menuProfile = Get-MenuCandidateProfile
-$assembly = Join-Path $repo 'src/CrimsonDesertTelemetry.Core/bin/Release/net8.0-windows/CrimsonDesertTelemetry.Core.dll'
-if (-not (Test-Path -LiteralPath $assembly)) { throw 'Build the existing Core Release assembly before capture.' }
 if ($OutPath -and (Test-Path -LiteralPath $OutPath)) { throw 'Refusing existing output.' }
 if ($ValidateOnly) {
-    $preserved = Join-Path $repo 'artifacts/recovery/20261104-093224-build-26423880/CrimsonDesert.exe'
+    $menuProfile = Get-MenuCandidateProfile -Identity $BuildId
+    $preserved = Join-Path $repo $menuProfile.PreservedExe
     if ((Get-FileHash -LiteralPath $preserved -Algorithm SHA256).Hash -ne $menuProfile.Sha256) { throw 'Preserved EXE identity mismatch.' }
     $file = [IO.File]::ReadAllBytes($preserved)
     $pe = [BitConverter]::ToInt32($file, 0x3C)
@@ -44,16 +43,19 @@ if ($ValidateOnly) {
     foreach ($type in $menuProfile.Types) {
         if ([BitConverter]::ToUInt64((DiskBytes $type.Vtable 8), 0) -ne $imageBase + $type.FirstMethod) { throw 'Offline vtable guard mismatch.' }
     }
-    Write-Output 'PASS exact preserved EXE, subscription code guards and six vtable anchors. No process opened; live root/state semantics remain unvalidated.'
+    Write-Output "PASS preserved build $BuildId EXE, $($menuProfile.Guards.Count) code guards and six vtable anchors. No process opened."
     return
 }
+if ($PSBoundParameters.ContainsKey('BuildId')) { throw '-BuildId requires -ValidateOnly; live capture selects by EXE hash.' }
+$assembly = Join-Path $repo 'src/CrimsonDesertTelemetry.Core/bin/Release/net8.0-windows/CrimsonDesertTelemetry.Core.dll'
+if (-not (Test-Path -LiteralPath $assembly)) { throw 'Build the existing Core Release assembly before capture.' }
 if (-not $OutPath) {
     $OutPath = Join-Path $repo ('artifacts/menu-state-' + $Label + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '-' + [Guid]::NewGuid().ToString('N') + '.json')
 }
 $OutPath = [IO.Path]::GetFullPath($OutPath)
 $output = [IO.File]::Open($OutPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::Read)
 $reader = $null
-$report = [ordered]@{ observerVersion = 3; scope = 'Read-only opaque menu candidates; no verified open/closed detection.'; label = $Label
+$report = [ordered]@{ observerVersion = 4; scope = 'Read-only opaque menu candidates; no verified open/closed detection.'; label = $Label
     labelSource = 'Caller/owner supplied, not automatically detected'; requestedSamples = $Samples; samples = @(); complete = $false }
 try {
     $games = @(Get-Process CrimsonDesert -ErrorAction Stop)
@@ -62,8 +64,9 @@ try {
     $report.pid = $game.Id
     $report.processStartUtc = $game.StartTime.ToUniversalTime().ToString('o')
     $sha = (Get-FileHash -LiteralPath $game.MainModule.FileName -Algorithm SHA256).Hash
-    if ($sha -ne $menuProfile.Sha256) { throw 'Unsupported EXE; no game memory read.' }
     $report.exeSha256 = $sha
+    $menuProfile = Get-MenuCandidateProfile -Identity $sha
+    $report.steamBuildId = $menuProfile.BuildId
     $imageBase = [uint64]$game.MainModule.BaseAddress.ToInt64()
     Add-Type -Path $assembly
     $reader = [CrimsonDesertTelemetry.Core.ReadOnlyProcess]::new($game)
@@ -76,7 +79,7 @@ try {
     }
     $read = { param([uint64]$a, [int]$n) ,$reader.Read([IntPtr]$a, $n) }.GetNewClosure()
     for ($i = 0; $i -lt $Samples; $i++) {
-        $report.samples += Read-MenuCandidateSample -ReadMemory $read -ImageBase $imageBase
+        $report.samples += Read-MenuCandidateSample -ReadMemory $read -ImageBase $imageBase -MenuProfile $menuProfile
         if ($i + 1 -lt $Samples) { Start-Sleep -Milliseconds 100 }
     }
     $report.complete = $true
