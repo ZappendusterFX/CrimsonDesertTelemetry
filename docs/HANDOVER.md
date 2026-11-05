@@ -1,4 +1,25 @@
-# Current checkpoint — 2026-11-05, menu.3 exact startup confirmed live
+# Current checkpoint — 2026-11-05, CDT 2.2.11 published on GitHub
+
+Owner accepted menu.3 and requested GitHub release and push. Stable Latest
+v2.2.11 (422f44f) is public. The exact Steam reference is 26448710. Skills
+menu detection and the separate tick observer are included. The public ASI is
+byte-identical to the owner-tested menu.3 ASI.
+
+Immutable production ZIP `artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.11-ModManagers.zip`
+is 1,192,673 bytes, SHA256
+`2247AB80CECB5E3E1790787A8A1A52F2B659DEB05565CD993A3F57B81E18A10C`.
+Both ZIP and SHA256SUMS were independently downloaded from the public release
+and verified. Local 94 managed, 46 native, profile, expanded folder and ZIP
+tests passed. Hosted Release 42118012824, main CI 42118013168 and tag CI
+42118012762 passed, including the API smoke. Receipts and logs are under
+`artifacts/release-2.2.11*`. The public ZIP was not separately installed.
+
+Nexus currently has 2.2.10 as its active file. The file description and
+incremental changelog are ready in `docs/NEXUS-2.2.11.md`. Automatic Nexus
+publication was disabled and run 42118973499 skipped. The owner handles Nexus
+publication and any installation.
+
+# Previous checkpoint — 2026-11-05, menu.3 exact startup confirmed live
 
 Owner reported menu.3 works and resumed playing to test further. One passive
 check on PID 21616 matched all five ASI/DLL/CFG payload hashes to menu.3.
