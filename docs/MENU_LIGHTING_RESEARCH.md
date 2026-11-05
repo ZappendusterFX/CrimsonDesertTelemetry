@@ -48,7 +48,7 @@ Evidence is in `artifacts/menu-relocation-26448710/` and
 The Skills capture is `artifacts/menu-state-skills-20261105-204200-600-7b0808bff25c474b85f680373409307a.json`.
 The return capture is `artifacts/menu-state-gameplay-20261105-204801-906-e09a6447f5054dfca15f25d527875934.json`.
 
-### Hernand Kuku Shop before crafting
+### Hernand Kuku Shop and Kuku Pot crafting
 
 At 20:50 CET the owner confirmed the Kuku Shop menu was open in the world
 scene, before selecting the item that opens Kuku Pot crafting. Three stable
@@ -60,8 +60,18 @@ The paused shop state therefore shares the measured UI flags with gameplay.
 
 Raw read and activity comparison:
 `artifacts/menu-relocation-26448710/menu-state-kuku-shop-20261105-205023-376-2b14d2bfc6874f838f5a50d4f52876fd{,-activity}.json`.
-Compare the Kuku Pot crafting screen separately. A cutscene with stalled
-simulation ticks remains a separate comparison.
+
+At 20:51 CET the owner confirmed Kuku Pot crafting was open. In the same process
+all three samples again found a stable 144-entry registry, the same six root
+identities and zero rejected roots. Every emitted root field matched the shop
+when compared by root type, including MainMenu 01/00. Activity advanced from
+sequence 91512 to 91556 and both samples reported `paused`,
+`simulation-idle` and `acquisitionPaused=true` at epoch 76.
+
+Raw read and activity comparison:
+`artifacts/menu-relocation-26448710/menu-state-kuku-pot-crafting-20261105-205146-067-276e262539554eaaa9ac52561efb62a0{,-activity}.json`.
+Both Kuku screens fall outside the MainMenu signal demonstrated in Skills. A
+cutscene with stalled simulation ticks remains a separate comparison.
 
 ## Earlier investigation on build 26423880
 

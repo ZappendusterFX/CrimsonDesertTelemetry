@@ -1,4 +1,4 @@
-# Current checkpoint — 2026-11-05, Kuku Shop differs from Skills on build 26448710
+# Current checkpoint — 2026-11-05, Kuku Shop and crafting fall outside the Skills UI signal
 
 Owner reports tick stalls during cutscenes and wants to pursue the UI signal while
 retaining ticks. Revalidated the existing read-only observer on preserved build
@@ -19,12 +19,15 @@ owner-confirmed gameplay return at 20:48 CET, MainMenu and SkillTree were
 In owner-confirmed Hernand Kuku Shop at 20:50 CET, while the world scene was
 still visible, all six indexed control flags stayed 01/00 across three stable
 samples. Activity reported `paused` / `simulation-idle` and acquisition paused
-at epoch 76. This menu falls outside the tested MainMenu signal.
+at epoch 76. At 20:51 CET the owner opened Kuku Pot crafting. All observed
+fields of the same six roots matched the shop across three stable samples.
+Activity still reported the same paused state and epoch before and after.
+The tested MainMenu signal misses both states. Keep the tick path.
 No runtime, package or deployment changes. Evidence is in
 `docs/MENU_LIGHTING_RESEARCH.md` and `artifacts/menu-relocation-26448710/`.
 
-Next owner handoff: open Kuku Pot crafting and report it for a separate read.
-A cutscene comparison remains open.
+Next owner handoff: report a longer cutscene while it is playing for a
+separate UI and tick comparison.
 
 # Previous checkpoint — 2026-11-05, CDT 2.2.10 published on GitHub
 
