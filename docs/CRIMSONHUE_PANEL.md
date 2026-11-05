@@ -1,10 +1,6 @@
-# Optional CrimsonHue panel — CDT 2.2.5 / CrimsonHue 1.0.0
+# Optional CrimsonHue panel — CDT 2.2.10 / CrimsonHue 2.0.0
 
-CDT 2.2.5 can host the interactive mixer for the separately installed
-[CrimsonHue 1.0.0](https://github.com/ZappendusterFX/CrimsonHue) Philips Hue
-Entertainment companion. CDT remains independently usable without CrimsonHue.
-No Hue controller is bundled in the Telemetry ZIP, and loading either module
-does not start physical lighting output.
+CDT hosts the interactive mixer for the separately installed CrimsonHue controller. CDT works independently of any lamp hardware. CrimsonHue supports Hue, OpenRGB and compatible Tuya LAN lamps individually or together.
 
 ## Install and use
 
@@ -14,8 +10,7 @@ the .NET 8 ASP.NET Core Runtime (x64); CrimsonHue additionally requires the
 Neither product requires PIX or another GPU capture tool to run.
 
 Ctrl+Shift+H opens or hides the mixer; change its binding in Hue Setup. The tabs
-are **Lighting / Room / Setup / Advanced**. Setup pairs the bridge and imports an
-existing Entertainment area. Room calibrates ordinary Point lights or segmented
+are **Lighting / Room / OpenRGB / Tuya LAN / Setup / Advanced**. Setup selects the independent outputs. Hue alone needs bridge pairing and an Entertainment area. OpenRGB needs its SDK server; Tuya needs a compatible Wi-Fi 3.5 RGB device and local credentials. Room calibrates ordinary Point lights or segmented
 Wall areas while retaining imported Hue placement. Horizontal washers use distinct
 Side offsets and equal Height angles; Segment width applies to each segment.
 
@@ -26,8 +21,8 @@ Own lantern (0–100%). Point/spot weights initially start at 100%; Recommended
 starts the additional own-lantern weight at 10%. Point/spot describes light
 geometry independently of standalone/grouped contributions, not fire versus
 blue lamps. The conservative lantern signature is limited to the recognized
-complete pair on game build 25477059; unsupported, partial or ambiguous matches
-keep the ordinary type weight. These controls change Hue output, not raw telemetry.
+complete pair in CDT metadata; unsupported, partial or ambiguous matches
+keep the ordinary type weight. These controls change mapped output while preserving raw telemetry.
 
 Advanced contains detailed mixer controls, presets and raw CDT data. Recommended
 spatial defaults use a 30-degree radius, 20% softness and focus 4. Saved Custom
@@ -43,9 +38,9 @@ reminder appears, release held keys and mouse buttons before using it.
 ## Single renderer and separate controller
 
 CDT owns D3D12 rendering, the ImGui context and panel input. CrimsonHue owns its
-hidden managed controller, Hue bridge communication, current-user protected
+hidden managed controller, communication with the selected outputs, current-user protected
 settings, spatial calibration and stream cleanup. CrimsonHue adds no second
-graphics-hook set. No Hue credentials or lamp network client are added to CDT;
+graphics-hook set. No lighting credentials or lamp network client are added to CDT;
 the neutral HTTP/WebSocket telemetry API remains unchanged.
 
 The worker discovers only already loaded modules, checks protocol 1 and pins a

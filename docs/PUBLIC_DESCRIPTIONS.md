@@ -1,40 +1,14 @@
-# Public descriptions — stable 2.2.9 and unpublished output candidate
+# Public descriptions — CDT 2.2.10 and CrimsonHue 2.0.0
 
-The stable GitHub/product text below describes CDT 2.2.9 and optional CrimsonHue 1.0.7.
-The new private test pair is **CDT 2.2.10-outputs.1 / CrimsonHue 1.0.8-outputs.1**;
-it is intended for owner testing and no live Tuya acceptance is claimed.
-Prepared upcoming Nexus drafts are [NEXUS_DESCRIPTION.bbcode](NEXUS_DESCRIPTION.bbcode)
-and [NEXUS-2.2.10.md](NEXUS-2.2.10.md); they have not been uploaded here.
-Stable short fields remain in [NEXUS-2.2.9.md](NEXUS-2.2.9.md).
-Historical copy fields remain in [NEXUS-2.2.5.md](NEXUS-2.2.5.md).
-The owner publishes Nexus manually. GitHub publication does not imply a Nexus upload.
-Historical release notes remain unchanged.
+Nexus copy for manual publication: [full listing](NEXUS_DESCRIPTION.bbcode) and [short fields](NEXUS-2.2.10.md).
 
-## Unpublished candidate description
+## Independent lighting outputs
 
-The next shared HUD selects Hue, OpenRGB and Tuya independently in Setup and adds
-a Tuya device/room page. OpenRGB-only and Tuya-only need no Hue bridge. Fresh setups
-select no output; existing saved Hue pairing keeps Hue enabled. Common Start/Stop
-controls configured selected outputs, and one failed output leaves healthy outputs
-running. The published 2.2.9 / 1.0.7 pair retains its Hue requirement for OpenRGB
-and does not include Tuya.
-
-CrimsonHue owns direct Wi-Fi protocol 3.5 Tuya output, per-lamp positions, shared
-tuning/menu color and a 25% initial output cap. A separate Windows dialog collects
-connection data and keys into one atomically saved, current-user DPAPI-protected
-bundle; credentials never enter CDT's shared HUD. The TCP check is reachability
-only. At least 300 ms between changed-color writes, one replaceable desired color
-per lamp and 2.5-second failure backoff bound work without blocking other outputs.
-Stop restores a supported prior state only after a successful query and ownership
-comparison; the last state may remain when that cannot be confirmed. No live Tuya
-performance, 3.3/3.4 support or controller Skills-menu fix is claimed.
-
-This is preparation for future 2.2.10 / 1.0.8 descriptions, not a publication or
-validation record. [Candidate setup](https://github.com/ZappendusterFX/CrimsonHue/blob/main/docs/USER-GUIDE.md#independent-output-candidate-unpublished).
+CDT’s shared HUD selects Hue, OpenRGB and Tuya independently and includes a Tuya device and room page. OpenRGB and Tuya can each run without Hue hardware. CrimsonHue owns output, protected device settings and cleanup. Tuya supports compatible Wi-Fi protocol 3.5 RGB devices; its connection test checks TCP reachability. [Setup and limits](https://github.com/ZappendusterFX/CrimsonHue/blob/main/docs/USER-GUIDE.md#independent-lighting-outputs).
 
 ## GitHub About text
 
-Live light, player, camera and ambient telemetry for Crimson Desert, with simulation pause, guarded update recovery, local APIs, 3D radar and optional Hue/OpenRGB lighting through CrimsonHue.
+Live light, player, camera and ambient telemetry for Crimson Desert, with simulation pause, guarded update recovery, local APIs, 3D radar and optional Hue, OpenRGB and Tuya lighting through CrimsonHue.
 
 ## Feature description — English
 
@@ -49,8 +23,8 @@ managed pose/camera sampling pause. New captures replace old results and smoothi
 history on resume. `/v1/activity` and `/v1/activity/stream` provide a separate schema
 1.0 activity feed; stale or missing observers become `unknown`.
 
-With **CrimsonHue 1.0.7**, use **Lighting → Menu lighting** to select brightness and
-color/hex, then **Save menu lighting**. Hue and enabled OpenRGB devices use that
+With **CrimsonHue 2.0.0**, use **Lighting → Menu lighting** to select brightness and
+color/hex, then **Save menu lighting**. Selected and configured outputs use that
 steady color while paused and blend back over 500 ms after fresh gameplay data
 returns. **Reset menu lighting** restores warm white at 20%; **Gold preset** is an
 optional choice. Existing settings are preserved. Intentional pauses and pending
@@ -63,15 +37,14 @@ can also trigger it. The controller-only Skills-menu stutter and rapid hover sou
 remain unresolved. `[Pause] Enabled=1` is the production default; use `0` to disable it.
 
 Automatic recovery from 2.2.8 remains available for compatible game updates.
-The validated reference is Steam build 26423880. CDT checks whether
+The validated reference is Steam build 26423880. Automatic recovery was verified on Steam build 26448710 with the installed candidate. CDT checks whether
 recovery is needed, waits for valid in-game player/camera data, then finds and
 validates the required addresses. The HUD shows progress and a clear result.
 Saved addresses are rechecked before reuse. The known build follows the normal
 quick startup, and the release has no forced diagnostic test enabled. Updates
 that change engine layouts, physics or shader semantics can still need a mod update.
 
-Install the separate **CrimsonHue 1.0.7** companion for Philips Hue Entertainment,
-optional parallel OpenRGB lighting and an in-game mixer. CDT hosts that optional panel
+Install the separate **CrimsonHue 2.0.0** companion for independent Hue Entertainment, OpenRGB and Tuya LAN lighting and an in-game mixer. CDT hosts that optional panel
 inside its existing renderer; CrimsonHue owns the headless lamp controller.
 There is no second graphics renderer and no Hue controller bundled in the CDT ZIP.
 Existing light routes and raw light values remain compatible; the activity feed is additive.
@@ -80,8 +53,7 @@ The separate OpenRGB page discovers devices through the local SDK server and
 lets you select and place them in a three-dimensional room. Each device receives
 a color from its virtual position. Independent Light coverage and Background
 light controls help local effects remain distinct from ambient fill. OpenRGB is
-disabled by default and uses the common Start/Stop alongside Hue; a configured
-Hue bridge/Entertainment area remains required. Other applications controlling
+disabled by default. Common Start/Stop controls all configured selected outputs; a Hue bridge is needed only for Hue. Other applications controlling
 the same RGB devices should be closed.
 
 **Reset OpenRGB settings** disables OpenRGB, restores its defaults and moves current
@@ -180,7 +152,7 @@ Keep CFG filenames unchanged and migrate useful INI preferences into the current
 template. Importing without activating/deploying is insufficient. Other manager
 lifecycle coverage remains limited.
 
-For Hue/OpenRGB, install **CrimsonHue 1.0.7 separately**, plus .NET 8 Desktop Runtime
+For Hue, OpenRGB or Tuya, install **CrimsonHue 2.0.0 separately**, plus .NET 8 Desktop Runtime
 (x64). It is optional. Stop Hue sync and wait for stopped status before exiting
 the game; process termination cannot guarantee bridge restoration. No stream
 starts just by loading the modules. Hot unloading is unsupported.

@@ -211,9 +211,23 @@ int wmain(int argc, wchar_t** argv) {
             crimson::overlay::Command({{"action", "set"}, {"key", "Brightness"}, {"value", i}});
         crimson::overlay::Command({{"action", "set"}, {"key", "Brightness"}, {"value", 99}}); // full queue drops ordinary work
         crimson::overlay::Command({{"action", "stop"}}); // cleanup is retained even at capacity
-        crimson::overlay::RefreshBridge(); Sleep(150); state = State();
-        for (const auto& value : state.at("controls")) if (value.at("key") == "Brightness")
-            Require(value.at("value") == 62.0, "Bounded queue or cleanup priority failed");
+        crimson::overlay::RefreshBridge();
+        // The dispatcher may need more than one frame to apply the burst.
+        // Observe a FIFO marker after the burst before checking its final value.
+        const auto marker = Json{{"action", "shortcut"}, {"key", 'H'}, {"control", true}, {"shift", true}, {"alt", true}}.dump();
+        const auto queueDeadline = GetTickCount64() + 3000;
+        while (!send(marker.data(), static_cast<int>(marker.size()))) {
+            Require(GetTickCount64() < queueDeadline, "Controller queue did not accept the completion marker");
+            Sleep(10);
+        }
+        for (;;) {
+            state = State();
+            if (state.at("shortcut").at("alt") == true) break;
+            Require(GetTickCount64() < queueDeadline, "Controller queue did not process the completion marker");
+            Sleep(10);
+        }
+        Require(Value(state, "Brightness") == 62.0, "Bounded queue or cleanup priority failed");
+        Command({{"action", "shortcut"}, {"key", 'H'}, {"control", true}, {"shift", true}, {"alt", false}});
         if (!customPreview) {
             Command({{"action", "profile"}, {"recommended", true}}); Sleep(100); state = State();
             Require(state.at("lighting").at("recommended") == true, "Recommended did not resume before product UI preview");

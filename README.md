@@ -4,14 +4,9 @@
 
 Inspect positions, colors and brightness of current light contributions from fires, candles, lanterns and glass/crystal lamps, alongside the player and render camera. Use the data in your own overlays, tools and lighting integrations.
 
-**Unpublished output candidate:** the next private pair is **CDT 2.2.10-outputs.1 /
-CrimsonHue 1.0.8-outputs.1**. Its shared HUD selects Hue, OpenRGB and Tuya LAN
-independently and adds a Tuya device/room page. OpenRGB-only and Tuya-only no longer
-require Hue hardware. CrimsonHue owns output and protected configuration; CDT
-still supplies only telemetry and the shared renderer. This candidate is intended
-for owner testing; no live Tuya acceptance is claimed. The published **2.2.9 / 1.0.7**
-pair below retains its Hue requirement for OpenRGB and has no Tuya output.
-[Candidate setup](https://github.com/ZappendusterFX/CrimsonHue/blob/main/docs/USER-GUIDE.md#independent-output-candidate-unpublished).
+**New in 2.2.10:** the shared mixer works with **CrimsonHue 2.0.0** to select Hue, OpenRGB and compatible Tuya Wi-Fi 3.5 RGB lighting independently. OpenRGB and Tuya can each run without a Hue bridge. CrimsonHue handles hardware and credentials; CDT provides telemetry and the shared renderer. [2.2.10 release notes](docs/releases/v2.2.10.md).
+
+**Game update verified:** automatic recovery adapted to Steam build **26448710** from the **26423880** reference. Camera-paired lights, Ambient and physics visibility resumed on the owner-installed release candidate. The production reference stays 26423880. [Recovery details](docs/RUNTIME_RECOVERY.md).
 
 **New in 2.2.9:** pauses acquisition when the game simulation pauses and exposes
 an independent activity API. With **CrimsonHue 1.0.7**, choose a steady menu color
@@ -40,9 +35,8 @@ and per-light physics data for **Crimson Desert patch 2.04.05** (Steam build
 26361232), verified with the new DLC installed. See the
 [2.2.6 release notes](docs/releases/v2.2.6.md).
 
-**Optional [CrimsonHue 1.0.7](https://github.com/ZappendusterFX/CrimsonHue)**
-provides Philips Hue Entertainment lighting, parallel OpenRGB output and an
-interactive in-game mixer. Its separate OpenRGB page discovers devices and lets
+**Optional [CrimsonHue 2.0.0](https://github.com/ZappendusterFX/CrimsonHue)**
+provides independent Philips Hue Entertainment, OpenRGB and Tuya LAN lighting and an interactive in-game mixer. Its separate OpenRGB page discovers devices and lets
 you place them in a 3D room, with independent light coverage and background balance.
 CDT hosts that panel in its existing renderer; CrimsonHue owns the lamp controller
 without a second set of graphics hooks. Install CrimsonHue separately; CDT's
@@ -105,7 +99,7 @@ Methods and limits are in [source visibility](docs/SOURCE_VISIBILITY.md).
 | **Local API** | HTTP snapshots, health and independent simulation activity; WebSocket streaming, JSON Schema and JSON Lines recordings |
 | **Ambient / sky** | Global sky RGB; optional camera-local sky visibility and derived working RGB when a valid spatial sample arrives (nullable fields). |
 | **Status notices** | Brief success when data becomes ready; actionable startup/build/capture errors |
-| **Optional lighting mixer** | With the separately installed CrimsonHue 1.0.7 controller: Hue Entertainment setup, OpenRGB devices in a 3D room, spatial calibration and editable menu lighting in CDT's shared renderer |
+| **Optional lighting mixer** | With the separately installed CrimsonHue 2.0.0 controller: optional Hue Entertainment setup, OpenRGB and Tuya device placement, spatial calibration and editable menu lighting in CDT's shared renderer |
 
 Lighting, both HUD views and status notices are enabled in the supplied configuration. Each can be configured separately; the HUD is not required to consume the API.
 
@@ -127,7 +121,7 @@ Requirements:
 4. Import **and activate/deploy** the new package in Definitive Mod Manager (DMM) or JSON Mod Manager. Keep all included files together.
 5. Start the game and load a save. The local host starts automatically.
 
-For Philips Hue and optional OpenRGB lighting, also install the separate **CrimsonHue 1.0.7** package
+For Hue, OpenRGB or Tuya lighting, also install the separate **CrimsonHue 2.0.0** package
 and Microsoft **.NET 8 Desktop Runtime (x64)**. CrimsonHue is optional and is not
 bundled in the Telemetry ZIP. See its
 [installation instructions](https://github.com/ZappendusterFX/CrimsonHue).
@@ -296,7 +290,7 @@ The external host alone can read player/camera and supported authored lights. **
 
 ## Compatibility and limits
 
-The 2.2.9 package's validated reference is **Steam build 26423880** on Windows:
+The 2.2.10 package's validated reference is **Steam build 26423880** on Windows:
 EXE file version `1.0.0.3527`, SHA-256
 `DC4237F21D6CE1E49F8E5D6FA89BF803FBBE6549123078EFDC393265C7BF6841`.
 The file version and Steam build ID are not the public game patch number. Older
@@ -354,7 +348,7 @@ under the normal packaged filename. See [INI validation](docs/INI_VALIDATION.md)
 
 GitHub CI covers managed/API tests and native capture, guard and UI tests. Current acceptance and outstanding checks are recorded in [the handover](docs/HANDOVER.md); historical test totals are not a result for a new package.
 
-See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.9.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [current public description drafts](docs/PUBLIC_DESCRIPTIONS.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
+See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.10.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [current public description drafts](docs/PUBLIC_DESCRIPTIONS.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
 
 ## Credits and scope
 
