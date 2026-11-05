@@ -26,8 +26,12 @@ The tested MainMenu signal misses both states. Keep the tick path.
 No runtime, package or deployment changes. Evidence is in
 `docs/MENU_LIGHTING_RESEARCH.md` and `artifacts/menu-relocation-26448710/`.
 
-Next owner handoff: report a longer cutscene while it is playing for a
-separate UI and tick comparison.
+Next owner handoff: when the owner replies `Cutscene` during a scene, invoke
+`& ./scripts/Read-MenuStateCandidates.ps1 -Label cutscene -WithActivity` directly
+from CDT as the first command. The reader starts the first localhost activity
+request without waiting, captures three bounded UI samples and sends the
+second request. Synthetic HTTP overlap, malformed response and timeout
+controls pass. Both preserved EXEs still pass. No live capture until handoff.
 
 # Previous checkpoint — 2026-11-05, CDT 2.2.10 published on GitHub
 

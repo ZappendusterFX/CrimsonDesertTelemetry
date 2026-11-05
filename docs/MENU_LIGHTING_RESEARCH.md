@@ -73,6 +73,24 @@ Raw read and activity comparison:
 Both Kuku screens fall outside the MainMenu signal demonstrated in Skills. A
 cutscene with stalled simulation ticks remains a separate comparison.
 
+### One-shot cutscene comparison
+
+On owner confirmation that the scene is playing, run this directly from CDT
+in the existing PowerShell shell:
+
+```powershell
+& ./scripts/Read-MenuStateCandidates.ps1 -Label cutscene -WithActivity
+```
+
+The reader keeps the exact-build guards and starts the first loopback activity
+request immediately before sampling. It waits for both HTTP results only after
+sampling and writes the UI fields and activity responses or errors to one JSON
+file. The requests use a one-second timeout. Synthetic overlap, invalid JSON
+and timeout checks passed. This path awaits its first live cutscene sample.
+Compare source timestamps, sequence, freshness and epoch with the UI sample
+times. A scene that ended before the read or a missing activity response cannot
+establish the distinction.
+
 ## Earlier investigation on build 26423880
 
 Owner reports skill-menu stalls and rapidly repeated hover sounds while the skill

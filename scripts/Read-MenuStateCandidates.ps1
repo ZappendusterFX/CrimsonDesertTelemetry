@@ -7,6 +7,7 @@ param(
     [ValidateSet('gameplay', 'skills', 'paused', 'inventory', 'map', 'cutscene', 'unknown')][string]$Label = 'unknown',
     [string]$OutPath,
     [ValidateRange(1, 3)][int]$Samples = 3,
+    [switch]$WithActivity,
     [switch]$ValidateOnly,
     [ValidateSet('26423880', '26448710')][string]$BuildId = '26448710'
 )
@@ -55,6 +56,16 @@ if (-not $OutPath) {
 $OutPath = [IO.Path]::GetFullPath($OutPath)
 $output = [IO.File]::Open($OutPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::Read)
 $reader = $null
+$activityClient = $null
+$activityBefore = $null
+$activityUri = 'http://127.0.0.1:27311/v1/activity'
+function Receive-Activity([Threading.Tasks.Task[string]]$Request) {
+    try {
+        $Request.GetAwaiter().GetResult() | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+    } catch {
+        @{ error = $_.Exception.Message }
+    }
+}
 $report = [ordered]@{ observerVersion = 4; scope = 'Read-only opaque menu candidates; no verified open/closed detection.'; label = $Label
     labelSource = 'Caller/owner supplied, not automatically detected'; requestedSamples = $Samples; samples = @(); complete = $false }
 try {
@@ -78,6 +89,16 @@ try {
         if ($reader.ReadPointer($imageBase + $type.Vtable) -ne $imageBase + $type.FirstMethod) { throw 'Live vtable guard mismatch.' }
     }
     $read = { param([uint64]$a, [int]$n) ,$reader.Read([IntPtr]$a, $n) }.GetNewClosure()
+    if ($WithActivity) {
+        $handler = [Net.Http.HttpClientHandler]::new()
+        $handler.UseProxy = $false
+        $handler.AllowAutoRedirect = $false
+        $activityClient = [Net.Http.HttpClient]::new($handler)
+        $activityClient.Timeout = [TimeSpan]::FromSeconds(1)
+        $activityClient.MaxResponseContentBufferSize = 65536
+        # Start the request without delaying the first UI sample.
+        $activityBefore = $activityClient.GetStringAsync($activityUri)
+    }
     for ($i = 0; $i -lt $Samples; $i++) {
         $report.samples += Read-MenuCandidateSample -ReadMemory $read -ImageBase $imageBase -MenuProfile $menuProfile
         if ($i + 1 -lt $Samples) { Start-Sleep -Milliseconds 100 }
@@ -87,6 +108,12 @@ try {
     $report.error = $_.Exception.Message
 } finally {
     if ($reader) { $reader.Dispose() }
+    if ($activityBefore) {
+        $activityAfter = $activityClient.GetStringAsync($activityUri)
+        $report.activityBefore = Receive-Activity $activityBefore
+        $report.activityAfter = Receive-Activity $activityAfter
+    }
+    if ($activityClient) { $activityClient.Dispose() }
     $json = $report | ConvertTo-Json -Depth 12
     $bytes = [Text.UTF8Encoding]::new($false).GetBytes($json)
     $output.Write($bytes, 0, $bytes.Length); $output.Dispose()
