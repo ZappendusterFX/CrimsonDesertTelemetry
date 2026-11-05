@@ -1,4 +1,14 @@
-# Current checkpoint — 2026-11-05, exact 26448710 reference and Skills flag fix
+# Current checkpoint — 2026-11-05, menu.3 exact startup confirmed live
+
+Owner reported menu.3 works and resumed playing to test further. One passive
+check on PID 21616 matched all five ASI/DLL/CFG payload hashes to menu.3.
+Health reported playing, build/reference 26448710, compatibility `tested`,
+`supportedBuild=true` and `recovery=null`. Activity was fresh with
+`menu-closed`, acquisition enabled and the simulation ticks running.
+The menu result is owner-reported. No labeled menu or lamp test was performed
+in this session. Keep the package immutable and resume only on owner feedback.
+
+# Previous checkpoint — 2026-11-05, exact 26448710 reference and Skills flag fix
 
 Owner installed menu.2 and reported recovery on restart and no menu lighting.
 Five loaded/runtime ASI, DLL and CFG hashes matched its package. Live recovery
