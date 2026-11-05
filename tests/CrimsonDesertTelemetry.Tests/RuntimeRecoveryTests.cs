@@ -7,7 +7,7 @@ using CrimsonDesertTelemetry.Core;
 internal static class RuntimeRecoveryTests
 {
     private static BuildDefinition Template() => BuildDefinition.LoadAll("not-a-profile-directory")
-        .Single(d => d.SteamBuildId == "26423880");
+        .Single(d => d.SteamBuildId == "26448710");
 
     public static int Replay(string executable, string cacheDirectory)
     {

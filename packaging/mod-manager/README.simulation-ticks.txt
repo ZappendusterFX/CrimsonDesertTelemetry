@@ -5,8 +5,8 @@ diagnostic candidate, not the automatic menu-light or capture-pause feature.
 The ordinary telemetry and lighting paths retain their existing behavior.
 
 The optional diagnostic is enabled by Diagnostics.SimulationTicks=1 in this
-private package. It requires the exact validated game EXE for build 26423880,
-a unique code signature, unchanged prologue and a verified function boundary.
+private package. It requires its exact validated game EXE, a unique code
+signature, unchanged prologue and a verified function boundary.
 If validation fails, the diagnostic remains unavailable. Normal packages leave
 the switch disabled. General research instrumentation is compiled out.
 

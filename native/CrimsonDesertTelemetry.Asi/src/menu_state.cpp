@@ -238,7 +238,11 @@ State Sample()
         std::memcmp(&header, &headerAfter, sizeof(header)) != 0 ||
         !ch::mem::SafeRead(reinterpret_cast<const void*>(header.entries), after.data(), bytes) ||
         std::memcmp(entries.data(), after.data(), bytes) != 0) return State::Unknown;
-    if (first.flags == 0x0301) return State::Open;
-    return first.flags == 0x0001 ? State::Closed : State::Unknown;
+    // The close handler clears bit 0 and checks bit 1 separately. The same
+    // live MainMenu can carry unrelated high bits (00/03 and 60/63 observed).
+    if ((first.flags & 0xFF) != 1) return State::Unknown;
+    const auto active = (first.flags >> 8) & 0x03;
+    if (active == 3) return State::Open;
+    return active == 0 ? State::Closed : State::Unknown;
 }
 }

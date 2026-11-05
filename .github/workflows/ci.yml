@@ -31,7 +31,7 @@ jobs:
         shell: pwsh
         run: |
           # Build the production ASI; direct research regression targets remain included.
-          cmake -S native/CrimsonDesertTelemetry.Asi -B build/native-package -A x64 -DCDT_RESEARCH=OFF -DCDT_NATIVE_BUILD_ID=26423880 -DCDT_ALLOW_RESEARCH_NATIVE=OFF
+          cmake -S native/CrimsonDesertTelemetry.Asi -B build/native-package -A x64 -DCDT_RESEARCH=OFF -DCDT_ALLOW_RESEARCH_NATIVE=OFF
           if ($LASTEXITCODE -ne 0) { throw 'Native configure failed.' }
           cmake --build build/native-package --config Release -- /m:2
           if ($LASTEXITCODE -ne 0) { throw 'Native build failed.' }

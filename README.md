@@ -6,7 +6,7 @@ Inspect positions, colors and brightness of current light contributions from fir
 
 **New in 2.2.10:** the shared mixer works with **CrimsonHue 2.0.0** to select Hue, OpenRGB and compatible Tuya Wi-Fi 3.5 RGB lighting independently. OpenRGB and Tuya can each run without a Hue bridge. CrimsonHue handles hardware and credentials; CDT provides telemetry and the shared renderer. [2.2.10 release notes](docs/releases/v2.2.10.md).
 
-**Game update verified:** automatic recovery adapted to Steam build **26448710** from the **26423880** reference. Camera-paired lights, Ambient and physics visibility resumed on the owner-installed release candidate. The production reference stays 26423880. [Recovery details](docs/RUNTIME_RECOVERY.md).
+**Game update verified:** automatic recovery adapted to Steam build **26448710** from the **26423880** reference. Camera-paired lights, Ambient and physics visibility resumed on the owner-installed release candidate. The current source uses 26448710 as its exact reference. [Recovery details](docs/RUNTIME_RECOVERY.md).
 
 **New in 2.2.9:** pauses acquisition when the game simulation pauses and exposes
 an independent activity API. With **CrimsonHue 1.0.7**, choose a steady menu color
@@ -71,7 +71,7 @@ sky RGB itself remains unoccluded.
 The product goal is to answer both **how exposed the player/camera location is to
 the sky and environment** and **which individual nearby game lights can actually
 reach it through world geometry**, including sources off-screen or behind the
-camera. The current validated reference is **Steam build 26423880** on Windows.
+camera. The current source reference is **Steam build 26448710** on Windows.
 Its exact EXE identity and automatic-recovery limits are listed under Compatibility.
 
 Per-light visibility is a sampled collision estimate, not a measurement of how

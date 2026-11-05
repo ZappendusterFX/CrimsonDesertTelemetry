@@ -2,6 +2,23 @@
 
 ## Build 26448710 — UI observer revalidated 2026-11-05
 
+### Installed menu.2 restart exposed additional control bits
+
+On PID 28536, the exact menu.2 ASI resolved the UI registry. A read with
+advancing ticks reported MainMenu 01/60. At 21:30 CET the owner confirmed
+Skills was open. Three stable samples in the same process read MainMenu 01/63
+and SkillTree 01/03. Fresh activity reported `menu-unavailable` with
+`simulationState=paused` and `acquisitionPaused=false`. The full-byte equality
+in menu.2 discarded a live Skills observation.
+
+The verified control-event code operates on the two low bits separately.
+The corrected policy uses those bits with the existing 27C, RTTI and pointer
+guards. It distinguishes 00/60 from 03/63 and treats either single-bit value
+as unknown. The tick counter stays independent. Evidence:
+`artifacts/menu-state-skills-20261105-213052-864-42c59e333e9a4f51a7d3a0d13bdc7fdb.json`.
+
+### Initial relocation and comparisons
+
 The owner reports that many cutscenes can stop simulation ticks and wants to
 continue investigating the UI signal while keeping the tick path. The UI reader
 now selects the exact EXE profile by SHA-256 at capture time. Both 26423880 and

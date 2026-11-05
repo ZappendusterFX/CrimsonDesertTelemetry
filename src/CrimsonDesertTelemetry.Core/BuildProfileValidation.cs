@@ -48,7 +48,7 @@ public static class BuildProfileValidation
         Rva(camera.CameraReferenceRva); Rva(camera.CameraGlobalRva, 8); Rva(camera.CameraVtableRva, 8);
         Signature(camera.CameraReferencePattern, 12, 64);
         CameraInstruction(camera.CameraReferencePattern, "05");
-        var currentSceneLayout = definition.SteamBuildId is "26361232" or "26423880";
+        var currentSceneLayout = UsesCurrentSceneLayout(definition);
         if (camera.SourcePointerOffset != (currentSceneLayout ? 0x430 : 0x428) ||
             (currentSceneLayout && camera.Layout != "renderer-camera-direct-v1"))
             Fail("Unsupported camera source-pointer layout.");
@@ -131,11 +131,12 @@ public static class BuildProfileValidation
             Rva(context.Rva); Signature(context.Bytes, 8, 128, exact: true);
             if (string.IsNullOrWhiteSpace(context.Purpose) || context.Purpose.Length > 160) Fail("Missing native context purpose.");
         }
+        var currentSceneLayout = UsesCurrentSceneLayout(definition);
         if (native.Registers is not { Output: "r12", Command: "rbx", Counter: "r15", Owner: "r13" } ||
             native.Wrapper is not { InnerOffset: 48, StrideOffset: 192, CountOffset: 196, ResourceOffset: 360,
                 NativeListOffset: 8 } ||
-            native.Wrapper.CommandHolderOffset != (definition.SteamBuildId is "26361232" or "26423880" ? 0x8C0 : 0x800) ||
-            native.Wrapper.OwnerBankIndexOffset != (definition.SteamBuildId is "26361232" or "26423880" ? 0x8E0 : 0x8F8) ||
+            native.Wrapper.CommandHolderOffset != (currentSceneLayout ? 0x8C0 : 0x800) ||
+            native.Wrapper.OwnerBankIndexOffset != (currentSceneLayout ? 0x8E0 : 0x8F8) ||
             native.Scene is not { ByteCount: 2816, FrameOffset: 32, ScreenOffset: 48,
                 PositionOffset: 128, DirectionOffset: 144, ViewRelativeOffset: 160, EarthRadiusOffset: 2752, EarthRadius: 6360000f } ||
             native.Scene.RootPointerOffset != definition.EngineCamera.SourcePointerOffset ||
@@ -146,10 +147,13 @@ public static class BuildProfileValidation
             evidence.ConsumerEntries.Any(e => !Hex(e, 8)) || !Hex(evidence.ProducerDxilHash, 32) ||
             string.IsNullOrWhiteSpace(evidence.Source) || evidence.Source.Length > 512 ||
             evidence.Validation != "archived-one-variant-not-live-pso")) Fail("Invalid or overstated archived shader evidence.");
-        if (definition.SteamBuildId == "26423880" && native.Support is null)
+        if ((definition.SteamBuildId is "26423880" or "26448710") && native.Support is null)
             Fail("Current full-product profile requires its acquisition support anchors.");
         if (native.Support is { } support) ValidateSupport(native, support);
     }
+
+    private static bool UsesCurrentSceneLayout(BuildDefinition definition) =>
+        definition.SteamBuildId is "26361232" or "26423880" or "26448710";
 
     private static void ValidateSupport(NativeCaptureDefinition native, NativeSupportDefinition support)
     {

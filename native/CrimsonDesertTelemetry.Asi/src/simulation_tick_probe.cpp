@@ -26,9 +26,7 @@ namespace cdt::simulation_tick_probe
 {
 namespace
 {
-constexpr std::array<unsigned char, 32> ExpectedHash{
-    0xDC,0x42,0x37,0xF2,0x1D,0x6C,0xE1,0xE4,0x9F,0x8E,0x5D,0x6F,0xA8,0x9B,0xF8,0x03,
-    0xFB,0xBE,0x65,0x49,0x12,0x30,0x78,0xEF,0xDC,0x39,0x32,0x65,0xC7,0xBF,0x68,0x41};
+constexpr bool DiagnosticBuild = native_contract::BuildId == "26423880" || native_contract::BuildId == "26448710";
 HANDLE mapping{};
 Snapshot* view{};
 Snapshot current{};
@@ -115,7 +113,7 @@ bool StartTickHook(std::uint64_t moduleBase)
     {
         // The caller already completed the normal native validation/recovery.
         // Diagnostic-only packages retain their original exact-build boundary.
-        if (!pauseControl && runtime_contract::ExecutableSha256 != ExpectedHash) return TickFailure(Error::ExactBuild);
+        if (!pauseControl && !DiagnosticBuild) return TickFailure(Error::ExactBuild);
         std::uint32_t imageBytes{};
         std::vector<scan::Section> sections;
         if (!ImageSections(moduleBase, imageBytes, sections)) return TickFailure(Error::Image);

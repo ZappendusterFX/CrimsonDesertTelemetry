@@ -2,7 +2,7 @@ param(
     [ValidatePattern('^[0-9A-Za-z][0-9A-Za-z.+-]*$')]
     [string]$Version = '2.2.10',
     [ValidatePattern('^[0-9]+$')]
-    [string]$NativeBuildId = '26423880',
+    [string]$NativeBuildId = '26448710',
     # Private diagnostic builds ship ready to run instead of forcing a hand edit
     # after every install, which has already cost one wasted game start. Keys must
     # already exist in the template. A version without a prerelease suffix is
@@ -75,14 +75,16 @@ function Resolve-SimulationTickDiagnostic([bool]$Enabled, [string]$PackageVersio
     if ($PackageVersion -notmatch '-' -or $ResearchMode -ne 'off') {
         throw 'SimulationTickDiagnostic requires a private prerelease and explicit -Research off.'
     }
-    # This diagnostic has one measured native context. A different/research
-    # profile must never make an unrelated executable look supported.
-    if ($BuildId -ne '26423880' -or $null -eq $Definition -or
+    $diagnosticHashes = @{
+        '26423880' = 'DC4237F21D6CE1E49F8E5D6FA89BF803FBBE6549123078EFDC393265C7BF6841'
+        '26448710' = '25F24E06A1F886E9310FD290F9462F66B480A5E7763D1FE156BFDDAA8D1992B9'
+    }
+    if (!$diagnosticHashes.ContainsKey($BuildId) -or $null -eq $Definition -or
         $Definition.steamBuildId -ne $BuildId -or $Definition.status -ne 'locally-validated' -or
-        $Definition.executableSha256 -ine 'DC4237F21D6CE1E49F8E5D6FA89BF803FBBE6549123078EFDC393265C7BF6841' -or
+        $Definition.executableSha256 -ine $diagnosticHashes[$BuildId] -or
         $Definition.nativeCapture.status -ne 'locally-validated' -or
         $Definition.nativeCapture.requiresExactExecutable -ne $true) {
-        throw 'SimulationTickDiagnostic requires the supported exact-build 26423880 executable and native definition.'
+        throw 'SimulationTickDiagnostic requires an exact, validated 26423880 or 26448710 definition.'
     }
     return $true
 }

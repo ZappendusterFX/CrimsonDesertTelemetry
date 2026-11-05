@@ -70,10 +70,9 @@ API: https://github.com/ZappendusterFX/CrimsonDesertTelemetry/blob/main/docs/API
 Requirements and installation
 -----------------------------
 Windows x64, Microsoft .NET 8 ASP.NET Core Runtime (x64), one x64 ASI loader,
-and Crimson Desert on Steam for Windows. Validated reference identity:
-EXE file version 1.0.0.3527, Steam build ID 26423880. Changed executables enter
-conditional recovery; capture starts only after its checks pass. The file/Steam
-numbers are not the game's public patch version. Unsupported layouts stay disabled.
+and Crimson Desert on Steam for Windows. The packaged reference starts directly
+after its EXE and code guards pass. Changed executables enter conditional
+recovery. Capture starts only after the required checks pass.
 Close the game, back up useful INI preferences and disable previous telemetry
 packages and any separate legacy console ASI, if installed.
 Import and enable the complete ZIP in DMM. Keep your existing loader and other

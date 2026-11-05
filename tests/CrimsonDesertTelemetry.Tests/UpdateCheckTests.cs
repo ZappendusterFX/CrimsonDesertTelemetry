@@ -35,7 +35,7 @@ internal static class UpdateCheckTests
         var updated = BuildDefinition.LoadAll("not-a-profile-directory").Single(d => d.SteamBuildId == "26361232");
         updated.NativeCapture!.Wrapper.CommandHolderOffset = 0x800;
         Reject(() => BuildProfileValidation.Validate(updated), "New build retained the obsolete command-list holder.");
-        var current = BuildDefinition.LoadAll("not-a-profile-directory").Single(d => d.SteamBuildId == "26423880");
+        var current = BuildDefinition.LoadAll("not-a-profile-directory").Single(d => d.SteamBuildId == "26448710");
         Check(current.Status == "locally-validated" && current.NativeCapture!.Status == "locally-validated" &&
             !current.AllowAutomaticCompatibility && current.NativeCapture.Support?.Anchors.Count == 11,
             "Live-validated release reference lost its paired status or guarded full-product coverage.");
@@ -52,7 +52,7 @@ internal static class UpdateCheckTests
         ];
         foreach (var corrupt in supportCorruptions)
         {
-            var candidate = BuildDefinition.LoadAll("not-a-profile-directory").Single(d => d.SteamBuildId == "26423880");
+            var candidate = BuildDefinition.LoadAll("not-a-profile-directory").Single(d => d.SteamBuildId == current.SteamBuildId);
             corrupt(candidate);
             Reject(() => BuildProfileValidation.Validate(candidate), "Malformed or legacy current-build acquisition support accepted.");
         }

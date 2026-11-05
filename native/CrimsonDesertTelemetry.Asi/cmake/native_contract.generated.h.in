@@ -50,7 +50,7 @@ inline constexpr std::array<ContextSignature, @CDT_SUPPORT_COUNT@> Contexts{{
 static_assert(SceneBytes == 2816 && RecordCount == 32768 && RecordStride == 48 && CounterBytes == 256);
 static_assert(ValidCounterByteOffset == 4 && ValidCounterByteOffset + 4 <= CounterBytes);
 static_assert(InnerOffset == 48 && StrideOffset == 192 && CountOffset == 196 && ResourceOffset == 360);
-inline constexpr bool CurrentSceneLayout = BuildId == "26361232" || BuildId == "26423880";
+inline constexpr bool CurrentSceneLayout = BuildId == "26361232" || BuildId == "26423880" || BuildId == "26448710";
 static_assert(CommandHolderOffset == (CurrentSceneLayout ? 0x8C0 : 0x800));
 static_assert(NativeListOffset == 8);
 static_assert(OwnerBankIndexOffset == (CurrentSceneLayout ? 0x8E0 : 0x8F8));

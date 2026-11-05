@@ -147,7 +147,7 @@ add_test(NAME runtime-recovery-contract COMMAND CrimsonDesertTelemetryRuntimeRec
 set_tests_properties(runtime-recovery-contract PROPERTIES TIMEOUT 15)
 add_executable(CrimsonDesertTelemetryMenuStateTests tests/menu_state_tests.cpp)
 target_compile_options(CrimsonDesertTelemetryMenuStateTests PRIVATE /W4 /WX /permissive-)
-target_link_libraries(CrimsonDesertTelemetryMenuStateTests PRIVATE cdt_instruments)
+target_link_libraries(CrimsonDesertTelemetryMenuStateTests PRIVATE cdt_instruments cdt_overlay)
 add_test(NAME menu-state-recovery COMMAND CrimsonDesertTelemetryMenuStateTests)
 set_tests_properties(menu-state-recovery PROPERTIES TIMEOUT 15)
 add_executable(CrimsonHue.OverlaySmoke tests/hue_panel_smoke.cpp)

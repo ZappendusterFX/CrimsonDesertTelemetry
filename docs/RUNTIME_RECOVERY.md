@@ -56,7 +56,7 @@ unchanged.
 
 ## Scope and refusal
 
-The current reference is build26423880 with complete Support metadata. Recovered
+The current reference is build26448710 with complete Support metadata. Recovered
 addresses cover player globals/types, direct camera, ManyLights output/input,
 Ambient, spatial GI/exposure and physics entries/callers/collector. Repeated short
 patterns are resolved through their known function/call relationships; the first
@@ -76,8 +76,9 @@ After the exact-build checks or successful native recovery, the activity worker
 resolves the menu registry once in the loaded PE. A unique registration path
 must validate its relative global, matching removal callback and record layout.
 Bounded samples identify the MainMenu root by its MSVC RTTI and verify the
-getter and control-event code reached through that vtable. The reader accepts
-the measured 01/03 open and 01/00 closed flags only from a stable pointer chain.
+getter and control-event code reached through that vtable. The reader checks
+the two low bits of the control byte on a stable pointer chain. Observed open
+values include 03 and 63. A pair with only one bit set is unavailable.
 Missing or changed menu anchors leave acquisition enabled without blocking the
 other telemetry feeds. The simulation pump remains an independent observation.
 No game menu offsets are fetched or promoted into a game-build definition.

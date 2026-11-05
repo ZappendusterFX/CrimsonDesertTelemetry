@@ -1,0 +1,249 @@
+{
+  "schemaVersion": 1,
+  "steamAppId": "3321460",
+  "steamBuildId": "26448710",
+  "executableVersion": "1.0.0.3549",
+  "executableSha256": "25F24E06A1F886E9310FD290F9462F66B480A5E7763D1FE156BFDDAA8D1992B9",
+  "status": "locally-validated",
+  "allowAutomaticCompatibility": false,
+  "nativeCapture": {
+    "schemaVersion": 1,
+    "contractId": "manylights-filter-26448710-v1",
+    "status": "locally-validated",
+    "requiresExactExecutable": true,
+    "skyProducerRva": 62975831,
+    "hookRva": 67794323,
+    "hookSignature": "48 8B 5C 24 50 48 8B CB E8 30 53 AF FF 48 8B 03 48 8B CB FF 90 18 02 00 00",
+    "contextSignatures": [
+      {
+        "rva": 67788688,
+        "bytes": "48 8B C4 48 89 58 10 48 89 48 08 55 56 57 41 54 41 55 41 56 41 57 48 8D 68 88 48 81 EC 40 01 00 00 C5 F8 29 70 B8 C5 F8 29 78 A8 48 8B DA 4C 8B E9",
+        "purpose": "ProcessManyLights owner RCX to R13 and command RDX to RBX; measured current executable function entry"
+      },
+      {
+        "rva": 67794053,
+        "bytes": "4C 8B 7C 24 58 48 83 78 08 00 74 23 48 8B 13 4C 8B 92 E8 04 00 00 C6 44 24 28 00 C6 44 24 20 01 45 33 C9 4D 8B C7 48 8B D0 48 8B CB 41 FF D2 48 8B 5C 24 50",
+        "purpose": "Paired counter wrapper loaded into R15 and passed to UAV binder before command restore"
+      },
+      {
+        "rva": 67794249,
+        "bytes": "4C 8B 65 88 48 83 78 08 00 74 23 48 8B 13 4C 8B 92 E8 04 00 00 C6 44 24 28 00 C6 44 24 20 01 45 33 C9 4D 8B C4 48 8B D0 48 8B CB 41 FF D2 48 8B 4C 24 50 48 8B 01 BA 00 02 00 00 41 B9 01 00 00 00 45 8B C1 FF 90 38 03 00 00",
+        "purpose": "Filtered wrapper R12 passed to UAV binder followed by Dispatch(512,1,1); ends exactly at hook"
+      },
+      {
+        "rva": 67789378,
+        "bytes": "41 8B 85 E0 08 00 00 4D 8B BC C5 38 06 00 00 4C 89 7C 24 58 49 8B 8C C5 48 06 00 00",
+        "purpose": "Bank index owner+0x8E0 followed by paired counter/output banks owner+0x638/+0x648; offline disassembly"
+      },
+      {
+        "rva": 62365738,
+        "bytes": "48 8B 83 C0 08 00 00 44 8B CF 44 8B C6 8B D5 48 8B 48 08 48 8B 01 FF 50 70",
+        "purpose": "Command Dispatch: RBX+0x8C0 -> holder+8 -> native command list, Dispatch virtual slot0x70; live vtable provenance"
+      },
+      {
+        "rva": 67793343,
+        "bytes": "49 8B B5 28 06 00 00 48 8B 5C 24 50",
+        "purpose": "Upstream input owner+0x628 load and command restore before SRV binding; exact current executable"
+      },
+      {
+        "rva": 67793525,
+        "bytes": "4C 8B C6 48 8B D0 48 8B CB 41 FF D2",
+        "purpose": "Upstream SRV binder receives RSI input wrapper and RBX command; current exact executable"
+      }
+    ],
+    "registers": {
+      "output": "r12",
+      "command": "rbx",
+      "counter": "r15",
+      "owner": "r13"
+    },
+    "wrapper": {
+      "innerOffset": 48,
+      "strideOffset": 192,
+      "countOffset": 196,
+      "resourceOffset": 360,
+      "commandHolderOffset": 2240,
+      "nativeListOffset": 8,
+      "ownerBankIndexOffset": 2272
+    },
+    "scene": {
+      "rootPointerOffset": 1072,
+      "byteCount": 2816,
+      "frameOffset": 32,
+      "screenOffset": 48,
+      "positionOffset": 128,
+      "directionOffset": 144,
+      "viewRelativeOffset": 160,
+      "earthRadiusOffset": 2752,
+      "earthRadius": 6360000
+    },
+    "gpu": {
+      "recordCount": 32768,
+      "recordStride": 48,
+      "counterBytes": 256,
+      "validCounterByteOffset": 4,
+      "resourceState": "unordered-access"
+    },
+    "support": {
+      "values": {
+        "AmbientSourceOffset": 168,
+        "RendererGiOffset": 1672,
+        "RendererSkyOffset": 1680,
+        "RendererExposureOffset": 1720,
+        "PhysicsCollectorVtableRva": 101570824,
+        "PhysicsQueryProfile": 1073741847,
+        "UpstreamInputRva": 67793343,
+        "UpstreamBinderRva": 67793525,
+        "ExposureReturnRva": 59756858
+      },
+      "anchors": [
+        {
+          "name": "AmbientHookA",
+          "rva": 62975831,
+          "bytes": "48 8B CB E8 71 D9 F8 FF 48 8B 03 48 8B CB FF",
+          "relocationPattern": "48 8B CB E8 ?? ?? ?? ?? 48 8B 03 48 8B CB FF"
+        },
+        {
+          "name": "AmbientHookB",
+          "rva": 62992339,
+          "bytes": "48 8B CF E8 F5 98 F8 FF 48 8B 07 48 8B CF FF",
+          "relocationPattern": "48 8B CF E8 ?? ?? ?? ?? 48 8B 07 48 8B CF FF"
+        },
+        {
+          "name": "AmbientSourceA",
+          "rva": 62975055,
+          "bytes": "48 8B AF A8 00 00 00 65 48 8B 04 25 58 00 00 00 48 8B 30 41 8B 04 37",
+          "relocationPattern": "48 8B AF A8 00 00 00 65 48 8B 04 25 58 00 00 00 48 8B 30 41 8B 04 37"
+        },
+        {
+          "name": "AmbientSourceB",
+          "rva": 62992139,
+          "bytes": "48 8B 9D A8 00 00 00 42 8B 04 3E 39 05 0C 65 8F 03 7E 58 48 8D 0D 03 65 8F 03",
+          "relocationPattern": "48 8B 9D A8 00 00 00 42 8B 04 3E 39 05 ?? ?? ?? ?? 7E ?? 48 8D 0D ?? ?? ?? ??"
+        },
+        {
+          "name": "SpatialDispatch",
+          "rva": 62365488,
+          "bytes": "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 48 89 7C 24 20 41 56 48 83 EC 40",
+          "relocationPattern": "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 48 89 7C 24 20 41 56 48 83 EC 40"
+        },
+        {
+          "name": "PhysicsShape",
+          "rva": 73088736,
+          "bytes": "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 48 89 7C 24 20 41 54 41 56 41 57 48 83 EC 50",
+          "relocationPattern": "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 48 89 7C 24 20 41 54 41 56 41 57 48 83 EC 50"
+        },
+        {
+          "name": "PhysicsRay",
+          "rva": 73088480,
+          "bytes": "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 41 56 41 57 48 83 EC 30",
+          "relocationPattern": "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 41 56 41 57 48 83 EC 30"
+        },
+        {
+          "name": "PhysicsCollectorMethod",
+          "rva": 63670896,
+          "bytes": "48 89 5C 24 08 57 48 83 EC 20 48 8B FA 48 8B D9 E8 EB FA FF FF 3C 01 0F 84 A6 00 00 00 C5 FB 10 43 10 C5 F9 2F 47 30",
+          "relocationPattern": "48 89 5C 24 08 57 48 83 EC 20 48 8B FA 48 8B D9 E8 ?? ?? ?? ?? 3C 01 0F 84 ?? ?? ?? ?? C5 FB 10 43 10 C5 F9 2F 47 30"
+        },
+        {
+          "name": "ExposureDispatch",
+          "rva": 59756840,
+          "bytes": "41 B9 01 00 00 00 45 8B C1 48 8B CB FF 90 38 03 00 00 48 8B CB E8 8E F7 29 00 48 8B 03 48 8B CB",
+          "relocationPattern": "41 B9 01 00 00 00 45 8B C1 48 8B CB FF 90 38 03 00 00 48 8B CB E8 ?? ?? ?? ?? 48 8B 03 48 8B CB"
+        },
+        {
+          "name": "PhysicsShapeCaller",
+          "rva": 55649538,
+          "bytes": "90 F6 44 24 30 01 74 31 42 8B 04 33 A8 01 75 1C 83 C8 01 42 89 04 33 48 8B CF E8 AF 73 FD FF",
+          "relocationPattern": "90 F6 44 24 30 01 74 ?? 42 8B 04 33 A8 01 75 ?? 83 C8 01 42 89 04 33 48 8B CF E8 ?? ?? ?? ??"
+        },
+        {
+          "name": "PhysicsRayCaller",
+          "rva": 55648695,
+          "bytes": "90 F6 85 88 00 00 00 01 74 33 42 8B 04 33 A8 01 75 1C 83 C8 01 42 89 04 33 48 8B CF E8 F8 76 FD FF",
+          "relocationPattern": "90 F6 85 88 00 00 00 01 74 ?? 42 8B 04 33 A8 01 75 ?? 83 C8 01 42 89 04 33 48 8B CF E8 ?? ?? ?? ??"
+        }
+      ]
+    }
+  },
+  "engineLights": {
+    "layout": "light-source-array-scene-global-v1",
+    "sceneGlobalRva": 118333480,
+    "sceneVtableRva": 101626072,
+    "arrayPointerOffset": 3992
+  },
+  "patterns": [
+    {
+      "name": "static-position-xy-write",
+      "purpose": "static-position-xy",
+      "section": ".text",
+      "pattern": "C5 FB 11 3D ?? ?? ?? ?? 44 89 3D ?? ?? ?? ??",
+      "ripOffset": 4,
+      "ripEnd": 8,
+      "confidence": "locally-validated",
+      "source": "Build26448710, 2026-11-05: verified with all 30 runtime recovery roles on the preserved EXE. Owner-installed CDT recovered this build with progressing player/camera, filtered and upstream lights, Ambient and completed clear/blocked physics observations. Exact-reference package game acceptance is separate. See docs/HANDOVER.md and docs/RUNTIME_RECOVERY.md."
+    },
+    {
+      "name": "static-position-z-write",
+      "purpose": "static-position-z",
+      "section": ".text",
+      "pattern": "C5 FB 11 3D ?? ?? ?? ?? 44 89 3D ?? ?? ?? ??",
+      "ripOffset": 11,
+      "ripEnd": 15,
+      "confidence": "locally-validated",
+      "source": "Build26448710, 2026-11-05: verified with all 30 runtime recovery roles on the preserved EXE. Owner-installed CDT recovered this build with progressing player/camera, filtered and upstream lights, Ambient and completed clear/blocked physics observations. Exact-reference package game acceptance is separate. See docs/HANDOVER.md and docs/RUNTIME_RECOVERY.md."
+    }
+  ],
+  "engineCamera": {
+    "layout": "renderer-camera-direct-v1",
+    "mainRootReferenceRva": 0,
+    "mainRootReferencePattern": "48 8B 0D ?? ?? ?? ?? 49 8B E8 8B F2 48 85 C9",
+    "mainRootGlobalRva": 0,
+    "cameraReferenceRva": 50078023,
+    "cameraReferencePattern": "48 8B 05 ?? ?? ?? ?? C5 FB 10 B0 C8 00 00 00 8B 98 D0 00 00 00",
+    "cameraGlobalRva": 118333480,
+    "contextVtableRva": 0,
+    "cameraVtableRva": 101626072,
+    "frameCounterOffset": 720,
+    "contextVtableFingerprints": [],
+    "cameraVtableFingerprints": [
+      {
+        "slot": 1,
+        "pattern": "48 8B C4 48 89 58 10 48 89 70 18 41 54 41 56 41 57 48 81 EC 10 01 00 00 8B B1 A8 02 00 00 4D 8B ?? 4D 8B ?? 4C 8B F2 48 8B D9 85 F6"
+      },
+      {
+        "slot": 2,
+        "pattern": "40 53 48 83 EC 20 48 8B 01 48 8B DA FF 50 68 4C 8B C8 48 63 48 08 85 C9 75 08 32 C0 48 83 C4 20 5B C3 48 89 7C 24 30 41 B0 01 33 FF 4C 8B D1 C5 F8 57 C0 48 83 F9 04"
+      }
+    ],
+    "sourcePointerOffset": 1072
+  },
+  "playerRoot": {
+    "transformLayout": "basis-v1",
+    "worldSystemPattern": {
+      "name": "world-system-p1",
+      "purpose": "world-system",
+      "section": ".text",
+      "pattern": "48 8B 0D ?? ?? ?? ?? 48 8B 49 30 E8 ?? ?? ?? ?? 84 C0 75 23 49 8B 46 08 48 8B 48 68 C6 44 24 20 00",
+      "ripOffset": 3,
+      "ripEnd": 7,
+      "confidence": "locally-validated",
+      "source": "Build26448710, 2026-11-05: verified with all 30 runtime recovery roles on the preserved EXE. Owner-installed CDT recovered this build with progressing player/camera, filtered and upstream lights, Ambient and completed clear/blocked physics observations. Exact-reference package game acceptance is separate. See docs/HANDOVER.md and docs/RUNTIME_RECOVERY.md."
+    },
+    "worldSystemToActorManagerOffset": 48,
+    "actorManagerToPlayerActorOffset": 80,
+    "playerActorToIntermediateOffset": 104,
+    "intermediateToControlOffset": 64,
+    "controlToOwnerOffset": 320,
+    "ownerToPhysicsOffset": 704,
+    "basisXOffset": 96,
+    "basisYOffset": 112,
+    "basisZOffset": 128,
+    "positionOffset": 144,
+    "expectedTypeNames": [
+      ".?AVClientActorManager@pa@@",
+      ".?AVClientChildOnlyInGameActor@pa@@",
+      ".?AVClientCharacterControlActorComponent@pa@@"
+    ]
+  }
+}

@@ -408,6 +408,10 @@ ResultFile=inject_result.txt
     if (-not (Resolve-SimulationTickDiagnostic $true '2.2.8-simulation.1' 'off' '26423880' $simulationDefinition $null)) {
         throw 'The supported private exact-build simulation tick diagnostic was rejected.'
     }
+    $updatedSimulation = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\definitions\build-26448710.json') -Raw | ConvertFrom-Json
+    if (-not (Resolve-SimulationTickDiagnostic $true '2.2.11-simulation.1' 'off' '26448710' $updatedSimulation $null)) {
+        throw 'The updated exact-build simulation tick diagnostic was rejected.'
+    }
     if (-not (Resolve-SimulationTickDiagnostic $true '2.2.8-simulation.1' 'off' '26423880' $simulationDefinition @{ 'Diagnostics.SimulationTicks' = '1' })) {
         throw 'A matching qualified simulation tick override was rejected.'
     }

@@ -2,7 +2,7 @@
 # contracts with full Support metadata also permit guarded runtime recovery.
 # Old build packages remain reproducible with
 # -DCDT_NATIVE_BUILD_ID=<id> while the default follows the current product build.
-set(CDT_NATIVE_BUILD_ID "26423880" CACHE STRING "Reference Steam build contract compiled into this ASI")
+set(CDT_NATIVE_BUILD_ID "26448710" CACHE STRING "Reference Steam build contract compiled into this ASI")
 option(CDT_ALLOW_RESEARCH_NATIVE "Explicit private test of an unvalidated exact-build contract" OFF)
 set(CDT_NATIVE_DEFINITION "${CDT_ROOT}/definitions/build-${CDT_NATIVE_BUILD_ID}.json")
 if(NOT EXISTS "${CDT_NATIVE_DEFINITION}")

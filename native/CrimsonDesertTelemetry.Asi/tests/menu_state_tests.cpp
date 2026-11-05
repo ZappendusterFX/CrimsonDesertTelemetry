@@ -1,4 +1,6 @@
 #include "menu_state.h"
+#include "ambient_probe.h"
+#include "render_capture.h"
 #include <windows.h>
 #include <array>
 #include <cstring>
@@ -134,6 +136,10 @@ void Synthetic(U32 shift)
     Check(Sample() == State::Closed, "closed menu lost");
     ui.Flags(0x0301);
     Check(Sample() == State::Open, "verified menu lost");
+    ui.Flags(0x6001);
+    Check(Sample() == State::Closed, "unrelated flag bits hid the closed menu");
+    ui.Flags(0x6301);
+    Check(Sample() == State::Open, "unrelated flag bits hid the open menu");
     ui.Flags(0x0201);
     Check(Sample() == State::Unknown, "unvalidated control bits authorized a menu");
     ui.Flags(0x0301);
@@ -184,11 +190,17 @@ void Replay(const std::filesystem::path& path)
         Check(section.VirtualAddress < size && section.SizeOfRawData <= size - section.VirtualAddress, "invalid replay section");
         if (section.SizeOfRawData) read(section.PointerToRawData, base + section.VirtualAddress, section.SizeOfRawData);
     }
+    Check(static_cast<bool>(cdt::render::CheckCapturePreflight(Address(base))), "preserved EXE exact render preflight failed");
+    Check(cdt::render::CheckAmbientPreflight(Address(base)), "preserved EXE exact ambient preflight failed");
+    for (const auto& context : cdt::native_contract::support::Contexts)
+        Check(context.rva < size && context.bytes.size() <= size - context.rva &&
+            std::memcmp(base + context.rva, context.bytes.data(), context.bytes.size()) == 0,
+            "preserved EXE exact acquisition context differs");
     Ui ui(base + 0x71BDF48, Address(base + 0x1022660), Address(base + 0x5A012F0));
     Check(Initialize(Address(base), size), "preserved EXE registry recovery failed");
     Check(Sample() == State::Closed, "preserved EXE closed-menu layout failed");
-    ui.Flags(0x0301);
-    Check(Sample() == State::Open, "preserved EXE open-menu layout failed");
+    ui.Flags(0x6301);
+    Check(Sample() == State::Open, "preserved EXE open-menu layout failed with unrelated flag bits");
     VirtualFree(base, 0, MEM_RELEASE);
 }
 }
