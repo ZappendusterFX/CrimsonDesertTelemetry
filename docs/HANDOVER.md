@@ -1,4 +1,35 @@
-# Current checkpoint — 2026-11-05, recovered menu policy packaged
+# Current checkpoint — 2026-11-05, exact 26448710 reference and Skills flag fix
+
+Owner installed menu.2 and reported recovery on restart and no menu lighting.
+Five loaded/runtime ASI, DLL and CFG hashes matched its package. Live recovery
+reported ready using the old 26423880 reference. The same PID 28536 resolved
+the menu registry, but the stable MainMenu control changed from 01/60 with
+progressing ticks to 01/63 in owner-confirmed Skills. menu.2 rejected 01/63
+and published `menu-unavailable` with stalled ticks. The fix checks the two
+low bits, with the existing 27C and pointer/code guards. Both observed closed
+and open forms pass the native regression. Tick activity remains separate.
+
+Build 26448710 / EXE 1.0.0.3549 is now the direct native and managed reference.
+Its existing capture anchors and code bytes match the full recovered contract.
+The packaged host reported `exact-profile-anchors-checked` on the preserved
+EXE. Native exact render, Ambient and support checks also passed. Full cold
+recovery, cache reuse and corrupted-cache fallback from the new reference to
+preserved 26423880 still pass. Managed 94, native 46, and expanded/ZIP checks pass.
+
+Private production ZIP (Research OFF, source c87f0ef):
+`artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.11-menu.3-ModManagers.zip`
+(1,192,712 bytes), SHA256
+`542603B1B607AFFD525B1900551DF98455B6C0F185F68B9C6CEF5795511C0F8A`.
+Evidence: `docs/MENU_LIGHTING_RESEARCH.md`,
+`artifacts/menu-ui-3-validation-20261105.log` and
+`artifacts/menu-ui-3-receipt-20261105.json`.
+
+Next OWNER ONLY: stop sync, close the game, install CDT menu.3 through DMM,
+restart and report. Existing CrimsonHue is compatible. Confirm the exact
+startup path and Skills pause after the owner's report. No assistant install,
+polling, or live game/lamp acceptance of menu.3.
+
+# Previous checkpoint — 2026-11-05, recovered menu policy packaged
 
 Owner accepts normal acquisition in Kuku Shop, Kuku Pot crafting and cutscenes.
 The tick observer remains independent. After exact-build validation or successful
