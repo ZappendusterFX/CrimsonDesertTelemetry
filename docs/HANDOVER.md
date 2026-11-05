@@ -1,4 +1,4 @@
-# Current checkpoint — 2026-11-05, menu UI observer revalidated on build 26448710
+# Current checkpoint — 2026-11-05, Skills UI signal reproduced on build 26448710
 
 Owner reports tick stalls during cutscenes and wants to pursue the UI signal while
 retaining ticks. Revalidated the existing read-only observer on preserved build
@@ -9,13 +9,15 @@ builds pass 13 offline code guards, six vtable guards and synthetic tests.
 
 Unlabeled live sample on PID15612: stable 144-entry registry, six readable
 controls, zero rejected roots, MainMenu flags 01/00. Activity advanced in
-`running` around the read. No runtime, package or deployment changes. Evidence
-and reproducible commands: `docs/MENU_LIGHTING_RESEARCH.md` and
+`running` around the read. Owner-confirmed Skills in the same process at
+20:42 CET gave MainMenu and SkillTree flags 01/03 in all three samples. All six
+root and control identities matched the earlier sample. Activity advanced
+while reporting `paused` / `simulation-idle` around the Skills read. No runtime,
+package or deployment changes. Evidence: `docs/MENU_LIGHTING_RESEARCH.md` and
 `artifacts/menu-relocation-26448710/`.
 
-Next owner handoff: leave Skills open and report it for a labeled read, then
-compare gameplay return and a cutscene with a tick stall. The live read above
-establishes addressability, while menu/cutscene discrimination remains open.
+Next owner handoff: close Skills and report gameplay for a labeled return
+sample. A cutscene with a tick stall is still needed to test discrimination.
 
 # Previous checkpoint — 2026-11-05, CDT 2.2.10 published on GitHub
 

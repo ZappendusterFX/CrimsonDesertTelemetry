@@ -27,14 +27,21 @@ One unlabeled live read on 26448710 (PID 15612) passed the code and vtable
 guards. It found a stable registry with 144 subscriptions, six readable
 control chains, zero rejected roots, and MainMenu flags 01/00 with a matching
 backlink. Activity reported advancing `running` around the read. The capture
-establishes live addressability. Controlled Skills and cutscene semantics on
-this build remain open. The tick-based runtime behavior stays in place.
+establishes live addressability. The tick-based runtime behavior stays in place.
+
+Owner-confirmed Skills at 20:42 CET produced three stable samples in the same
+process. All six root, owner, indexed entry and control addresses matched the
+earlier read. MainMenu and SkillTree changed from 01/00 to 01/03. The four other
+controls stayed 01/00. Fresh activity samples bracketing the read advanced from
+sequence 79790 to 79829 and both reported `paused`, `simulation-idle`,
+`acquisitionPaused=true` at epoch 74.
 
 Evidence is in `artifacts/menu-relocation-26448710/` and
 `artifacts/menu-state-unknown-20261105-203951-426-a87d18281c90474ea201b1ccb3d7f322.json`.
-Compare owner-confirmed gameplay, Skills, gameplay return and a cutscene with
-stalled simulation ticks. Record the UI flags alongside `/v1/activity` to check
-whether the MainMenu flags separate the two paused states.
+The Skills capture is `artifacts/menu-state-skills-20261105-204200-600-7b0808bff25c474b85f680373409307a.json`.
+Next compare the owner-confirmed gameplay return and a cutscene with stalled
+simulation ticks. Record the UI flags alongside `/v1/activity` to check whether
+the MainMenu flags separate the two paused states.
 
 ## Earlier investigation on build 26423880
 
