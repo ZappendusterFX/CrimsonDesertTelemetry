@@ -158,7 +158,7 @@ readback in the ASI. It is an instrumented path, not an untouched baseline.
 Live validation with all production features enabled remains pending. Automatic
 HUD hiding in every game menu is not implemented; `playing`/`loading` remains a
 telemetry availability contract. The independent activity API below reports
-simulation progression; it does not identify individual game menus.
+the acquisition pause and exposes simulation progression separately.
 
 Alternatively, from a source checkout with the .NET 8 SDK:
 
@@ -203,7 +203,7 @@ timestamp. The snapshot endpoint retains the last published object; a health-onl
 change (for example `error`) does not clear it. Use health and a freshness timeout
 as well. A missing host results in a connection failure, not an HTTP 503.
 
-### Simulation activity
+### Menu and simulation activity
 
 ```json
 {
@@ -216,15 +216,20 @@ as well. A missing host results in a connection failure, not an HTTP 503.
   "observationAgeMilliseconds": 17,
   "acquisitionPaused": true,
   "epoch": 2,
-  "reason": "simulation-idle"
+  "reason": "menu-open",
+  "simulationState": "paused"
 }
 ```
 
-The observer counts entries into the guarded simulation pump. `running` means
-the counter has advanced; `paused` means it has not advanced for at least 500 ms
-after initial progression. Until progression has first been observed, the state
-is `unknown`. This is simulation activity, not proof of a particular menu. Other
-simulation stalls can also produce `paused`.
+When `simulationState` is present, `state` is the guarded menu policy outcome.
+An open MainMenu control reports `paused`, a closed control reports `running`
+and an unavailable UI observation reports `unknown`. `reason` identifies that
+outcome. The `source` literal is retained for existing schema 1.0 consumers.
+
+The tick counter is independent. `simulationState` reports `running` while the
+guarded pump advances, `paused` after 500 ms without progress and `unknown`
+before initial progress or if the tick hook cannot verify. Older native
+publishers omit this field and report tick progression in `state`.
 
 `sequence` increases across activity publications for the lifetime of the host.
 `sessionId` is an opaque process-session identity; consumers must reset retained

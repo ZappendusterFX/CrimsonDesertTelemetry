@@ -2,9 +2,10 @@
 
 ## Private tick diagnostic added 2026-11-04
 
-The production template now also offers `[Pause] Enabled=1`; research fixes this
-to 0. It independently starts the guarded tick observer and suspends new capture
-while simulation progress is paused. `-SimulationTickDiagnostic` explicitly
+The production template offers `[Pause] Enabled=1`. Research fixes this to 0.
+It enables the guarded menu observer and the independent tick counter. New
+capture is suspended while the verified MainMenu control is open.
+`-SimulationTickDiagnostic` explicitly
 forces Pause.Enabled=0 to retain monitor-only behavior. Historical INIs without
 the new section remain valid. Values other than 0/1 and research activation are
 rejected. Gameplay/Skills/gameplay validates the tick signal; menu-mode game and

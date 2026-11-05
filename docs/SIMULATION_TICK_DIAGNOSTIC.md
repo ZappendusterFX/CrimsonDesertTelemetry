@@ -1,5 +1,13 @@
 # Simulation tick diagnostic
 
+Current menu policy uses the guarded UI observer. The tick hook remains
+independent because cutscenes can also stop the pump. Production pause
+observation uses mapping v3 with the same 128-byte size and a menu state at
+offset 88 (unknown 0, closed 1, open 2). The raw tick state stays at offset 72.
+The diagnostic reader supports all three mapping versions.
+
+## Historical tick-only candidate
+
 The owner confirms a one-to-one relation between in-game menus and paused
 gameplay and prefers the World Builder tick approach for update resilience.
 Menu UI evidence remains a cross-check, not the chosen production dependency.

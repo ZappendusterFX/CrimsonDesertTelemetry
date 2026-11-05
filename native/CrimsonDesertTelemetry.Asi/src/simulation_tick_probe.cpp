@@ -4,6 +4,7 @@
 #include "simulation_tick_probe.h"
 #include "simulation_tick_scan.h"
 #include "simulation_tick.h"
+#include "menu_state.h"
 #include "console/mem.h"
 #include "runtime_contract.generated.h"
 #include <MinHook.h>
@@ -57,16 +58,13 @@ void Publish()
         reinterpret_cast<const unsigned char*>(&current) + afterSequence, sizeof(Snapshot) - afterSequence);
     InterlockedIncrement64(reinterpret_cast<volatile LONG64*>(&view->seqlock));
 }
-bool Fail(Error error)
+bool TickFailure(Error error)
 {
-    acquisition_pause::gate.Update(false, GetTickCount64());
-    current.status = Status::Failed;
     current.error = error;
     current.entryCounter = Counter();
     current.state = 0;
     current.lastProgressTickMs = 0;
     current.ageMs = UINT64_MAX;
-    Publish();
     return false;
 }
 bool OpenMapping()
@@ -74,7 +72,7 @@ bool OpenMapping()
     FILETIME born{}, exited{}, kernel{}, user{};
     if (!GetProcessTimes(GetCurrentProcess(), &born, &exited, &kernel, &user)) return false;
     current = {};
-    current.magic = Magic; current.version = Version;
+    current.magic = Magic; current.version = pauseControl ? MenuVersion : DiagnosticVersion;
     current.headerBytes = current.totalBytes = sizeof(Snapshot);
     current.pid = GetCurrentProcessId(); current.status = Status::Starting;
     current.processStartFileTime = (std::uint64_t{born.dwHighDateTime} << 32) | born.dwLowDateTime;
@@ -111,53 +109,46 @@ bool ImageSections(std::uint64_t base, std::uint32_t& size, std::vector<scan::Se
         sections.push_back({h.VirtualAddress, h.Misc.VirtualSize, (h.Characteristics & IMAGE_SCN_MEM_EXECUTE) != 0});
     return true;
 }
-}
-
-bool Start(std::uint64_t moduleBase, bool pauseControlEnabled)
+bool StartTickHook(std::uint64_t moduleBase)
 {
-    if (attempted) return false;
-    attempted = true;
-    pauseControl = pauseControlEnabled;
     try
     {
-        if (!OpenMapping()) return false;
         // The caller already completed the normal native validation/recovery.
-        // Pause mode additionally requires this unique measured function shape;
-        // diagnostic-only packages retain their original exact-build boundary.
-        if (!pauseControl && runtime_contract::ExecutableSha256 != ExpectedHash) return Fail(Error::ExactBuild);
+        // Diagnostic-only packages retain their original exact-build boundary.
+        if (!pauseControl && runtime_contract::ExecutableSha256 != ExpectedHash) return TickFailure(Error::ExactBuild);
         std::uint32_t imageBytes{};
         std::vector<scan::Section> sections;
-        if (!ImageSections(moduleBase, imageBytes, sections)) return Fail(Error::Image);
+        if (!ImageSections(moduleBase, imageBytes, sections)) return TickFailure(Error::Image);
         const auto read = [=](std::uint32_t rva, std::span<std::uint8_t> bytes) {
             return rva < imageBytes && bytes.size() <= imageBytes - rva &&
                 ch::mem::SafeRead(reinterpret_cast<const void*>(moduleBase + rva), bytes.data(), bytes.size());
         };
         const auto match = scan::Find(imageBytes, sections, read);
         if (match.result != scan::Result::Unique)
-            return Fail(match.result == scan::Result::PrefixMismatch ? Error::Prefix : Error::Signature);
+            return TickFailure(match.result == scan::Result::PrefixMismatch ? Error::Prefix : Error::Signature);
         current.hookRva = match.rva;
         const auto address = moduleBase + match.rva;
         DWORD64 unwindBase{};
         const auto function = RtlLookupFunctionEntry(address, &unwindBase, nullptr);
         if (!function || unwindBase != moduleBase || function->BeginAddress != match.rva ||
             function->EndAddress > imageBytes || function->EndAddress <= function->BeginAddress ||
-            function->EndAddress - function->BeginAddress < scan::Prefix.size()) return Fail(Error::Unwind);
+            function->EndAddress - function->BeginAddress < scan::Prefix.size()) return TickFailure(Error::Unwind);
         std::array<std::uint8_t, scan::Prefix.size()> before{};
-        if (!read(match.rva, before) || before != scan::Prefix) return Fail(Error::Prefix);
+        if (!read(match.rva, before) || before != scan::Prefix) return TickFailure(Error::Prefix);
         HMODULE pinned{};
         if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
-            reinterpret_cast<LPCWSTR>(&CdtSimulationTickThunk), &pinned)) return Fail(Error::ModulePin);
+            reinterpret_cast<LPCWSTR>(&CdtSimulationTickThunk), &pinned)) return TickFailure(Error::ModulePin);
         const auto initialized = MH_Initialize();
-        if (initialized != MH_OK && initialized != MH_ERROR_ALREADY_INITIALIZED) return Fail(Error::HookInitialize);
+        if (initialized != MH_OK && initialized != MH_ERROR_ALREADY_INITIALIZED) return TickFailure(Error::HookInitialize);
         target.store(address);
         if (MH_CreateHook(reinterpret_cast<void*>(address), &CdtSimulationTickThunk,
-            &CdtSimulationTickTrampoline) != MH_OK) return Fail(Error::HookCreate);
+            &CdtSimulationTickTrampoline) != MH_OK) return TickFailure(Error::HookCreate);
         // CreateHook does not patch the target. Recheck immediately before enable.
         if (!read(match.rva, before) || before != scan::Prefix)
         {
             MH_RemoveHook(reinterpret_cast<void*>(address));
             CdtSimulationTickTrampoline = nullptr;
-            return Fail(Error::Prefix);
+            return TickFailure(Error::Prefix);
         }
         monitor.Reset();
         current.entryCounter = Counter();
@@ -166,40 +157,60 @@ bool Start(std::uint64_t moduleBase, bool pauseControlEnabled)
         {
             MH_RemoveHook(reinterpret_cast<void*>(address)); // Never enabled: no in-flight trampoline.
             CdtSimulationTickTrampoline = nullptr;
-            return Fail(Error::HookEnable);
+            return TickFailure(Error::HookEnable);
         }
         enabled = true;
-        current.status = Status::Observing;
         current.error = Error::None;
-        lastPoll = GetTickCount64();
-        Publish();
         return true;
     }
-    catch (...) { return Fail(Error::Exception); }
+    catch (...) { return TickFailure(Error::Exception); }
+}
+}
+
+bool Start(std::uint64_t moduleBase, std::uint32_t imageSize, bool pauseControlEnabled)
+{
+    if (attempted) return false;
+    attempted = true;
+    pauseControl = pauseControlEnabled;
+    if (!OpenMapping()) return false;
+    const bool menuReady = pauseControl && menu_state::Initialize(moduleBase, imageSize);
+    if (pauseControl)
+        ch::Log(menuReady ? "Menu activity: guarded UI registry resolved." :
+            "Menu activity unavailable: UI registry did not verify. Acquisition continues normally.");
+    const bool tickReady = StartTickHook(moduleBase);
+    if (!tickReady) ch::Log("Simulation tick observation unavailable (error %u).", static_cast<unsigned>(current.error));
+    const bool observing = menuReady || tickReady;
+    current.status = observing ? Status::Observing : Status::Failed;
+    lastPoll = GetTickCount64();
+    Publish();
+    return observing;
 }
 void Poll()
 {
     const auto now = GetTickCount64();
-    if (!enabled.load() || now - lastPoll < 50) return;
+    if (current.status != Status::Observing || now - lastPoll < 50) return;
     lastPoll = now;
     const auto observed = simulation_tick::Monitor::Clock::now();
     current.entryCounter = Counter();
-    current.state = static_cast<std::uint32_t>(monitor.Observe(current.entryCounter, observed));
-    acquisition_pause::gate.Update(pauseControl && current.state == 2, now);
+    if (enabled.load()) current.state = static_cast<std::uint32_t>(monitor.Observe(current.entryCounter, observed));
     const auto progressed = monitor.LastProgress();
     current.ageMs = progressed ? static_cast<std::uint64_t>(
         std::chrono::duration_cast<std::chrono::milliseconds>(observed - *progressed).count()) : UINT64_MAX;
     current.lastProgressTickMs = progressed && current.ageMs <= now ? now - current.ageMs : 0;
+    const auto menu = pauseControl ? menu_state::Sample() : menu_state::State::Unknown;
+    current.menuState = static_cast<std::uint32_t>(menu);
+    acquisition_pause::gate.Update(menu == menu_state::State::Open, now);
     Publish();
 }
 void Stop()
 {
     acquisition_pause::gate.Update(false, GetTickCount64());
+    current.menuState = 0;
     if (enabled.load())
     {
         const auto result = MH_DisableHook(reinterpret_cast<void*>(target.load()));
         if (result == MH_OK || result == MH_ERROR_DISABLED) enabled = false;
-        else { Fail(Error::HookDisable); }
+        else { TickFailure(Error::HookDisable); current.status = Status::Failed; }
     }
     if (current.status != Status::Failed) current.status = Status::Stopped;
     current.entryCounter = Counter();

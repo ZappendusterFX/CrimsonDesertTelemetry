@@ -103,7 +103,7 @@ set(CDT_CONSOLE_SOURCES
 # relaxing warnings for newly integrated production code.
 set_source_files_properties(${CDT_CONSOLE_SOURCES} PROPERTIES COMPILE_OPTIONS "/WX-;/wd4996")
 add_library(cdt_instruments STATIC src/instruments.cpp src/build_guard.cpp src/runtime_recovery.cpp
-    src/simulation_tick_probe.cpp src/simulation_tick_thunk.asm
+    src/simulation_tick_probe.cpp src/simulation_tick_thunk.asm src/menu_state.cpp
     src/render_bridge.cpp src/render_capture.cpp src/light_modulator.cpp src/modulator_bridge.cpp src/filter_thunk.asm src/ambient_thunk.asm
     ${CDT_RESEARCH_SOURCES} ${CDT_CONSOLE_SOURCES})
 target_compile_features(cdt_instruments PUBLIC cxx_std_20)
@@ -145,6 +145,11 @@ target_compile_options(CrimsonDesertTelemetryRuntimeRecoveryTests PRIVATE /W4 /W
 target_link_libraries(CrimsonDesertTelemetryRuntimeRecoveryTests PRIVATE cdt_instruments cdt_overlay nlohmann_json::nlohmann_json)
 add_test(NAME runtime-recovery-contract COMMAND CrimsonDesertTelemetryRuntimeRecoveryTests)
 set_tests_properties(runtime-recovery-contract PROPERTIES TIMEOUT 15)
+add_executable(CrimsonDesertTelemetryMenuStateTests tests/menu_state_tests.cpp)
+target_compile_options(CrimsonDesertTelemetryMenuStateTests PRIVATE /W4 /WX /permissive-)
+target_link_libraries(CrimsonDesertTelemetryMenuStateTests PRIVATE cdt_instruments)
+add_test(NAME menu-state-recovery COMMAND CrimsonDesertTelemetryMenuStateTests)
+set_tests_properties(menu-state-recovery PROPERTIES TIMEOUT 15)
 add_executable(CrimsonHue.OverlaySmoke tests/hue_panel_smoke.cpp)
 target_compile_features(CrimsonHue.OverlaySmoke PRIVATE cxx_std_20)
 target_compile_options(CrimsonHue.OverlaySmoke PRIVATE /W4 /WX /permissive-)

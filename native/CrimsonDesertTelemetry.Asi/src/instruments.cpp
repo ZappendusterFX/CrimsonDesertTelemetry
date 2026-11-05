@@ -361,13 +361,14 @@ void RunImpl(HANDLE stopEvent)
         (!physicsRecoveryRequested || physicsStarted));
     // Reaching this point requires either the ordinary native context checks or
     // a successful guarded recovery. Never introduce a second compatibility bypass.
-    const bool simulationTickStarted = (pauseControlEnabled || (simulationTickRequested && verified && exactContexts)) &&
-        simulation_tick_probe::Start(ch::g_game.moduleBase, pauseControlEnabled);
-    if ((simulationTickRequested || pauseControlEnabled) && !simulationTickStarted)
-        ch::Log("Simulation tick observer unavailable; validated native runtime and unique function guards are required. Acquisition continues normally.");
+    const bool activityRequested = pauseControlEnabled || (simulationTickRequested && verified && exactContexts);
+    const bool activityStarted = activityRequested && simulation_tick_probe::Start(ch::g_game.moduleBase,
+        static_cast<std::uint32_t>(ch::g_game.moduleSize), pauseControlEnabled);
+    if ((simulationTickRequested || pauseControlEnabled) && !activityStarted)
+        ch::Log("Activity observer unavailable; acquisition continues normally.");
     while (WaitForSingleObject(stopEvent, 5) == WAIT_TIMEOUT)
     {
-        if (simulationTickStarted) simulation_tick_probe::Poll();
+        if (activityStarted) simulation_tick_probe::Poll();
         if(spatialStarted) spatial::Poll();
         if(physicsStarted) physics::Poll();
 #if CDT_RESEARCH
@@ -389,7 +390,7 @@ void RunImpl(HANDLE stopEvent)
 #if CDT_RESEARCH
     if(sourceVisibilityBridge) source_visibility::Close();
 #endif
-    if(simulationTickStarted) simulation_tick_probe::Stop();
+    if (activityRequested) simulation_tick_probe::Stop();
     if(physicsStarted) physics::Stop();
     if(spatialStarted) spatial::Stop();
     if (capturing) render::StopCapture();

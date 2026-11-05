@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://crimsondeserttelemetry.local/schema/activity-v1.schema.json",
-  "title": "Simulation activity and acquisition pause",
+  "title": "Game activity and acquisition pause",
   "type": "object",
   "required": ["schemaVersion", "sequence", "timestampUtc", "sessionId", "state", "source", "observationAgeMilliseconds", "acquisitionPaused", "epoch", "reason"],
   "additionalProperties": false,
@@ -11,6 +11,7 @@
     "timestampUtc": { "type": "string", "format": "date-time" },
     "sessionId": { "type": "string", "minLength": 1 },
     "state": { "enum": ["running", "paused", "unknown"] },
+    "simulationState": { "enum": ["running", "paused", "unknown"] },
     "source": { "const": "simulation-tick" },
     "observationAgeMilliseconds": { "type": ["number", "null"], "minimum": 0 },
     "acquisitionPaused": { "type": "boolean" },

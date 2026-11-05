@@ -4,9 +4,10 @@ Live light contributions, player/render-camera telemetry and local ambient data,
 with a corner HUD, 3D light radar, fullscreen markers and startup/error notices.
 Local HTTP/WebSocket APIs support other tools. This mod does not drive lamps.
 
-New in 2.2.9 (paired with optional CrimsonHue 1.0.7):
-- After 500 ms without simulation progress, suspend new light, ambient and
-  visibility acquisition. Tick observation stays active for automatic resume.
+Menu lighting with optional CrimsonHue:
+- A verified open MainMenu control suspends new light, ambient and visibility
+  acquisition. Skills uses this control. The tested Kuku screens and cutscene
+  leave it closed, so acquisition stays enabled. Tick observation is independent.
 - Expose pause state independently at /v1/activity and /v1/activity/stream.
   CrimsonHue uses fixed menu light, then blends fresh gameplay data on resume.
 - Edit menu brightness and color/hex in Lighting > Menu lighting, then Save.
@@ -18,9 +19,8 @@ New in 2.2.9 (paired with optional CrimsonHue 1.0.7):
 - Intentional menu pauses and the short fresh-capture wait no longer show a
   light-failure notification or repeat "Telemetry is ready" on resume.
   Genuine reader/native failures stay visible.
-- The tick signal passed gameplay/Skills/gameplay. The owner still reports
-  controller-specific Skills-menu stutter; menu lighting does not resolve it.
-  Simulation stalls outside menus can also trigger pause; this is not a menu-ID API.
+- Menu lighting uses the recovered UI layout. If the layout cannot be verified,
+  acquisition stays enabled. The controller-specific Skills stutter remains open.
 
 Included telemetry features:
 - Lights all around you. Telemetry reads the game's light list before the

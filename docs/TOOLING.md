@@ -12,8 +12,8 @@ normal packages leave `Diagnostics.SimulationTicks=0`. See
 `docs/SIMULATION_TICK_DIAGNOSTIC.md`. Synthetic decoder check:
 `tests/scripts/Test-SimulationTickDiagnostic.ps1`; native CTest names start
 `simulation-tick-`. The original monitor-only package changes no output. The newer
-menu package independently uses Pause.Enabled=1, MMFv2 and the neutral activity API;
-the read-only diagnostic accepts both MMF versions.
+menu policy uses Pause.Enabled=1, MMFv3 and the neutral activity API. The
+read-only diagnostic accepts MMF versions 1 through 3.
 
 For both assistants. Written because several of these cost real time to rediscover.
 Paths are machine-specific; verify before relying on a version number.

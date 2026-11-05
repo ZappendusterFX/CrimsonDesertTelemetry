@@ -40,7 +40,7 @@ internal static class SimulationActivityTests
         Check(Decode(b) is { State: "paused", AcquisitionPaused: false, ControlEnabled: false, Epoch: 0 },
             "Diagnostic-only version 1 controlled acquisition.");
         foreach (var mutation in new Action<byte[]>[] {
-            x => U32(x, 0, 0), x => U32(x, 4, 3), x => U32(x, 8, 64), x => U32(x, 24, 99),
+            x => U32(x, 0, 0), x => U32(x, 4, 4), x => U32(x, 8, 64), x => U32(x, 24, 99),
             x => U64(x, 32, 124), x => U64(x, 16, 3), x => U64(x, 48, Tick + 1),
             x => U32(x, 84, 31), x => U32(x, 84, 7), x => U64(x, 96, 0),
             x => U64(x, 104, Tick + 1), x => U32(x, 72, 1), x => U64(x, 64, 499) })
@@ -56,6 +56,25 @@ internal static class SimulationActivityTests
         }
         b = Bridge(); U32(b, 72, 0); U32(b, 84, 11); U64(b, 56, 0); U64(b, 64, ulong.MaxValue);
         Check(Decode(b) is { State: "unknown", AcquisitionPaused: false }, "Initial constant counter implied pause.");
+
+        b = Bridge(); U32(b, 4, 3); U32(b, 84, 11); U32(b, 88, 1);
+        Check(Decode(b) is { State: "running", Reason: "menu-closed", SimulationState: "paused", AcquisitionPaused: false },
+            "A tick stall outside the verified menu paused acquisition.");
+        U32(b, 88, 0);
+        Check(Decode(b) is { State: "unknown", Reason: "menu-unavailable", SimulationState: "paused", AcquisitionPaused: false },
+            "Unresolved menu recovery fell back to tick-driven pause.");
+        U32(b, 88, 2); U32(b, 84, 15); U32(b, 72, 1); U64(b, 64, 200); U64(b, 56, Tick - 200);
+        Check(Decode(b) is { State: "paused", Reason: "menu-open", SimulationState: "running", AcquisitionPaused: true },
+            "A verified menu could not pause while ticks were still running.");
+        U32(b, 84, 13); U32(b, 80, 4); U32(b, 72, 0); U64(b, 56, 0); U64(b, 64, ulong.MaxValue);
+        Check(Decode(b) is { State: "paused", SimulationState: "unknown", AcquisitionPaused: true },
+            "A missing tick hook disabled verified menu control.");
+        Check(Decode(b, Tick + 351) is { State: "unknown", AcquisitionPaused: false },
+            "Stale menu data retained pause control.");
+        U32(b, 88, 1);
+        var mismatchedMenuRejected = false;
+        try { _ = Decode(b); } catch (InvalidDataException) { mismatchedMenuRejected = true; }
+        Check(mismatchedMenuRejected, "A closed menu authorized native pause.");
     }
     public static void Boundary()
     {
@@ -88,7 +107,7 @@ internal static class SimulationActivityTests
         state.Publish(snapshot, 0, null, 1);
         Check(state.Latest is null, "An in-flight pre-pause publication was accepted.");
         var resumedAt = Environment.TickCount64;
-        state.PublishActivity("A", new("running", "progress", resumedAt, false, true, 3, resumedAt));
+        state.PublishActivity("A", new("running", "menu-closed", resumedAt, false, true, 3, resumedAt, "paused"));
         state.Publish(snapshot, 0, null, 1);
         Check(state.Latest is null, "An old capture epoch was relabelled after resume.");
         state.Publish(snapshot with { Sequence = 2 }, 0, null, 3);
@@ -98,7 +117,9 @@ internal static class SimulationActivityTests
         {
             var p = parsed.RootElement;
             Check(p.GetProperty("schemaVersion").GetString() == "1.0" &&
-                p.GetProperty("source").GetString() == "simulation-tick" && p.GetProperty("epoch").GetUInt64() == 3,
+                p.GetProperty("source").GetString() == "simulation-tick" && p.GetProperty("epoch").GetUInt64() == 3 &&
+                p.GetProperty("state").GetString() == "running" && p.GetProperty("simulationState").GetString() == "paused" &&
+                !p.GetProperty("acquisitionPaused").GetBoolean(),
                 "Activity JSON contract changed.");
         }
         var before = state.LatestActivity.Sequence;

@@ -5,7 +5,7 @@
 
 namespace cdt::simulation_tick_probe
 {
-inline constexpr std::uint32_t Magic = 0x54445443, Version = 2;
+inline constexpr std::uint32_t Magic = 0x54445443, DiagnosticVersion = 2, MenuVersion = 3;
 enum class Status : std::uint32_t { Starting = 1, Observing = 2, Stopped = 3, Failed = 4 };
 enum class Error : std::uint32_t
 {
@@ -27,7 +27,7 @@ struct alignas(8) Snapshot
     std::uint32_t state, hookRva; // state: unknown0/running1/paused-after500ms2
     Error error;
     std::uint32_t flags; // bit0 entry-only, bit1 hook, bit2 acquisition paused, bit3 pause control
-    std::uint8_t reserved[8];
+    std::uint32_t menuState, reserved; // version 3 only: unknown0/closed1/open2
     std::uint64_t captureEpoch, resumedAtTickMs;
     std::uint8_t reservedTail[16];
 };
@@ -36,13 +36,14 @@ static_assert(offsetof(Snapshot, processStartFileTime) == 32 && offsetof(Snapsho
 static_assert(offsetof(Snapshot, observerTickMs) == 48 && offsetof(Snapshot, lastProgressTickMs) == 56);
 static_assert(offsetof(Snapshot, ageMs) == 64 && offsetof(Snapshot, state) == 72);
 static_assert(offsetof(Snapshot, hookRva) == 76 && offsetof(Snapshot, error) == 80 && offsetof(Snapshot, flags) == 84);
+static_assert(offsetof(Snapshot, menuState) == 88);
 static_assert(offsetof(Snapshot, captureEpoch) == 96 && offsetof(Snapshot, resumedAtTickMs) == 104);
 
 // Worker-thread only, once per process. Caller must opt in and verify the loaded
 // native runtime before Start, including any guarded recovery. This module checks
 // a unique executable-section match, exact prefix and unwind entry. Diagnostic-
 // only mode additionally retains its exact contract hash.
-bool Start(std::uint64_t moduleBase, bool pauseControlEnabled = false);
+bool Start(std::uint64_t moduleBase, std::uint32_t imageSize, bool pauseControlEnabled);
 void Poll();
 void Stop();
 bool OwnsCodeAddress(std::uint64_t address);

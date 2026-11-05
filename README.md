@@ -202,7 +202,7 @@ DurationMilliseconds=6000
 - `[Lights] Enabled=0` disables both authored and rendered light feeds. `ManyLights=0` disables only the native GPU light capture.
 - `[Lights] Upstream=1` (default) also captures the renderer's light **input** with every sample: all current engine lights, including behind the camera. HUD, radar, visibility and smoothing then use it; `0` keeps only the view-filtered output.
 - `[Ambient] Enabled=1` enables the separate sky/ambient path and requires native ManyLights capture.
-- `[Pause] Enabled=1` (default) suspends new acquisition after 500 ms without simulation progress. Its independent 20 Hz observer keeps running. Resume discards old captures and waits for fresh data. This detects simulation pauses, not individual menu types; other simulation stalls can also trigger it. `0` disables this policy.
+- `[Pause] Enabled=1` (default) suspends new acquisition while the guarded MainMenu control is open. The UI observer runs after normal build validation or recovery and leaves capture enabled if it cannot verify the UI state. The independent tick signal remains available. Resume discards old captures and waits for fresh data. `0` disables this policy.
 - `NearbyRadius` controls the API's player-centered light radius; `LightOverlay.Radius` controls both light views. Distances are **game units**, not a claimed metre conversion.
 - Disable **Overlay, LightOverlay and Notifications**, plus optional **CrimsonHue** integration, to skip all UI hooks/client. Without a compatible Hue controller, disabling the three telemetry views is sufficient. The server and light capture have their own switches. Without any UI, native capture locates its submission hook with its own queue at world entry, as before 2.2.4.
 - `InitiallyVisible=0` hides an enabled view at launch; hotkeys cannot enable a view whose `Enabled=0`.
@@ -246,7 +246,7 @@ Connect through **HTTP** at `http://127.0.0.1:27311` or **WebSocket** at `ws://1
 |---|---|
 | `GET /v1/snapshot` | Latest telemetry snapshot |
 | `GET /v1/health` | Game, compatibility and capture health |
-| `GET /v1/activity`, `WS /v1/activity/stream` | Independent `running` / `paused` / `unknown` simulation activity and whether acquisition is paused; schema 1.0. Stale or missing observers become unknown. |
+| `GET /v1/activity`, `WS /v1/activity/stream` | Independent activity heartbeat and whether acquisition is paused. Schema 1.0 optionally includes `simulationState` for the separate tick observer. |
 | `GET /v1/schema` | JSON Schema for the active payload |
 | `WS /v1/stream` | Live JSON messages |
 | `GET /v1/lights/smoothed`, `WS /v1/lights/smoothed/stream` | All current grouped/smoothed light contributions, regardless of visibility. |
