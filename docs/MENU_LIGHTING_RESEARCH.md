@@ -70,8 +70,7 @@ sequence 91512 to 91556 and both samples reported `paused`,
 
 Raw read and activity comparison:
 `artifacts/menu-relocation-26448710/menu-state-kuku-pot-crafting-20261105-205146-067-276e262539554eaaa9ac52561efb62a0{,-activity}.json`.
-Both Kuku screens fall outside the MainMenu signal demonstrated in Skills. A
-cutscene with stalled simulation ticks remains a separate comparison.
+Both Kuku screens fall outside the MainMenu signal demonstrated in Skills.
 
 ### One-shot cutscene comparison
 
@@ -86,10 +85,34 @@ The reader keeps the exact-build guards and starts the first loopback activity
 request immediately before sampling. It waits for both HTTP results only after
 sampling and writes the UI fields and activity responses or errors to one JSON
 file. The requests use a one-second timeout. Synthetic overlap, invalid JSON
-and timeout checks passed. This path awaits its first live cutscene sample.
+and timeout checks passed.
 Compare source timestamps, sequence, freshness and epoch with the UI sample
 times. A scene that ended before the read or a missing activity response cannot
 establish the distinction.
+
+### Cutscene and return on 26448710
+
+At 20:59 CET, on the owner's `cutscene` handoff, three stable samples in the
+same process found 144 subscriptions, zero rejected roots and MainMenu 01/00.
+All six emitted root records matched gameplay and both Kuku screens when
+compared by type. The Skills comparison differed in MainMenu and SkillTree.
+Activity advanced from sequence 100572 to 100587, with both responses
+reporting `paused`, `simulation-idle` and `acquisitionPaused=true` at epoch 82.
+The source timestamp in the second response was 28 ms before the final UI
+sample and its observation age at response time was 31 ms.
+
+After the owner's `cutscene ende` handoff at 21:00 CET, the six UI records
+still matched the cutscene. Both activity responses reported `running`,
+`simulation-progressing` and `acquisitionPaused=false` at epoch 83, in the
+same process and activity session. Sequence advanced from 101777 to 101795.
+
+The cutscene and both Kuku menus share the observed UI fields and paused
+tick state. The MainMenu signal can identify the tested Skills state
+separately, while excluding this cutscene from menu lighting and retaining
+both Kuku menus requires an additional signal.
+
+- `artifacts/menu-state-cutscene-20261105-205918-567-98f7de520e9948e5b8be803c22e3fff4.json`
+- `artifacts/menu-relocation-26448710/menu-state-cutscene-return-20261105-210018-637-41360198d5ba4ffab83d5cc7662cc87a.json`
 
 ## Earlier investigation on build 26423880
 

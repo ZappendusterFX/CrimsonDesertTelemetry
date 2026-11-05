@@ -1,4 +1,4 @@
-# Current checkpoint — 2026-11-05, Kuku Shop and crafting fall outside the Skills UI signal
+# Current checkpoint — 2026-11-05, cutscene tick stall confirmed on build 26448710
 
 Owner reports tick stalls during cutscenes and wants to pursue the UI signal while
 retaining ticks. Revalidated the existing read-only observer on preserved build
@@ -22,16 +22,18 @@ samples. Activity reported `paused` / `simulation-idle` and acquisition paused
 at epoch 76. At 20:51 CET the owner opened Kuku Pot crafting. All observed
 fields of the same six roots matched the shop across three stable samples.
 Activity still reported the same paused state and epoch before and after.
-The tested MainMenu signal misses both states. Keep the tick path.
-No runtime, package or deployment changes. Evidence is in
-`docs/MENU_LIGHTING_RESEARCH.md` and `artifacts/menu-relocation-26448710/`.
+At 20:59 CET during an owner-confirmed cutscene, the one-shot UI and activity
+capture found the same six root records as both Kuku screens, with MainMenu
+01/00 in all three samples. Fresh activity reported `paused` /
+`simulation-idle` at epoch 82. After the owner confirmed the end, activity
+resumed at epoch 83 and the UI records still matched. Thus the observed UI
+fields and ticks distinguish Skills from this cutscene, while both Kuku
+screens share the cutscene readings. Keep the tick path. No runtime, package
+or deployment changes. Evidence is in `docs/MENU_LIGHTING_RESEARCH.md`.
 
-Next owner handoff: when the owner replies `Cutscene` during a scene, invoke
-`& ./scripts/Read-MenuStateCandidates.ps1 -Label cutscene -WithActivity` directly
-from CDT as the first command. The reader starts the first localhost activity
-request without waiting, captures three bounded UI samples and sends the
-second request. Synthetic HTTP overlap, malformed response and timeout
-controls pass. Both preserved EXEs still pass. No live capture until handoff.
+Next research step is a separate cutscene or shop/crafting state signal.
+The existing one-shot command is
+`& ./scripts/Read-MenuStateCandidates.ps1 -Label cutscene -WithActivity`.
 
 # Previous checkpoint — 2026-11-05, CDT 2.2.10 published on GitHub
 
