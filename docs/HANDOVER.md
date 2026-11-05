@@ -3,8 +3,11 @@
 Owner chose CDT 2.2.10 with CrimsonHue 2.0.0. Both stable Latest releases are
 public (tags v2.2.10 at 36b8fe5 and v2.0.0 at b670f3b). README, About and
 release descriptions cover the optional independent lighting outputs and the
-real 26448710 recovery. Nexus copy is ready for manual owner publication;
-NEXUS_AUTO_PUBLISH is false.
+real 26448710 recovery. Owner confirmed Nexus is still on 2.2.8. The updated
+`docs/NEXUS-2.2.10.md` covers the full 2.2.8 to 2.2.10 jump with one change
+per line, including the lighting integration. The full BBCode listing focuses
+on telemetry and links to the optional companion in one short paragraph.
+Nexus publication remains manual; NEXUS_AUTO_PUBLISH is false.
 
 Immutable production ZIP: `artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.10-ModManagers.zip`
 (1,186,564 bytes), SHA256

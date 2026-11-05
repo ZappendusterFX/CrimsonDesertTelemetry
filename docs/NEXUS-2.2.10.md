@@ -1,22 +1,21 @@
 # Nexus listing copy — Crimson Desert Telemetry 2.2.10
 
-Prepared for manual Nexus publication. Full copy: [NEXUS_DESCRIPTION.bbcode](NEXUS_DESCRIPTION.bbcode).
+Copy for the Nexus update from **2.2.8 to 2.2.10**. Full listing: [NEXUS_DESCRIPTION.bbcode](NEXUS_DESCRIPTION.bbcode).
 
 ## Field counts
 
 Counts exclude block delimiters and the final newline. Version/fileName must use
 the recorded allowed alphabets and maximum 50 characters. Summary <=350 and file
-description/short changelog <=255 are conservative preparation targets, not a
-claim about every Nexus field. [Recorded constraints](NEXUS_PUBLISHING.md#constraints-worth-knowing).
+description <=255 are conservative preparation targets. [Recorded constraints](NEXUS_PUBLISHING.md#constraints-worth-knowing).
 
 | Field | Characters |
 | --- | ---: |
 | title | 24 |
 | version | 6 |
 | fileName | 34 |
-| summary | 217 |
-| fileDescription | 225 |
-| shortChangelog | 250 |
+| summary | 181 |
+| fileDescription | 212 |
+| changelog | 876 including line breaks |
 
 ## Mod title
 
@@ -39,19 +38,30 @@ CrimsonDesertTelemetry-ModManagers
 ## Summary
 
 ```text
-Live lights, player, camera and ambient telemetry for Crimson Desert, with a 3D radar, local APIs and simulation pause. The optional CrimsonHue companion adds independent Hue, OpenRGB and Tuya Wi-Fi 3.5 room lighting.
+Live light, player, camera and ambient telemetry for Crimson Desert, with all-around light capture, physics visibility, fullscreen markers, a 3D radar and local HTTP/WebSocket APIs.
 ```
 
 ## File description
 
 ```text
-CDT 2.2.10 adds shared HUD controls for independent Hue/OpenRGB/Tuya outputs through optional CrimsonHue 2.0.0. Requires an x64 ASI loader and .NET 8 ASP.NET Core Runtime x64; CrimsonHue also needs .NET 8 Desktop Runtime x64.
+CDT 2.2.10 adds simulation pause, fresh-data resume and quieter menu notifications since 2.2.8. Automatic recovery verified on Steam build 26448710. Requires an x64 ASI loader and .NET 8 ASP.NET Core Runtime x64.
 ```
 
-## Short changelog
+## Changelog since 2.2.8
+
+Paste one entry per line.
 
 ```text
-Adds independent output selection and the Tuya LAN device/room page for CrimsonHue 2.0.0. OpenRGB-only and Tuya-only need no Hue bridge. Existing telemetry/menu-pause behavior remains. No controller Skills-menu fix or live Tuya acceptance is claimed.
+Pauses light, ambient and visibility capture and player/camera sampling after 500 ms without simulation progress.
+Resumes with fresh captures and clears pre-pause smoothing history.
+Adds /v1/activity and /v1/activity/stream for simulation state.
+Suppresses false light errors and repeated ready notices on menu resume while retaining genuine error and reload notices.
+Stops the simulation observer on normal shutdown whenever it was started.
+Adds editable menu color and brightness with Save, Reset and an optional Gold preset through CrimsonHue.
+Adds OpenRGB reset and disconnected-device cleanup in the shared HUD.
+Adds independent Hue, OpenRGB and Tuya LAN selection with CrimsonHue 2.0.0. OpenRGB and Tuya can each run without a Hue bridge.
+Adds a Tuya LAN tab for device setup, 3D placement and per-lamp status.
+Verifies automatic update recovery on Steam build 26448710.
 ```
 
 ## Publication handoff notes
@@ -60,13 +70,6 @@ Adds independent output selection and the Tuya LAN device/room page for CrimsonH
 - Automatic recovery was verified on Steam build 26448710 with the installed candidate.
 - The validated native reference remains Steam build 26423880 / EXE 1.0.0.3527.
   Compatible address changes may recover; engine layout changes can need an update.
-- CDT remains independent of lighting hardware. The optional companion owns output,
-  device configuration, credentials and cleanup. Keys never enter CDT's HUD.
-- Hue requires a bridge/Entertainment area; OpenRGB requires its SDK server; Tuya
-  requires compatible Wi-Fi 3.5 RGB devices with local connection details/keys.
-  Tuya 3.3/3.4, Zigbee and Bluetooth are not implemented.
-- Tuya uses protected atomic storage, a read-only TCP check, at least 300 ms between
-  changed-color writes and independent failure backoff. Restore requires prior-state
-  knowledge and a successful ownership comparison; otherwise the last state may remain.
+- Optional lighting setup and device requirements are covered by the [CrimsonHue guide](https://github.com/ZappendusterFX/CrimsonHue/blob/v2.0.0/docs/USER-GUIDE.md).
 - Install only with the game closed. Keep all six CDT runtime files from the same
   package. Installation and Nexus publication remain the owner's responsibility.
