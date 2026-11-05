@@ -1,4 +1,35 @@
-# Current checkpoint — 2026-11-05, cutscene tick stall confirmed on build 26448710
+# Current checkpoint — 2026-11-05, recovered menu policy packaged
+
+Owner accepts normal acquisition in Kuku Shop, Kuku Pot crafting and cutscenes.
+The tick observer remains independent. After exact-build validation or successful
+recovery, the native worker resolves the UI registry from loaded code and verifies
+the MainMenu RTTI, getter, close event and stable control chain. Only observed
+01/03 authorizes a pause. Closed and unknown keep acquisition enabled. The
+existing epoch and fresh-resume paths still apply. The v3 bridge and optional
+`simulationState` activity field preserve tick liveness without changing
+CrimsonHue's required fields.
+
+Validated private production ZIP (Research OFF, reference 26423880, source 85cd467):
+`artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.11-menu.2-ModManagers.zip`
+(1,192,369 bytes), SHA256
+`7B7169230A687F34736003B4858BD8ABDE40C4B46B9F3410969EDC616E219219`.
+Managed 94, native 46, CrimsonHue 214, tick decoder and folder/ZIP checks pass.
+The native menu resolver passed synthetic relocation and file replay against
+26423880 and 26448710. Full runtime recovery on the preserved 26448710 EXE
+resolved all 30 existing roles and passed cache and corrupted-cache checks.
+The separate legacy `check-update` report lists ambiguous short fingerprints
+which the runtime resolver disambiguates by role. See
+`artifacts/menu-ui-package-2-receipt-20261105.json` and
+`artifacts/menu-ui-package-2-20261105.log`.
+Private menu.1 is superseded because its close-event guard omitted a byte.
+
+Next OWNER ONLY: close the game and install CDT menu.2 through DMM, then report
+restart. Existing CrimsonHue is compatible. The exact menu.2 ZIP has no live
+game or lamp acceptance yet. On owner report, compare installed hashes, check
+recovery and verify Skills pauses while a stalled tick outside MainMenu does
+not. No assistant installation or polling for this handoff.
+
+# Previous checkpoint — 2026-11-05, cutscene tick stall confirmed on build 26448710
 
 Owner reports tick stalls during cutscenes and wants to pursue the UI signal while
 retaining ticks. Revalidated the existing read-only observer on preserved build
