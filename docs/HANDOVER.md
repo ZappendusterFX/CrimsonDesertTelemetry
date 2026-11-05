@@ -1,4 +1,23 @@
-# Current checkpoint — 2026-11-05, real game update recovered automatically
+# Current checkpoint — 2026-11-05, CDT 2.2.10 published on GitHub
+
+Owner chose CDT 2.2.10 with CrimsonHue 2.0.0. Both stable Latest releases are
+public (tags v2.2.10 at 36b8fe5 and v2.0.0 at b670f3b). README, About and
+release descriptions cover the optional independent lighting outputs and the
+real 26448710 recovery. Nexus copy is ready for manual owner publication;
+NEXUS_AUTO_PUBLISH is false.
+
+Immutable production ZIP: `artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.10-ModManagers.zip`
+(1,186,564 bytes), SHA256
+`57C202C2EE15B2D008B1A4E526FC2250DF7B89740925BC82CF5839F76DD484CA`.
+Research OFF, exact reference26423880. Public ZIP and SHA256SUMS downloaded and
+verified. 94 managed and 45 native tests, local HTTP/WS smoke, package checks,
+four paired HUD smokes and hosted CI/release runs 42089138634/42089138735 passed.
+See `docs/releases/v2.2.10-validation.md` and ignored publication receipt.
+
+The installed candidate's live recovery on Steam build 26448710 is documented
+below. Exact public ZIPs were not installed. Any upgrade is owner-only.
+
+# Previous checkpoint — 2026-11-05, real game update recovered automatically
 
 Owner reported smooth recovery after the Steam update. Verified PID15612 on
 build26448710 / EXE1.0.0.3549, SHA256
