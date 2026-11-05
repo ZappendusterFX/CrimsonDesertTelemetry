@@ -36,12 +36,20 @@ controls stayed 01/00. Fresh activity samples bracketing the read advanced from
 sequence 79790 to 79829 and both reported `paused`, `simulation-idle`,
 `acquisitionPaused=true` at epoch 74.
 
+Owner-confirmed gameplay return at 20:48 CET yielded three stable samples in
+the same process, with 144 subscriptions and no rejected roots. MainMenu and
+SkillTree returned from 01/03 to 01/00. The four other controls stayed 01/00
+and all six root, owner, entry and control identities matched Skills. Activity
+advanced from sequence 87014 to 87064 and both samples reported `running`,
+`simulation-progressing`, `acquisitionPaused=false` at epoch 75.
+
 Evidence is in `artifacts/menu-relocation-26448710/` and
 `artifacts/menu-state-unknown-20261105-203951-426-a87d18281c90474ea201b1ccb3d7f322.json`.
 The Skills capture is `artifacts/menu-state-skills-20261105-204200-600-7b0808bff25c474b85f680373409307a.json`.
-Next compare the owner-confirmed gameplay return and a cutscene with stalled
-simulation ticks. Record the UI flags alongside `/v1/activity` to check whether
-the MainMenu flags separate the two paused states.
+The return capture is `artifacts/menu-state-gameplay-20261105-204801-906-e09a6447f5054dfca15f25d527875934.json`.
+Next sample a cutscene with stalled simulation ticks. Record the UI flags
+alongside `/v1/activity` to check whether MainMenu separates the two paused
+states.
 
 ## Earlier investigation on build 26423880
 
