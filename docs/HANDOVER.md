@@ -1,4 +1,32 @@
-# Current checkpoint — 2026-11-04, candidate installation confirmed by owner
+# Current checkpoint — 2026-11-05, real game update recovered automatically
+
+Owner reported smooth recovery after the Steam update. Verified PID15612 on
+build26448710 / EXE1.0.0.3549, SHA256
+`25F24E06A1F886E9310FD290F9462F66B480A5E7763D1FE156BFDDAA8D1992B9`.
+Loaded CDT2.2.10-outputs.1 and its managed runtime files match the candidate;
+paired Hue1.0.8-outputs.1 matches and its controller is ready. RecoveryTestOnce
+is empty. Runtime health reported `recovered`, reference26423880, `ready` 100%,
+`supportedBuild=null` as designed. The runtime created a cache for the new SHA
+in this session. A separate cold offline replay matched all30 cached addresses,
+targets and guards and passed reuse and corrupted-cache fallback. A second live
+start was not performed.
+
+Live six-sample audit: snapshots24209–24441, filtered ManyLights5273–5335 with
+paired camera and matching upstream captures, 0 malformed rendered records.
+Smoothed and visible feeds available with complete nine-ray clear and blocked
+observations. Ambient708–716 advanced, local estimate available and not stale.
+Activity WebSocket sequences8827–8829 advanced. A simulation pause suppressed
+captures with `simulation-paused`; the later gameplay samples resumed cleanly.
+API configured60Hz, 4 subscribed clients. Hue bridge HTTPS and OpenRGB SDK TCP
+connections observed, three Tuya credentials configured. No physical-output
+acceptance or new controlled optical comparison was performed.
+
+Verified EXE backup and ignored evidence: `artifacts/recovery/20261105-193913-build-26448710/`
+(`live-telemetry-audit.json`, `offline-recovery-check.log`). No product changes
+or package work. Existing installation can continue using conditional recovery.
+Controller Skills behavior remains a separate open issue.
+
+# Previous checkpoint — 2026-11-04, candidate installation confirmed by owner
 
 Owner reported in-game after installation. Read-only loaded-module hashes matched
 both exact candidate ASIs (CDT2.2.10-outputs.1/Hue1.0.8-outputs.1); local neutral
