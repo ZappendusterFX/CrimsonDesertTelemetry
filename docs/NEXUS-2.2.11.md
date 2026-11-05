@@ -5,7 +5,7 @@ The previous active Nexus file is **2.2.10**. Use version `2.2.11` and the exist
 ## File description
 
 ```text
-CDT 2.2.11 starts directly on Steam build 26448710. Detects Skills for optional CrimsonHue menu lighting and keeps capture enabled during the tested cutscene. Requires an x64 ASI loader and .NET 8 ASP.NET Core Runtime x64.
+Live light, player, camera and ambient data for Crimson Desert, with a 3D radar, on-screen light markers and a local API. Optional CrimsonHue syncs room lighting via Hue, OpenRGB or Tuya LAN.
 ```
 
 ## Changelog since 2.2.10
