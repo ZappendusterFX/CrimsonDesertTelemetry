@@ -1,34 +1,22 @@
 [size=5][b]Crimson Desert Telemetry[/b][/size]
-[b]Live light, player, camera and ambient data, with all-around light capture, a 3D radar, fullscreen markers and local HTTP/WebSocket APIs.[/b]
+[b]Live light, player, camera and ambient data for Crimson Desert. See nearby lights on a 3D radar or as on-screen markers, and use the local API in your own tools.[/b]
 
-Telemetry reads current light contributions before the renderer's view selection, including sources behind the camera. Optional physics queries estimate collision on camera-to-light paths. Raw data remains available independently of that estimate.
+Telemetry captures light contributions around you, including sources behind the camera. Physics queries can check for obstacles between the camera and those sources.
 
-[b]Validated reference: Crimson Desert Steam build 26423880 on Windows, EXE 1.0.0.3527.[/b] Guarded automatic recovery supports compatible address changes; changed engine layouts or semantics can still require a mod update.
-
-[size=4][b]Changes since 2.2.8[/b][/size]
-[list]
-[*]After 500 ms without simulation progress, CDT pauses light, ambient and visibility acquisition and player/camera sampling. The independent activity observer keeps running.[/*]
-[*]On resume, CDT waits for fresh captures and clears earlier smoothing history. Intentional pauses no longer trigger light-reader errors or repeat the ready notice.[/*]
-[*]The activity API reports running, paused or unknown. Stale or missing observations are reported as unknown.[/*]
-[*]Automatic update recovery was verified on Steam build 26448710 (EXE 1.0.0.3549). Build 26423880 remains the native reference.[/*]
-[/list]
-
-CDT detects a pause from simulation progress. Other stalls can trigger it too. The controller-specific Skills-menu issue remains open. Set [Pause] Enabled=0 to disable acquisition pause.
+[b]Optional room lighting[/b] is available through the separate [url=https://github.com/ZappendusterFX/CrimsonHue/releases/tag/v2.0.0]CrimsonHue[/url] companion. It syncs room lighting through Hue, OpenRGB or Tuya LAN and offers a configurable menu color in the shared HUD. [url=https://github.com/ZappendusterFX/CrimsonHue/blob/v2.0.0/docs/USER-GUIDE.md]Lighting setup and requirements[/url].
 
 [size=4][b]Telemetry features[/b][/size]
 [list]
-[*][b]All-around light capture:[/b] current engine lights remain available beyond the camera view. Particle groups are decoded into summed contributions; one physical fire can still produce several contributions.[/*]
+[*][b]All-around light capture:[/b] current engine lights remain available beyond the camera view. Particle groups are summed, and one fire can still produce several light contributions.[/*]
 [*][b]Light data:[/b] world position, linear HDR RGB, luminance, recognized spotlight direction/cone and renderer-selection metadata.[/*]
 [*][b]Physics collision checks:[/b] clear, blocked or unknown, with ray counts and measurement age. Enabled by default.[/*]
 [*][b]Three light feeds:[/b] raw contributions, grouped/smoothed contributions, and a clear-only grouped/smoothed feed. Raw records and RGB are preserved.[/*]
 [*][b]Player and camera:[/b] player position/root orientation plus independent native render-camera position, orientation and projection.[/*]
 [*][b]Ambient/sky:[/b] global sky RGB, optional camera-local sky visibility and a derived local ambient estimate. Local fields can be null.[/*]
 [*][b]HUD and API:[/b] fullscreen markers, player-centered 3D radar, notices, local HTTP snapshots/health/schema and WebSocket streams.[/*]
-[*][b]Independent activity feed:[/b] /v1/activity and /v1/activity/stream expose simulation state, observer age, acquisition pause and session/epoch information using schema 1.0. The normal snapshot/light schema remains 1.6.[/*]
-[*][b]SDR/HDR UI:[/b] SDR, HDR10 and scRGB support. Automated rendering tests are separate from live display/game acceptance.[/*]
+[*][b]Independent activity feed:[/b] /v1/activity and /v1/activity/stream report acquisition state and separate simulation tick activity.[/*]
+[*][b]SDR/HDR UI:[/b] SDR, HDR10 and scRGB support.[/*]
 [/list]
-
-The 2.2.4 sky-readback and world-entry queue corrections remain included.
 
 [url=https://youtu.be/eyRkkTXAU64]Watch the telemetry and HUD demonstration[/url]
 The video and screenshot show an earlier version of the telemetry HUD.
@@ -41,13 +29,13 @@ The mod casts nine physics rays from the [b]camera position[/b] toward points ar
 [*][b]Blocked:[/b] all nine paths are obstructed.[/*]
 [*][b]Unknown:[/b] missing, invalid, incomplete or older than 500 ms.[/*]
 [/list]
-[b]This measures collision, not optical visibility or visible brightness.[/b] Dense cages or simplified closed collision hulls can mark visibly shining lamps blocked. Colliding glass is not reliably distinguished from opaque geometry, and geometry without suitable collision may fail to block. More rays alone do not resolve these differences. Renderer selection is not proof that a light is optically visible. Renderer-derived contribution research is unfinished and is not a release feature.
+[b]Visibility is estimated from the game's collision geometry.[/b] Dense cages and simplified collision hulls can mark visible lamps as blocked. Glass with collision can behave like an opaque surface, and geometry without suitable collision can leave a path clear.
 
 By default, blocked markers are dimmed and unknown sources remain visible. [b]F11[/b] shows only fresh clear lights in both marker and radar views. The clear-only API feed excludes blocked and unknown sources before grouping.
 
 The shared radius defaults to [b]100 game units around the player[/b], configurable through LightOverlay/Radius. Up to 256 targets share a bounded query budget; crowded scenes may refresh individual lights less often.
 
-The raw and unfiltered smoothed streams stay complete. The separate clear-only feed filters before grouping/smoothing:
+The raw and unfiltered smoothed feeds retain captured sources regardless of the collision result. The separate clear-only feed filters before grouping and smoothing.
 [code]
 GET /v1/lights/visible
 WS  /v1/lights/visible/stream[/code]
@@ -56,14 +44,14 @@ If measurements are unavailable, the feed reports unavailable. Setting [SourceVi
 [size=4][b]Install or upgrade[/b][/size]
 Requires:
 [list]
-[*]Windows x64 and Crimson Desert on Steam. Validated reference: [b]build 26423880[/b].[/*]
+[*]Windows x64 and Crimson Desert on Steam. Validated reference [b]build 26448710[/b] (EXE 1.0.0.3549).[/*]
 [*]Microsoft [b].NET 8 ASP.NET Core Runtime (x64)[/b].[/*]
 [*]One compatible x64 ASI loader installed for the game.[/*]
 [/list]
 [list]
 [*]Close the game before installing, updating or removing the mod.[/*]
 [*]Back up useful INI preferences. Disable/remove older Telemetry packages and any separate legacy console ASI.[/*]
-[*]Download CrimsonDesertTelemetry-v2.2.10-ModManagers.zip from the GitHub release. Import and [b]activate/deploy[/b] the complete package; importing alone is insufficient.[/*]
+[*]Download the ModManagers ZIP from the Files tab or the [url=https://github.com/ZappendusterFX/CrimsonDesertTelemetry/releases/latest]latest GitHub release[/url]. Import the complete ZIP into your mod manager, then [b]activate and deploy[/b] it.[/*]
 [*]Keep all six runtime files from the same version together beside the game EXE.[/*]
 [*]Merge preferences into the supplied INI, launch the game and load a save.[/*]
 [/list]
@@ -75,9 +63,9 @@ crimson-desert-telemetry.dll
 crimson-desert-telemetry.deps.cfg
 crimson-desert-telemetry.runtimeconfig.cfg[/code]
 
-[b]DMM upgrade note:[/b] DMM 2.8.1/3.1.1 can leave both DLL and both lowercase CFG companions behind after removal. With the game closed and the old package removed, delete only stale Telemetry companions before redeploying. Preserve your ASI loader and customized INI. Keep .cfg names unchanged; loose .json files can be interpreted as game patches.
+[b]DMM upgrade note[/b] If a previous installation leaves stale CDT DLL or CFG files behind, remove those leftovers with the game closed before deploying the new package. Preserve your ASI loader and backed-up INI. Keep the .cfg extensions to prevent the mod manager from treating the metadata as game patches.
 
-[b]Optional room lighting[/b] is available through the separate [url=https://github.com/ZappendusterFX/CrimsonHue/releases/tag/v2.0.0]CrimsonHue 2.0.0[/url] companion. It adds menu lighting and independent Hue, OpenRGB and Tuya LAN outputs to the shared HUD. [url=https://github.com/ZappendusterFX/CrimsonHue/blob/v2.0.0/docs/USER-GUIDE.md]Lighting setup and requirements[/url].
+Guarded automatic recovery can handle compatible game updates. Changes to the game's data layout can require a CDT update.
 
 [size=4][b]Controls[/b][/size]
 [list]
@@ -86,12 +74,12 @@ crimson-desert-telemetry.runtimeconfig.cfg[/code]
 [*][b]F10:[/b] show/hide fullscreen light markers.[/*]
 [*][b]F11:[/b] toggle complete / fresh-clear-only light views.[/*]
 [/list]
-F8-F11 can be reassigned in the INI using decimal Windows virtual-key codes; 0 disables a shortcut. INI changes require restart. Automatic hiding in every game menu is not implemented.
+Reassign F8-F11 in the INI using decimal Windows virtual-key codes. Use 0 to disable a shortcut. Restart the game to apply INI changes.
 
 [size=4][b]Data and compatibility limits[/b][/size]
-Authored/rendered/upstream arrays overlap; do not add them together. The current upstream light input is not a persistent world registry; absence does not prove OFF. Linear HDR RGB is not lumens, final screen pixels or exposure-normalized color. Sun, sky, emissive surfaces and every effect are not all covered. Fast motion can expose capture/projection latency.
+Authored, rendered and upstream light arrays can overlap. Treat them as separate feeds. The upstream feed reflects current renderer input and can omit lights. RGB values use linear HDR, and coverage varies across sky, emissive surfaces and effects. Fast motion can expose capture and projection latency.
 
-No NVIDIA, DLSS, Streamline, Nsight or PIX runtime dependency is required. Live HDR-display, frame-generation and AMD/Intel game acceptance remain limited; automated GPU checks do not establish every setup. The full system uses guarded hooks, GPU copies and physics queries, not purely read-only instrumentation. No gameplay-control API or anti-cheat bypass is provided.
+The plugin uses guarded game hooks, GPU copies and physics queries. Live testing across HDR displays, frame generation and AMD or Intel configurations is limited.
 
 [url=https://github.com/ZappendusterFX/CrimsonDesertTelemetry]Source, downloads and support[/url]
-Created by ZappendusterFX with Claude and Codex (OpenAI). Unofficial; not affiliated with Pearl Abyss. MIT source; dependencies retain their notices.
+Unofficial community mod by ZappendusterFX, created with Claude and Codex (OpenAI). MIT-licensed source with dependency notices included.
