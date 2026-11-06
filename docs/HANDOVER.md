@@ -1,4 +1,24 @@
-# Current checkpoint — 2026-11-06, collector recovery fixed for Steam 26480954
+# Current checkpoint — 2026-11-06, CDT 2.2.12 ZIP ready after live collector recovery
+
+The owner confirmed collector.1 works. On PID 34164 the five installed ASI, DLL
+and CFG hashes matched the candidate. Build 26480954 reported `playing`,
+`recovered` and recovery `ready` at 100%. Snapshot sequence advanced from
+6509 to 7736.
+
+At the owner's request, built the production ZIP from `ea46d92` with version
+2.2.12, reference 26448710 and Research OFF.
+`artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.12-ModManagers.zip`
+is 1,192,895 bytes, SHA256
+`DF685BCDB82C221E691AC2E5E3BD21AA8BE8920BB92A3E2EA92DE12A853FA7DC`.
+Expanded package and archive validation passed. The ASI and INI match the
+live-tested candidate byte for byte. The managed DLLs and deps metadata carry
+the final version. The final ZIP is ready for owner upload and has not been
+installed separately or published.
+
+For future production candidates, build with the reserved final version from
+the start so the owner can publish the same ZIP after acceptance.
+
+# Previous checkpoint — 2026-11-06, collector recovery fixed for Steam 26480954
 
 The owner reported "Missing physics collector vtable shape." Live health on
 PID 32576 reproduced terminal recovery failure with the installed menu.3 ASI.
