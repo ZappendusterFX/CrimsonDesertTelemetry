@@ -288,12 +288,22 @@ bool ValidateAndApply(std::string_view payload,std::uint64_t moduleBase,std::uin
         if(!image.Exact(c.support.at("PhysicsRayCaller").rva-rayCaller.size(),rayCaller)||
             !image.Exact(c.support.at("PhysicsShapeCaller").rva-shapeCaller.size(),shapeCaller))
             throw std::runtime_error("Natural physics caller ABI changed");
-        const auto collector=c.values.at("PhysicsCollectorVtableRva");std::array<std::uint64_t,12> slots{};
+        const auto collector=c.values.at("PhysicsCollectorVtableRva");std::array<std::uint64_t,9> slots{};
         if(collector%8||!image.In(collector,sizeof(slots),IMAGE_SCN_MEM_READ,IMAGE_SCN_MEM_WRITE|IMAGE_SCN_MEM_EXECUTE)||
             !ch::mem::SafeRead(reinterpret_cast<void*>(moduleBase+collector),slots.data(),sizeof(slots))||
-            slots[5]!=moduleBase+c.support.at("PhysicsCollectorMethod").rva||slots[0]!=slots[9]||slots[3]!=slots[7]||slots[6]!=slots[8]||
+            slots[5]!=moduleBase+c.support.at("PhysicsCollectorMethod").rva||slots[3]!=slots[7]||slots[6]!=slots[8]||
             !std::all_of(slots.begin(),slots.end(),[&](auto address){return address>moduleBase&&image.In(address-moduleBase,1,IMAGE_SCN_MEM_EXECUTE);}))
             throw std::runtime_error("Physics collector shape differs");
+        // Slot 1 must load and install this vtable. The next table starts after slot 8.
+        const auto store = slots[1] - moduleBase + 0x14;
+        const std::array<std::uint8_t,3> collectorLea{0x48,0x8D,0x05};
+        const std::array<std::uint8_t,4> collectorStore{0x48,0x89,0x01,0xE8};
+        std::int32_t collectorDisplacement{};
+        if (!image.In(store,15,IMAGE_SCN_MEM_EXECUTE) || !image.Exact(store,collectorLea) ||
+            !image.Exact(store+7,collectorStore) ||
+            !ch::mem::SafeRead(reinterpret_cast<void*>(moduleBase+store+3), &collectorDisplacement, sizeof(collectorDisplacement)) ||
+            static_cast<std::int64_t>(store)+7+collectorDisplacement!=static_cast<std::int64_t>(collector))
+            throw std::runtime_error("Physics collector self-reference differs");
         std::uint64_t scene{},vtable{},data{};std::array<std::uint8_t,native_contract::SceneBytes> sceneBytes{};
         if(!image.In(c.scene,8,IMAGE_SCN_MEM_READ|IMAGE_SCN_MEM_WRITE,IMAGE_SCN_MEM_EXECUTE)||
             !image.In(c.sceneVtable,24,IMAGE_SCN_MEM_READ,IMAGE_SCN_MEM_WRITE|IMAGE_SCN_MEM_EXECUTE)||

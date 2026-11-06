@@ -17,6 +17,7 @@ namespace
 using Json=nlohmann::json;
 namespace contract=cdt::native_contract;
 constexpr std::uint64_t Delta=0x10000, Vtable=0x60FC000;
+constexpr std::uint64_t CollectorStore=0x200014;
 void Check(bool condition,const char* reason)
 { if(!condition) {std::cerr<<reason<<'\n';ExitProcess(1);} }
 std::string Hex(std::span<const unsigned char> bytes)
@@ -136,9 +137,14 @@ struct Fixture
         role(static_cast<std::uint32_t>(support::PhysicsRayRva+Delta),0x60FE100,"TtWorldCastRay");
         role(static_cast<std::uint32_t>(support::PhysicsShapeRva+Delta),0x60FE200,"TtWorldCastShape");
         Write(support::PhysicsRayRva+Delta+0x2000,support::PhysicsRayBytes);
-        const auto collector=support::PhysicsCollectorVtableRva+Delta;Commit(collector,96);
-        std::array<std::uint64_t,12> slots{};slots.fill(Base()+contract::HookRva+Delta);
+        const auto collector=support::PhysicsCollectorVtableRva+Delta;Commit(collector,80);
+        std::array<std::uint64_t,9> slots{};slots.fill(Base()+contract::HookRva+Delta);
+        slots[1]=Base()+CollectorStore-0x14;
         slots[5]=Base()+support::PhysicsCollectorMethodRva+Delta;std::memcpy(image+collector,slots.data(),sizeof(slots));
+        Put(image,collector+sizeof(slots),Base()+helper); // Neighboring table.
+        const std::array<unsigned char,15> store{0x48,0x8D,0x05,0,0,0,0,0x48,0x89,0x01,0xE8,0,0,0,0};
+        Write(CollectorStore,store);
+        Put(image,CollectorStore+3,static_cast<std::int32_t>(collector)-static_cast<std::int32_t>(CollectorStore+7));
         Commit(Vtable,24);Commit(contract::SceneGlobalRva+Delta,8);
         Put(image,contract::SceneGlobalRva+Delta,reinterpret_cast<std::uint64_t>(root.data()));
         Put(root.data(),0,Base()+Vtable);Put(root.data(),contract::SceneRootPointerOffset,reinterpret_cast<std::uint64_t>(scene.data()));
@@ -213,6 +219,7 @@ int wmain(int argc,wchar_t** argv)
     };
     corrupt(contract::support::PhysicsRayCallerRva+Delta-1,"changed natural caller accepted");
     corrupt(contract::support::PhysicsCollectorVtableRva+Delta+5*8,"changed collector accepted");
+    corrupt(CollectorStore+3,"collector storing a different table accepted");
     corrupt(contract::HookRva+Delta,"changed live code accepted");
     corrupt(contract::support::AmbientHookARva+Delta-1,"changed ambient dispatch accepted");
     Put(f.scene.data(),contract::EarthRadiusOffset,0.0f);f.Reject([](Json&){},"invalid in-game scene accepted");

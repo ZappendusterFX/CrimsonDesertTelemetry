@@ -62,6 +62,11 @@ Ambient, spatial GI/exposure and physics entries/callers/collector. Repeated sho
 patterns are resolved through their known function/call relationships; the first
 hit is never accepted. Cache validation uses the same roles.
 
+The closest-hit collector has nine slots. Recovery checks the guarded method
+in slot 5, executable targets, the repeated slots and the RIP-relative store
+in slot 1 that installs the same table. Build 26480954 changed the neighboring
+table after slot 8. Its entries are outside the collector guard.
+
 Only relative address operands may change inside guarded instructions. The reviewed
 field offsets, register assignments, command/resource ABI, light packing and
 physics query profile remain fixed. Changed function relationships, missing or

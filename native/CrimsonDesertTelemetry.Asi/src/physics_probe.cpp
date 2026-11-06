@@ -772,9 +772,9 @@ bool Start(std::uint64_t moduleBase, const wchar_t* directory, bool continuous)
         0x48,0x89,0x74,0x24,0x18,0x48,0x89,0x7C,0x24,0x20,0x41,0x54,0x41,0x56,0x41,0x57,0x48,0x83,0xEC,0x50};
     if (!Guard(base + ShapeRva(), shapeHead)) return false;
     // Also guard the collector shape recovered offline, before a captured pointer can use it.
-    std::array<std::uint64_t, 12> slots{};
+    std::array<std::uint64_t, 9> slots{};
     if (!Copy(base + CollectorRva(), slots.data(), sizeof slots) || slots[5] != base + CollectorMethodRva() ||
-        slots[0] != slots[9] || slots[3] != slots[7] || slots[6] != slots[8]) return false;
+        slots[3] != slots[7] || slots[6] != slots[8]) return false;
     FILETIME born{}, exit{}, kernel{}, user{};
     if (!GetProcessTimes(GetCurrentProcess(), &born, &exit, &kernel, &user)) return false;
     processStart = (static_cast<std::uint64_t>(born.dwHighDateTime) << 32) | born.dwLowDateTime;

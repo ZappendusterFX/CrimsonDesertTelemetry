@@ -78,7 +78,8 @@ internal static class RuntimeRecoveryTests
                 "Player globals did not relocate.");
             var result = RuntimeRecovery.ResolveNative(readiness, fixture.Reference, fixture.Cache);
             Check(result.Definition.NativeCapture!.HookRva == 0x10000 + 0x1603 &&
-                result.Definition.NativeCapture.Support!.Anchors.Single(a => a.Name == "PhysicsRay").Rva == 0x2100,
+                result.Definition.NativeCapture.Support!.Anchors.Single(a => a.Name == "PhysicsRay").Rva == 0x2100 &&
+                result.Definition.NativeCapture.Support.Values["PhysicsCollectorVtableRva"] == 0x30200,
                 "Complete acquisition did not relocate.");
             Check(result.InstructionGuards.Any(g => g.Name == "native-PhysicsRayCall" && g.Bytes.EndsWith("FF 90 E8 01 00 00", StringComparison.Ordinal)),
                 "Natural-call virtual slot guard was lost.");
@@ -128,6 +129,12 @@ internal static class RuntimeRecoveryTests
             changedCaller.Put(0x6000 - 843 - 3, [0xF0]); changedCaller.Save();
             var readiness = RuntimeRecovery.ResolveReadiness(changedCaller.Path, changedCaller.Reference);
             Reject(() => RuntimeRecovery.ResolveNative(readiness, changedCaller.Reference), "Changed physics virtual slot accepted.");
+        }
+        using (var wrongCollector = new Fixture())
+        {
+            wrongCollector.Put(0x7117, [0]); wrongCollector.Save();
+            var readiness = RuntimeRecovery.ResolveReadiness(wrongCollector.Path, wrongCollector.Reference);
+            Reject(() => RuntimeRecovery.ResolveNative(readiness, wrongCollector.Reference), "Collector storing a different table accepted.");
         }
         using (var changedTarget = new Fixture())
         {
@@ -206,7 +213,12 @@ internal static class RuntimeRecoveryTests
             Anchor("PhysicsRayCaller", 0x6000 - 843); Function(0x5B00, 0x5E00);
             Put(0x6000 - 34, "48 8B 01 4C 8B 90 F0 01 00 00 48 8B 85 B0 00 00 00 48 89 44 24 20 4D 8B CF 4D 8B C4 49 8B D5 41 FF D2");
             Put(0x6000 - 843 - 15, "48 8B 01 4D 8B C7 49 8B D4 FF 90 E8 01 00 00");
-            for (var index = 0; index < 12; index++) PutQ(0x30200 + (ulong)index * 8, ImageBase + (index == 5 ? 0x2500UL : 0x1800UL));
+            for (var index = 0; index < 9; index++) PutQ(0x30200 + (ulong)index * 8, ImageBase + 0x1800UL);
+            PutQ(0x30208, ImageBase + 0x7100);
+            PutQ(0x30228, ImageBase + 0x2500);
+            PutQ(0x30248, ImageBase + 0x7000); // Neighboring table.
+            Put(0x7114, "48 8D 05 ?? ?? ?? ?? 48 89 01 E8 ?? ?? ?? ??");
+            U32(At(0x7117), 0x30200 - 0x711B);
             var ordered = functions.OrderBy(f => f.Start).ToArray();
             for (var index = 0; index < ordered.Length; index++)
             {

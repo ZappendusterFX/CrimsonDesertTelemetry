@@ -149,7 +149,7 @@ public static class UpdateCheck
                     });
                 Check("native-support-PhysicsCollectorVtable", support.Values["PhysicsCollectorVtableRva"], () =>
                     (image.ResolveCollectorVtable(support.Anchors.Single(a => a.Name == "PhysicsCollectorMethod").RelocationPattern), null,
-                        "Unique read-only 12-slot collector shape and guarded method; natural query/profile control remains a live check."));
+                        "Unique read-only nine-slot collector shape, guarded method and self-reference; natural query/profile control remains a live check."));
             }
         }
         else anchors.Add(new("native-filter-callsite", "unverified", null, null, null, "This reference has no native capture contract."));

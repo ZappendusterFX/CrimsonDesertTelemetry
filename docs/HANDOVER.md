@@ -1,4 +1,36 @@
-# Current checkpoint — 2026-11-05, CDT 2.2.11 published on GitHub
+# Current checkpoint — 2026-11-06, collector recovery fixed for Steam 26480954
+
+The owner reported "Missing physics collector vtable shape." Live health on
+PID 32576 reproduced terminal recovery failure with the installed menu.3 ASI.
+The Steam build is 26480954, EXE 1.0.0.3576, SHA256
+`C94AD6C3EA54970A6D2DA7A2719753210A7728A91698ED3405DD9125470ED98F`.
+The EXE is preserved under `artifacts/recovery/20261106-205540-build-26480954/`.
+
+The old shape included three entries from the next table. On reference
+26448710, the next table starts at 0x60DD950 and shares the collector's
+slot 0 target. On 26480954, it starts at 0x60DF5E0 and starts with a
+this-adjusting thunk. The collector itself starts at 0x60DF598 with the
+guarded method at 0x3CB97B0. Slot 1 installs that exact vtable, as on the
+reference. The managed resolver and native preflight now guard nine slots
+and independently verify that store. Physics startup reads nine slots.
+
+Cold file replay from the existing 26448710 reference recovered all 30 roles
+on 26480954, 26448710 and 26423880. All three passed cache reuse and corrupted
+cache fallback. All 94 managed and 46 native tests passed, along with the
+production package validators.
+Logs are under `artifacts/recovery/*/collector-replay-*.log` and
+`artifacts/collector-recovery-{native,package}-20261106.log`.
+
+Private production-code ZIP (Research OFF, reference 26448710):
+`artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.12-collector.1-ModManagers.zip`
+(1,192,951 bytes), SHA256
+`7049E70D992061C1E7E775D8D0C91D0DFAB044DB8188A2C83104377FA7E2B422`.
+
+Next OWNER ONLY: close the game, install collector.1 through DMM, restart and
+load a save, then report. Check recovered health and fresh feeds after that
+report. The candidate is pending live game acceptance.
+
+# Previous checkpoint — 2026-11-05, CDT 2.2.11 published on GitHub
 
 Owner accepted menu.3 and requested GitHub release and push. Stable Latest
 v2.2.11 (422f44f) is public. The exact Steam reference is 26448710. Skills

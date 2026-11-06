@@ -112,6 +112,9 @@ public static class BuildCompatibility
 /// <summary>Bounded, file-backed scanning. Never scans game heaps or executes candidate code.</summary>
 internal sealed class CompatibilityImage
 {
+    private const int CollectorSlotCount = 9;
+    private const int CollectorTableStoreOffset = 0x14;
+    private const string CollectorTableStorePattern = "48 8D 05 ?? ?? ?? ?? 48 89 01 E8 ?? ?? ?? ??";
     private readonly string _path;
     private readonly IReadOnlyList<PeSectionInfo> _sections;
     private readonly Dictionary<PeSectionInfo, byte[]> _bytes = [];
@@ -323,28 +326,32 @@ internal sealed class CompatibilityImage
 
     internal bool MatchesCollectorVtableAt(ulong rva, ulong method)
     {
-        if ((rva & 7) != 0 || !IsData(rva, 96, writable: false)) return false;
-        var bytes = ReadRva(rva, 96);
-        var slots = Enumerable.Range(0, 12).Select(i => BitConverter.ToUInt64(bytes, i * 8)).ToArray();
-        return slots[5] == _imageBase + method && slots[0] == slots[9] && slots[3] == slots[7] && slots[6] == slots[8] &&
-            slots.All(p => p >= _imageBase && IsExecutable(p - _imageBase));
+        const int size = CollectorSlotCount * sizeof(ulong);
+        if ((rva & 7) != 0 || !IsData(rva, size, writable: false)) return false;
+        var bytes = ReadRva(rva, size);
+        var slots = Enumerable.Range(0, CollectorSlotCount).Select(i => BitConverter.ToUInt64(bytes, i * 8)).ToArray();
+        if (slots[5] != _imageBase + method || slots[3] != slots[7] || slots[6] != slots[8] ||
+            slots.Any(p => p < _imageBase || !IsExecutable(p - _imageBase))) return false;
+
+        // Slot 1 installs this vtable through a RIP-relative LEA and store.
+        // The pointer immediately after slot 8 belongs to a different table.
+        var store = slots[1] - _imageBase + CollectorTableStoreOffset;
+        return MatchesFunctionAt(store, CollectorTableStorePattern) &&
+            (long)store + 7 + BitConverter.ToInt32(ReadRva(store + 3, sizeof(int))) == (long)rva;
     }
 
     internal ulong ResolveCollectorVtable(string methodPattern)
     {
-        var method = _imageBase + FindFunction(methodPattern, "physics collector method");
+        var method = FindFunction(methodPattern, "physics collector method");
         var matches = new List<ulong>();
         foreach (var section in _sections.Where(s => s.Readable && !s.Executable && !s.Writable))
         {
             var bytes = Bytes(section);
-            for (var start = 0; start + 12 * 8 <= bytes.Length; start += 8)
+            for (var start = 0; start + CollectorSlotCount * sizeof(ulong) <= bytes.Length; start += sizeof(ulong))
             {
-                if (((section.VirtualAddress + (ulong)start) & 7) != 0 ||
-                    BitConverter.ToUInt64(bytes, start + 40) != method) continue;
-                var slots = Enumerable.Range(0, 12).Select(i => BitConverter.ToUInt64(bytes, start + i * 8)).ToArray();
-                if (slots[0] != slots[9] || slots[3] != slots[7] || slots[6] != slots[8] ||
-                    slots.Any(p => p < _imageBase || !IsExecutable(p - _imageBase))) continue;
-                matches.Add(section.VirtualAddress + (ulong)start);
+                if (BitConverter.ToUInt64(bytes, start + 5 * sizeof(ulong)) != _imageBase + method) continue;
+                var rva = section.VirtualAddress + (ulong)start;
+                if (MatchesCollectorVtableAt(rva, method)) matches.Add(rva);
             }
         }
         if (matches.Count != 1) throw new InvalidDataException(matches.Count == 0 ?
