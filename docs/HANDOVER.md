@@ -8,6 +8,10 @@ and template fingerprint
 `38C27B22040668C40DCDCC181D982603EBC0B13008231BDCD7072397F6067688`.
 This was a separate read-only readiness check. Current health was waiting for
 world data while the owner remained in the main menu.
+Full file-backed validation of the same existing cache with the installed Core
+also returned `NativeCacheHit=true` for all 30 roles. Cache output went to an
+isolated artifact directory. Evidence is
+`artifacts/startup-label-cache-check-6e61f7819fa34d908447eafa422c6ba5/check.json`.
 
 The per-process address and live validation is normal startup even with a
 cache hit. The HUD now says INITIALIZING, the native/host titles use telemetry
@@ -20,6 +24,17 @@ their existing semantics.
 All 94 managed tests and the three targeted native tests (runtime recovery,
 overlay model and recovery D3D12 smoke) passed. Logs are
 `artifacts/startup-label-{managed,native,native-build}-20261107.log`.
+
+Built final production ZIP directly as 2.2.13 from source `0f75436`,
+Research OFF, reference 26448710:
+`artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.13-ModManagers.zip`
+(1,192,818 bytes), SHA256
+`228F1AAE7DAB920170F7E7F5B7BF9889037404004AD759BCE844363A431653E6`.
+Expanded/ZIP production validators passed. Build log is
+`artifacts/startup-label-package-2.2.13-20261107.log`.
+The package is pending live acceptance. Next OWNER ONLY: close the game,
+install 2.2.13 through DMM, restart and report. No waiting or polling for that
+handoff.
 
 # Previous checkpoint — 2026-11-06, CDT 2.2.12 ZIP ready after live collector recovery
 
