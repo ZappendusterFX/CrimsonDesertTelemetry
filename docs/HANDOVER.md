@@ -1,4 +1,27 @@
-# Current checkpoint — 2026-11-06, CDT 2.2.12 ZIP ready after live collector recovery
+# Current checkpoint — 2026-11-07, normal startup wording for cached addresses
+
+Owner reported "Update Recovery" again on startup and confirmed being in the
+main menu. Installed Core 2.2.12 read the existing 26480954 cache successfully
+with `CacheHit=true`, EXE SHA256
+`C94AD6C3EA54970A6D2DA7A2719753210A7728A91698ED3405DD9125470ED98F`
+and template fingerprint
+`38C27B22040668C40DCDCC181D982603EBC0B13008231BDCD7072397F6067688`.
+This was a separate read-only readiness check. Current health was waiting for
+world data while the owner remained in the main menu.
+
+The per-process address and live validation is normal startup even with a
+cache hit. The HUD now says INITIALIZING, the native/host titles use telemetry
+startup wording and success says Telemetry is ready. Main-menu waiting stays
+neutral after 60 seconds. Explicit one-time diagnostic tests keep their labels
+and detailed waits. The host log now distinguishes cache reuse from full search.
+The recovery protocol, cache key, address resolver and activation checks retain
+their existing semantics.
+
+All 94 managed tests and the three targeted native tests (runtime recovery,
+overlay model and recovery D3D12 smoke) passed. Logs are
+`artifacts/startup-label-{managed,native,native-build}-20261107.log`.
+
+# Previous checkpoint — 2026-11-06, CDT 2.2.12 ZIP ready after live collector recovery
 
 The owner confirmed collector.1 works. On PID 34164 the five installed ASI, DLL
 and CFG hashes matched the candidate. Build 26480954 reported `playing`,

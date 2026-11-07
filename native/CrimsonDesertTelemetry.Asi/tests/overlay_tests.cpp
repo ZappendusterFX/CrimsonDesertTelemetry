@@ -633,14 +633,16 @@ void RecoveryNoticeTests()
     Config config; config.notifications = true; config.notificationDurationMs = 6000;
     const auto start = Clock::time_point{} + std::chrono::seconds(100);
     View view;
-    view.recovery = RecoveryStatus{"waiting-for-world", "Game update detected", "Load a save to continue.", std::nullopt};
+    view.recovery = RecoveryStatus{"waiting-for-world", "Waiting for the game world", "Load a save to continue.", std::nullopt};
+    Require(Status(view, start, 1000) == "INITIALIZING",
+        "Normal telemetry startup must use a neutral initialization label");
     NoticeTracker tracker;
     auto notice = tracker.Update(view, config, start);
     Require(notice && notice->persistent && !notice->error && !notice->progress,
         "World wait must be clear without claiming percentage or failure");
     Require(tracker.Update(view, config, start + std::chrono::minutes(10)).has_value(),
         "Active recovery must not expire while waiting for the player");
-    view.recovery = RecoveryStatus{"scanning", "Finding updated game data", "Checking known code patterns.", 40};
+    view.recovery = RecoveryStatus{"scanning", "Initializing telemetry", "Checking known code patterns.", 40};
     notice = tracker.Update(view, config, start + std::chrono::minutes(11));
     Require(notice && notice->progress == 40 && notice->persistent, "Scanning stage did not replace waiting");
     view.recovery->progress = 65;
@@ -648,7 +650,8 @@ void RecoveryNoticeTests()
     notice = tracker.Update(view, config, start + std::chrono::minutes(12));
     Require(notice && notice->progress == 65 && notice->detail == view.recovery->detail,
         "Progress and detail updates must not freeze within a stage");
-    view.recovery = RecoveryStatus{"failed", "Recovery could not finish", "A code layout changed; a plugin update is needed.", std::nullopt};
+    view.recovery = RecoveryStatus{"failed", "Telemetry initialization stopped", "A code layout changed; a plugin update is needed.", std::nullopt};
+    Require(Status(view, start, 1000) == "STARTUP STOPPED", "Startup failure must remain explicit");
     notice = tracker.Update(view, config, start + std::chrono::minutes(13));
     Require(notice && notice->error && tracker.Update(view, config, start + std::chrono::hours(1))->error,
         "An actionable recovery failure must persist until explicitly cleared");
@@ -662,7 +665,7 @@ void RecoveryNoticeTests()
         "Recovery ready toast must expire without repeated refreshes restarting it");
     view.recovery.reset();
     Require(!tracker.Update(view, config, completed + std::chrono::seconds(7)), "Cleared recovery remained on screen");
-    view.recovery = RecoveryStatus{"scanning", "Finding updated game data", "Checking known patterns.", 50};
+    view.recovery = RecoveryStatus{"scanning", "Initializing telemetry", "Checking known patterns.", 50};
     config.notifications = false;
     Require(!tracker.Update(view, config, completed + std::chrono::seconds(8)), "Recovery ignores notification opt-out");
 

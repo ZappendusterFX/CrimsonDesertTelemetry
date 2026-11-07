@@ -380,9 +380,9 @@ bool Handoff::WaitAndApply(HANDLE stopEvent)
     if(!view_) return false;
     const auto initialState=State(view_);
     if(initialState!=1&&initialState!=2&&initialState!=4) return false;
-    overlay::SetRecoveryStatus("waiting-for-world",diagnostic_?"One-time recovery test":"Game update detected",
+    overlay::SetRecoveryStatus("waiting-for-world",diagnostic_?"One-time recovery test":"Initializing telemetry",
         diagnostic_?"Waiting for a loaded game before testing the complete recovery path. All validation remains active.":
-            "Waiting for a loaded game before checking compatibility.",-1);
+            "Waiting for the game world before checking telemetry addresses.",-1);
     const auto started=GetTickCount64();std::uint64_t acknowledgedAt{};bool cleared=false;
     while(WaitForSingleObject(stopEvent,250)==WAIT_TIMEOUT)
     {
@@ -397,7 +397,7 @@ bool Handoff::WaitAndApply(HANDLE stopEvent)
             if(!acknowledged&&now-started>=30000)
             {
                 SetState(view_,4);
-                overlay::SetRecoveryStatus("failed",diagnostic_?"Recovery test host did not respond":"Recovery host did not respond",
+                overlay::SetRecoveryStatus("failed",diagnostic_?"Recovery test host did not respond":"Telemetry host did not respond",
                     "Install the complete matching telemetry package and restart the game. Native game hooks remain disabled.",-1);
                 ch::Log("Runtime recovery handshake timed out before host acknowledgement; no native game hooks installed.");
                 return false;
@@ -407,7 +407,7 @@ bool Handoff::WaitAndApply(HANDLE stopEvent)
         if(state==4)
         {
             std::string detail=diagnostic_?"The one-time recovery test could not verify the loaded game. Native hooks remain disabled.":
-                "Automatic recovery could not verify this game update. Native hooks remain disabled.";
+                "Telemetry initialization could not verify the game data. Native hooks remain disabled.";
             try {
                 const auto length=Get<std::uint32_t>(view_,16);
                 if(length&&length<=Capacity-HeaderBytes) {
@@ -415,7 +415,7 @@ bool Handoff::WaitAndApply(HANDLE stopEvent)
                     if(!error.empty()) detail=error.substr(0,512);
                 }
             }catch(...){}
-            overlay::SetRecoveryStatus("failed",diagnostic_?"Recovery test stopped":"Game update requires a mod update",detail,-1);
+            overlay::SetRecoveryStatus("failed",diagnostic_?"Recovery test stopped":"Telemetry needs a mod update",detail,-1);
             ch::Log("Runtime recovery refused: %s",detail.c_str());return false;
         }
         if(state!=2) {SetState(view_,4);return false;}
@@ -427,12 +427,12 @@ bool Handoff::WaitAndApply(HANDLE stopEvent)
         if(State(view_)!=2||length!=Get<std::uint32_t>(view_,16)||payload.empty()||
             std::memcmp(payload.data(),view_+HeaderBytes,payload.size())!=0)
         {SetState(view_,4);return false;}
-        overlay::SetRecoveryStatus("activating",diagnostic_?"Validating the recovery test":"Checking recovered addresses",
+        overlay::SetRecoveryStatus("activating",diagnostic_?"Validating the recovery test":"Checking telemetry addresses",
             "Verifying the loaded game code and scene before starting telemetry.",90);
         std::string failure;
         if(!ValidateAndApply(payload,reinterpret_cast<std::uint64_t>(GetModuleHandleW(nullptr)),GetCurrentProcessId(),StartTime(),executableHash_,failure))
         {
-            SetState(view_,4);overlay::SetRecoveryStatus("failed",diagnostic_?"Recovery test validation failed":"Game update could not be verified",failure,-1);
+            SetState(view_,4);overlay::SetRecoveryStatus("failed",diagnostic_?"Recovery test validation failed":"Game data could not be verified",failure,-1);
             ch::Log("Runtime recovery validation refused before hooks: %s",failure.c_str());return false;
         }
         ch::Log("Runtime recovery accepted complete guarded address contract; starting existing capture paths.");
@@ -445,7 +445,7 @@ void Handoff::Complete(bool success)
     if(!view_||State(view_)!=2) return;
     SetState(view_,success?3u:4u);
     if(success) overlay::ClearRecoveryStatus();
-    else overlay::SetRecoveryStatus("failed",diagnostic_?"Recovery test could not start telemetry":"Recovered telemetry could not start",
+    else overlay::SetRecoveryStatus("failed",diagnostic_?"Recovery test could not start telemetry":"Telemetry could not start",
         "Address checks passed, but a required native data source could not initialize. Check the native log.",-1);
 }
 }

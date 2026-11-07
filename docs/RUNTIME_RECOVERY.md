@@ -44,6 +44,13 @@ pointers, credentials or a promoted build definition. A hit repeats address,
 role and live checks. A malformed/stale/inconsistent entry falls back to one
 fresh search. Failure to write the cache does not block otherwise valid recovery.
 
+Every new game process using these addresses repeats the guarded startup and
+live checks, including cache hits for the same EXE. The HUD calls this
+`INITIALIZING` and the completion notice says `Telemetry is ready`.
+Waiting in the main menu keeps the normal game-world wait without treating
+elapsed time as evidence of a game update. The host log records whether the
+address check reused the cache or completed a full search.
+
 The corner HUD and existing notifications show waiting for world, scanning,
 validation, activation, success or failure. Percentages correspond to completed
 checks/stages; waiting for game data has no invented percentage. Notification

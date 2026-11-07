@@ -445,8 +445,8 @@ int wmain(int argc, wchar_t** argv)
             Check(chain->ResizeBuffers(3, 1920, 1080, swapchainFormat, 0));
             MaintainGraphics();
             View view;
-            view.recovery = RecoveryStatus{"scanning", "Finding updated game data",
-                "The game update moved known code. Checking light, ambient and physics entry points before enabling capture.", 55};
+            view.recovery = RecoveryStatus{"scanning", "Initializing telemetry",
+                "Checking light, ambient and physics entry points before enabling capture.", 55};
             SetVisibleForTest(true);
             const auto both = frame(false, argc > 2 ? argv[2] : nullptr, &view, true);
             Require(both.Changed(20, 20, 530, 350) > 1000 && both.Changed(550, 20, 1170, 300) > 1000,
@@ -461,7 +461,7 @@ int wmain(int argc, wchar_t** argv)
                 noticeOnly.Changed(650, 20, 1300, 350) == 0,
                 "Recovery notice must survive hiding the full HUD without a second panel");
             view.recovery.reset();
-            SetRecoveryStatus("failed", "Recovery needs a plugin update",
+            SetRecoveryStatus("failed", "Telemetry needs a plugin update",
                 "A required code layout changed. Capture remains disabled; check the telemetry log for details.");
             const auto failure = frame(false, argc > 3 ? argv[3] : nullptr, &view, true);
             Require(failure.Different(noticeOnly, 20, 20, 640, 300) > 500,

@@ -150,7 +150,8 @@ internal static class RecoveryHostTests
         var state = State();
         var monitor = new RecoveryLiveMonitor(7, false);
         for (ulong sequence = 1; sequence <= 3; sequence++) monitor.Observe(Lights(sequence), Sky(sequence), state);
-        Check(state.Health.Recovery?.State == "ready", "Fresh paired feeds did not finish recovery.");
+        Check(state.Health.Recovery is { State: "ready", Title: "Telemetry is ready" },
+            "Fresh paired feeds did not finish normal telemetry initialization.");
 
         // A valid zero-light scene is distinct from a status-only/null feed.
         state = State(); monitor = new RecoveryLiveMonitor(7, true);
@@ -161,7 +162,9 @@ internal static class RecoveryHostTests
                 Upstream = empty.Upstream! with { Sources = [], InputRecords = 0, Diagnostics = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) } };
             monitor.Observe(empty, Sky(sequence), state);
         }
-        Check(state.Health.Recovery?.State == "ready", "A fresh zero-light scene was incorrectly required to contain a light.");
+        Check(state.Health.Recovery is { State: "ready", Title: "Telemetry is ready" } &&
+            state.Health.Recovery.Detail.Contains("Saved addresses rechecked", StringComparison.Ordinal),
+            "Cached startup must report saved address validation and accept a fresh zero-light scene.");
 
         foreach (var mutation in new Func<EngineLightsSnapshot, EngineLightsSnapshot>[] {
             l => l with { Rendered = l.Rendered! with { Sources = null } },

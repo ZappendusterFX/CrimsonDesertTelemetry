@@ -708,8 +708,8 @@ std::optional<RecoveryStatus> ParseRecoveryHealth(const std::string_view text)
 std::string Status(const View& view, const Clock::time_point now, const int staleMs)
 {
     if (view.recovery && view.recovery->state != "ready")
-        return view.recovery->state == "failed" ? "RECOVERY STOPPED" :
-            view.recovery->state == "waiting-for-simulation" ? "SIMULATION PAUSED" : "UPDATE RECOVERY";
+        return view.recovery->state == "failed" ? "STARTUP STOPPED" :
+            view.recovery->state == "waiting-for-simulation" ? "SIMULATION PAUSED" : "INITIALIZING";
     if (!view.connected) return view.connection;
     if (!view.hasSample) return "WAITING FOR DATA";
     if (AgeMs(view, now) > staleMs) return "STALE DATA";

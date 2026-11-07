@@ -54,7 +54,7 @@ internal static class RecoveryHost
             var cache = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "CrimsonDesertTelemetry", "Recovery");
             state.SetHealth("recovering", true, null, null, 0, null, null);
-            state.SetRecovery(new("scanning", diagnostic ? "Recovery test: preparing" : "Checking the updated game",
+            state.SetRecovery(new("scanning", diagnostic ? "Recovery test: preparing" : "Initializing telemetry",
                 diagnostic ? "Testing the full search without saved addresses. Waiting for live player and camera data." :
                 "Preparing player and camera checks.", 0));
             void Progress(RecoveryProgress progress)
@@ -70,7 +70,7 @@ internal static class RecoveryHost
                         ? "Checking environment lighting and exposure." : "Checking local light capture.";
                 state.SetRecovery(new(phase, diagnostic ?
                     phase == "waiting-for-world" ? "Recovery test: waiting for the game world" : "Recovery test: finding game data" :
-                    phase == "waiting-for-world" ? "Waiting for the game world" : "Adapting telemetry to this game update", detail,
+                    phase == "waiting-for-world" ? "Waiting for the game world" : "Initializing telemetry", detail,
                     phase == "waiting-for-world" ? null : Math.Clamp(progress.Completed * 80 / Math.Max(1, progress.Total), 0, 80)));
             }
             // Skip cache INPUT for a fresh diagnostic attempt, while allowing the
@@ -96,13 +96,16 @@ internal static class RecoveryHost
                 Console.Error.WriteLine("Recovery test consumed after world readiness; starting full cold search. Token=" + request.DiagnosticToken);
             }
             var result = RuntimeRecovery.ResolveNative(readiness, reference, cache, Progress, cancellation);
+            Console.Error.WriteLine(result.CacheHit
+                ? "Telemetry startup reused saved addresses after validation."
+                : "Telemetry startup resolved game addresses through a full search.");
             if (diagnostic && !alreadySubmitted && (readiness.CacheHit || result.CacheHit))
                 throw new InvalidDataException("Recovery test unexpectedly reused saved addresses; activation refused.");
             // A load/menu transition during the scan must not authorize a delayed activation.
             await WaitForWorld(process, reader, positions, orientation, camera, state, cancellation, diagnostic);
             if (!alreadySubmitted)
             {
-                state.SetRecovery(new("activating", diagnostic ? "Recovery test: checking live addresses" : "Checking the recovered addresses",
+                state.SetRecovery(new("activating", diagnostic ? "Recovery test: checking live addresses" : "Checking telemetry addresses",
                     "The plugin is validating live code and data before enabling capture.", 85));
                 bridge!.Submit(result.Definition, request);
             }
@@ -133,7 +136,7 @@ internal static class RecoveryHost
             var detail = error.Message[..Math.Min(error.Message.Length, 440)];
             Console.Error.WriteLine("Automatic recovery stopped: " + detail);
             state.SetHealth("unsupported-build", !process.HasExited, false, null, 0, null, detail);
-            state.SetRecovery(new("failed", diagnostic ? "Recovery test stopped" : "This update could not be adapted automatically",
+            state.SetRecovery(new("failed", diagnostic ? "Recovery test stopped" : "Telemetry initialization stopped",
                 detail + " No repeated scan will run in this session."));
             try { bridge?.Fail(detail); } catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException) { }
             // A rejected file/layout is not a reason to rescan every few seconds. Only a new
@@ -156,7 +159,7 @@ internal static class RecoveryHost
         var gate = new RecoveryReadinessGate();
         var lastReason = "Player and camera are not available yet.";
         state.SetRecovery(new("waiting-for-world", diagnostic ? "Recovery test: waiting for the game world" : "Waiting for the game world",
-            "Load a save and enter the game. Recovery waits for a valid player and advancing camera data."));
+            "Load a save and enter the game. Waiting for live player and camera data."));
         while (!process.HasExited)
         {
             cancellation.ThrowIfCancellationRequested();
@@ -171,9 +174,9 @@ internal static class RecoveryHost
             }
             catch (Exception e) when (e is InvalidDataException or Win32Exception or OverflowException)
             { gate.Reset(); lastReason = e.Message; }
-            if (watch.Elapsed > TimeSpan.FromSeconds(60))
-                state.SetRecovery(new("waiting-for-world", diagnostic ? "Recovery test: waiting for valid data" : "Still waiting for valid game data",
-                    "If you are already in-game, the data layout may have changed: " + lastReason[..Math.Min(350, lastReason.Length)]));
+            if (diagnostic && watch.Elapsed > TimeSpan.FromSeconds(60))
+                state.SetRecovery(new("waiting-for-world", "Recovery test: waiting for valid data",
+                    lastReason[..Math.Min(350, lastReason.Length)]));
             await Task.Delay(150, cancellation);
         }
         throw new InvalidOperationException("Game exited during recovery.");
@@ -196,7 +199,7 @@ internal sealed class RecoveryLiveMonitor(uint requestedFeatures, bool cacheHit,
         _lastLightFrame = _lastSkyFrame = null;
         _lights = _sky = 0;
         state.SetRecovery(new("waiting-for-world", diagnostic ? "Recovery test: waiting for the game world" : "Waiting for the game world",
-            "The recovered addresses are retained. Live validation resumes when player and camera data return."));
+            "Telemetry addresses are retained. Live validation resumes when player and camera data return."));
     }
 
     public void PauseForSimulation(TelemetryServerState state)
@@ -205,7 +208,7 @@ internal sealed class RecoveryLiveMonitor(uint requestedFeatures, bool cacheHit,
         _watch.Reset(); _lastLights = _lastSky = null;
         _lastLightFrame = _lastSkyFrame = null; _lights = _sky = 0;
         state.SetRecovery(new("waiting-for-simulation", "Lighting acquisition paused",
-            "The simulation is paused. Recovery validation resumes with new captures after simulation progress returns."));
+            "The simulation is paused. Telemetry validation resumes with new captures after simulation progress returns."));
     }
 
     public void Observe(EngineLightsSnapshot? lights, SkyAmbientSnapshot sky, TelemetryServerState state)
@@ -247,16 +250,16 @@ internal sealed class RecoveryLiveMonitor(uint requestedFeatures, bool cacheHit,
         if (capturesReady && (!needsPhysics || physics))
         {
             _finished = true;
-            state.SetRecovery(new("ready", diagnostic ? "Recovery test passed" : "Telemetry adapted to this game update",
+            state.SetRecovery(new("ready", diagnostic ? "Recovery test passed" : "Telemetry is ready",
                 diagnostic ? "Full search and live telemetry checks passed. The one-time test is consumed; next launch uses normal compatibility checks." :
                 cacheHit ? "Saved addresses rechecked; live telemetry is available." :
-                "Addresses recovered and live telemetry checked. Future starts will reuse the validated address cache.", 100));
+                "Game addresses found and live telemetry checked.", 100));
         }
         else if (_watch.Elapsed > TimeSpan.FromSeconds(45))
         {
             _finished = true;
-            state.SetRecovery(new("failed", diagnostic ? "Recovery test needs attention" : "Recovery needs attention",
-                !capturesReady ? "Recovered hooks started, but the requested light or ambient feed has not produced fresh data. Check the native log; a mod update may still be required." :
+            state.SetRecovery(new("failed", diagnostic ? "Recovery test needs attention" : "Telemetry startup needs attention",
+                !capturesReady ? "Capture hooks started, but the requested light or ambient feed has not produced fresh data. Check the native log; a mod update may still be required." :
                 "Light data is available, but physics visibility has not passed its natural-query controls. Unknown visibility stays unknown; check the native log."));
         }
     }
