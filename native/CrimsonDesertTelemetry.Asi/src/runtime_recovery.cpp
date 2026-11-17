@@ -212,8 +212,15 @@ bool ValidateAndApply(std::string_view payload,std::uint64_t moduleBase,std::uin
         {
             Candidate::Context item{Number(contexts[i],"rva"),Bytes(contexts[i].at("bytes").get<std::string>())};
             const auto original=native_contract::ContextSignatures[i];
-            if(item.bytes.size()!=original.bytes.size()||!std::equal(item.bytes.begin(),item.bytes.end(),original.bytes.begin())||
-                !image.Exact(item.rva,item.bytes)) throw std::runtime_error("ManyLights register/binding layout changed");
+            if(item.bytes.size()!=original.bytes.size()||!image.Exact(item.rva,item.bytes))
+                throw std::runtime_error("ManyLights register/binding layout changed");
+            for(size_t at=0;at<item.bytes.size();++at)
+            {
+                const bool layoutOperand=(i==3&&((at>=3&&at<7)||(at>=11&&at<15)||(at>=24&&at<28)))||
+                    (i==5&&at>=3&&at<7);
+                if(!layoutOperand&&item.bytes[at]!=original.bytes[at])
+                    throw std::runtime_error("ManyLights instruction or register changed");
+            }
             // The reviewed function's register lifetimes and control-flow distances
             // are one contract. The separate command Dispatch helper is index4.
             if(i!=4 && static_cast<std::int64_t>(item.rva)-static_cast<std::int64_t>(c.hook)!=
@@ -221,6 +228,16 @@ bool ValidateAndApply(std::string_view payload,std::uint64_t moduleBase,std::uin
                 throw std::runtime_error("ManyLights context relationship changed");
             c.contexts.push_back(std::move(item));
         }
+        if(c.contexts.size()!=7||c.contexts[3].bytes.size()!=28||c.contexts[5].bytes.size()!=12)
+            throw std::runtime_error("Renderer field contexts have unexpected lengths");
+        const auto bank=Get<std::uint32_t>(c.contexts[3].bytes.data(),3);
+        const auto input=Get<std::uint32_t>(c.contexts[5].bytes.data(),3);
+        const auto rendererShift=static_cast<std::int64_t>(bank)-native_contract::OwnerBankIndexOffset;
+        if(rendererShift < -0x100||rendererShift > 0x100||rendererShift%8||
+            bank<input||bank-input!=0x2B8||
+            Get<std::uint32_t>(c.contexts[3].bytes.data(),11)!=input+0x10||
+            Get<std::uint32_t>(c.contexts[3].bytes.data(),24)!=input+0x20)
+            throw std::runtime_error("Renderer buffer fields do not form the guarded layout");
         const auto& support=json.at("support");const auto& anchors=support.at("anchors");
         if(!anchors.is_array()||anchors.size()!=native_contract::support::RecoveryAnchors.size())
             throw std::runtime_error("Acquisition anchors are incomplete");
@@ -247,8 +264,10 @@ bool ValidateAndApply(std::string_view payload,std::uint64_t moduleBase,std::uin
         }
         namespace original=native_contract::support;
         for(const auto& [name,expected]:std::array<std::pair<const char*,std::uint32_t>,5>{{
-            {"AmbientSourceOffset",original::AmbientSourceOffset},{"RendererGiOffset",original::RendererGiOffset},
-            {"RendererSkyOffset",original::RendererSkyOffset},{"RendererExposureOffset",original::RendererExposureOffset},
+            {"AmbientSourceOffset",original::AmbientSourceOffset},
+            {"RendererGiOffset",static_cast<std::uint32_t>(original::RendererGiOffset+rendererShift)},
+            {"RendererSkyOffset",static_cast<std::uint32_t>(original::RendererSkyOffset+rendererShift)},
+            {"RendererExposureOffset",static_cast<std::uint32_t>(original::RendererExposureOffset+rendererShift)},
             {"PhysicsQueryProfile",original::PhysicsQueryProfile}}})
             if(c.values.at(name)!=expected) throw std::runtime_error("Recovery cannot change reviewed layout or physics profile");
         if(c.sky!=c.support.at("AmbientHookA").rva||c.values.at("UpstreamInputRva")!=c.contexts[5].rva||
@@ -263,7 +282,6 @@ bool ValidateAndApply(std::string_view payload,std::uint64_t moduleBase,std::uin
         };
         if(!relativeMatches("AmbientHookA","AmbientSourceA",original::AmbientHookARva,original::AmbientSourceARva)||
             !relativeMatches("AmbientHookB","AmbientSourceB",original::AmbientHookBRva,original::AmbientSourceBRva)||
-            !relativeMatches("AmbientSourceB","AmbientSourceA",original::AmbientSourceBRva,original::AmbientSourceARva)||
             !relativeMatches("PhysicsShapeCaller","PhysicsRayCaller",original::PhysicsShapeCallerRva,original::PhysicsRayCallerRva))
             throw std::runtime_error("Acquisition family relationships changed");
         const auto callTarget=[&](const Candidate::Context& context,size_t offset) {
@@ -275,7 +293,11 @@ bool ValidateAndApply(std::string_view payload,std::uint64_t moduleBase,std::uin
             callTarget(c.support.at("ExposureDispatch"),21)!=called||
             !roles::IsFunctionEntry(moduleBase,image.size,static_cast<std::uint64_t>(called)))
             throw std::runtime_error("Shared renderer helper provenance changed");
-        if(!roles::VerifyRole(moduleBase,image.size,c.support.at("PhysicsRay").rva,"TtWorldCastRay",true)||
+        if(!roles::VerifyRole(moduleBase,image.size,c.support.at("AmbientSourceA").rva,"PrecomputeAmbient",false)||
+            !roles::VerifyRole(moduleBase,image.size,c.support.at("AmbientSourceB").rva,"GenerateAmbientFromEnvironmentAtmosphericScattering",false)||
+            !roles::SameFunction(moduleBase,image.size,c.support.at("AmbientSourceA").rva,c.support.at("AmbientHookA").rva)||
+            !roles::SameFunction(moduleBase,image.size,c.support.at("AmbientSourceB").rva,c.support.at("AmbientHookB").rva)||
+            !roles::VerifyRole(moduleBase,image.size,c.support.at("PhysicsRay").rva,"TtWorldCastRay",true)||
             !roles::VerifyRole(moduleBase,image.size,c.support.at("PhysicsShape").rva,"TtWorldCastShape",true)||
             !roles::VerifyRole(moduleBase,image.size,c.support.at("ExposureDispatch").rva,"AdaptExposure",false))
             throw std::runtime_error("Named physics or exposure function role differs");
@@ -317,8 +339,12 @@ bool ValidateAndApply(std::string_view payload,std::uint64_t moduleBase,std::uin
         runtime_contract::SceneGlobalRva=c.scene;runtime_contract::HookRva=c.hook;
         runtime_contract::SkyProducerRva=static_cast<std::uint32_t>(c.sky);
         CopyBytes(runtime_contract::HookSignature,c.hookBytes);
-        for(size_t i=0;i<c.contexts.size();++i) runtime_contract::ContextSignatures[i].rva=c.contexts[i].rva;
-        // Context bytes are exact (no relative operands), so only RVAs change.
+        runtime_contract::OwnerBankIndexOffset=bank;
+        for(size_t i=0;i<c.contexts.size();++i)
+        {
+            runtime_contract::ContextSignatures[i].rva=c.contexts[i].rva;
+            std::copy(c.contexts[i].bytes.begin(),c.contexts[i].bytes.end(),runtime_contract::ContextSignatures[i].bytes.begin());
+        }
 #define CDT_APPLY_ANCHOR(Name) runtime_contract::support::Name##Rva=c.support.at(#Name).rva; CopyBytes(runtime_contract::support::Name##Bytes,c.support.at(#Name).bytes)
         // Support-less archived targets compile but never reach this path.
         CDT_APPLY_ANCHOR(AmbientHookA);CDT_APPLY_ANCHOR(AmbientHookB);

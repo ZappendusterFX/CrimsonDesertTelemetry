@@ -6,7 +6,7 @@ namespace cdt::render
 {
 // Private diagnostic only. File = header, paired scene, output, output counter,
 // INPUT full capacity. Input has NO inferred live count and NO public API decode.
-constexpr uint64_t PairInputOwnerOffset = 0x628;
+inline uint64_t PairInputOwnerOffset = 0x628;
 constexpr size_t PairInputOffset = LightBytes + CounterBytes;
 constexpr size_t PairCopyBytes = PairInputOffset + LightBytes;
 struct alignas(8) ManyLightsPairHeader

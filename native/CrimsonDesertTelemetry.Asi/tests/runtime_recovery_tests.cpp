@@ -118,8 +118,13 @@ struct Fixture
         helper=static_cast<std::uint64_t>(static_cast<std::int64_t>(contract::HookRva+Delta+13)+call);
         constexpr std::uint32_t directory=0x6001000;
         const auto exposure=static_cast<std::uint32_t>(support::ExposureDispatchRva+Delta-0x80);
-        std::array<RUNTIME_FUNCTION,5> functions{{
+        const auto ambientA=static_cast<std::uint32_t>(support::AmbientSourceARva+Delta-0x100);
+        const auto ambientB=static_cast<std::uint32_t>(support::AmbientSourceBRva+Delta-0x80);
+        Commit(ambientA,0x1000);Commit(ambientB,0x500);
+        std::array<RUNTIME_FUNCTION,7> functions{{
             {exposure,exposure+0x180,0},
+            {ambientA,ambientA+0x1000,0},
+            {ambientB,ambientB+0x500,0},
             {static_cast<DWORD>(helper),static_cast<DWORD>(helper)+0x100,0},
             {static_cast<DWORD>(support::PhysicsRayRva+Delta),static_cast<DWORD>(support::PhysicsRayRva+Delta)+0x100,0},
             {static_cast<DWORD>(support::PhysicsShapeRva+Delta),static_cast<DWORD>(support::PhysicsShapeRva+Delta)+0x100,0},
@@ -134,6 +139,8 @@ struct Fixture
             const auto displacement=static_cast<std::int32_t>(label-entry-0x47);Put(image,entry+0x43,displacement);
         };
         role(exposure,0x60FE000,"AdaptExposure");
+        role(ambientA,0x60FE300,"PrecomputeAmbient");
+        role(ambientB,0x60FE400,"GenerateAmbientFromEnvironmentAtmosphericScattering");
         role(static_cast<std::uint32_t>(support::PhysicsRayRva+Delta),0x60FE100,"TtWorldCastRay");
         role(static_cast<std::uint32_t>(support::PhysicsShapeRva+Delta),0x60FE200,"TtWorldCastShape");
         Write(support::PhysicsRayRva+Delta+0x2000,support::PhysicsRayBytes);
@@ -199,6 +206,10 @@ int wmain(int argc,wchar_t** argv)
         std::cout<<"PASS actual EXE named physics/exposure roles and common helper unwind entry (disk only)\n";
     }
     Fixture f;
+    Check(cdt::recovery::roles::VerifyRole(f.Base(),Fixture::Size,contract::support::AmbientSourceARva+Delta,
+        "PrecomputeAmbient",false),"fixture ambient A role");
+    Check(cdt::recovery::roles::VerifyRole(f.Base(),Fixture::Size,contract::support::AmbientSourceBRva+Delta,
+        "GenerateAmbientFromEnvironmentAtmosphericScattering",false),"fixture ambient B role");
     f.Reject([](Json& j){j["processId"]=43u;},"wrong PID accepted");
     f.Reject([](Json& j){j["processStartFileTime"]=123456788u;},"reused PID accepted");
     f.Reject([](Json& j){j["executableSha256"]=std::string(64,'0');},"wrong EXE accepted");
@@ -245,10 +256,28 @@ int wmain(int argc,wchar_t** argv)
     auto exposureBytes=contract::support::ExposureDispatchBytes;
     moveCall(exposureBytes,contract::support::ExposureDispatchRva+Delta,21,8);
     auto* functions=reinterpret_cast<RUNTIME_FUNCTION*>(f.image+0x6001000);
-    for(size_t i=0;i<5;++i) if(functions[i].BeginAddress==f.helper)
+    for(size_t i=0;i<7;++i) if(functions[i].BeginAddress==f.helper)
     {functions[i].BeginAddress+=0x1000;functions[i].EndAddress+=0x1000;}
     std::string error;
-    Check(f.Apply(f.json,error),error.c_str());
+    // A common renderer block shift changes only the four proven operands.
+    const auto shiftContext=[&](size_t index,std::initializer_list<size_t> operands) {
+        auto bytes=std::vector<unsigned char>(contract::ContextSignatures[index].bytes.begin(),contract::ContextSignatures[index].bytes.end());
+        for(auto operand:operands) {
+            std::uint32_t value{};std::memcpy(&value,bytes.data()+operand,4);value+=0x20;
+            std::memcpy(bytes.data()+operand,&value,4);
+        }
+        f.Write(contract::ContextSignatures[index].rva+Delta,bytes);
+        f.json["contexts"][index]["bytes"]=Hex(bytes);
+    };
+    shiftContext(3,{3,11,24});
+    shiftContext(5,{3});
+    f.Reject([](Json&){}, "shifted renderer accepted without its dependent fields");
+    for(const char* field:{"RendererGiOffset","RendererSkyOffset","RendererExposureOffset"})
+        f.json["support"]["values"][field]=f.json["support"]["values"][field].get<std::uint32_t>()+0x20;
+    f.Reject([](Json& j){j["support"]["values"]["RendererSkyOffset"]=0x690u;},
+        "inconsistent renderer sky field accepted");
+    const bool applied=f.Apply(f.json,error);
+    Check(applied,error.c_str());
     Check(cdt::runtime_contract::Recovered&&cdt::runtime_contract::HookRva==contract::HookRva+Delta&&
         cdt::runtime_contract::SceneGlobalRva==contract::SceneGlobalRva+Delta&&
         cdt::render::AmbientHookRvas()[0]==contract::SkyProducerRva+Delta&&
@@ -256,6 +285,10 @@ int wmain(int argc,wchar_t** argv)
         cdt::runtime_contract::support::PhysicsRayRva==contract::support::PhysicsRayRva+Delta&&
         cdt::runtime_contract::support::ExposureReturnRva==contract::support::ExposureReturnRva+Delta,
         "successful recovery did not publish all runtime addresses");
+    Check(cdt::runtime_contract::OwnerBankIndexOffset==contract::OwnerBankIndexOffset+0x20&&
+        cdt::runtime_contract::support::RendererSkyOffset==contract::support::RendererSkyOffset+0x20&&
+        std::equal(cdt::runtime_contract::ContextSignatures[5].bytes.begin(),cdt::runtime_contract::ContextSignatures[5].bytes.end(),
+            f.image+contract::ContextSignatures[5].rva+Delta),"renderer layout was not applied atomically");
     Check(!f.Apply(f.json,error),"second activation was accepted");
     // No graphics hooks or game writes: exercise the actual IPC object/header
     // and cancellation using this test process, then a submitted invalid message.

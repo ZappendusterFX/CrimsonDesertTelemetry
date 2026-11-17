@@ -11,6 +11,8 @@ inline auto SceneGlobalRva = native_contract::SceneGlobalRva;
 inline auto SkyProducerRva = native_contract::SkyProducerRva;
 inline auto HookRva = native_contract::HookRva;
 inline auto HookSignature = native_contract::HookSignature;
+inline auto OwnerBankIndexOffset = native_contract::OwnerBankIndexOffset;
+struct ContextSignature { std::uint64_t rva; std::span<std::uint8_t> bytes; };
 @CDT_RUNTIME_CONTEXT_ARRAYS@
 inline std::array<ContextSignature, @CDT_CONTEXT_COUNT@> ContextSignatures{{
 @CDT_CONTEXT_ENTRIES@}};

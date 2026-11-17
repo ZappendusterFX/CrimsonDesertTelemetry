@@ -4,6 +4,8 @@
 
 Inspect positions, colors and brightness of current light contributions from fires, candles, lanterns and glass/crystal lamps, alongside the player and render camera. Use the data in your own overlays, tools and lighting integrations.
 
+**New in 2.2.14** — automatic recovery can handle bounded shifts of the renderer buffer fields and the player's physics-pointer field. This addresses the layout changes found in Steam build **26636972**. Cached starts use normal initialization messages. [2.2.14 release notes](docs/releases/v2.2.14.md).
+
 **New in 2.2.10:** the shared mixer works with **CrimsonHue 2.0.0** to select Hue, OpenRGB and compatible Tuya Wi-Fi 3.5 RGB lighting independently. OpenRGB and Tuya can each run without a Hue bridge. CrimsonHue handles hardware and credentials; CDT provides telemetry and the shared renderer. [2.2.10 release notes](docs/releases/v2.2.10.md).
 
 **New in 2.2.11:** starts directly on Steam build **26448710** and uses the guarded game-menu state for capture pause and optional CrimsonHue menu lighting. Simulation ticks remain independently observable, so a tick stall during a cutscene can leave acquisition enabled. [2.2.11 release notes](docs/releases/v2.2.11.md).
@@ -287,7 +289,7 @@ The external host alone can read player/camera and supported authored lights. **
 
 ## Compatibility and limits
 
-The 2.2.11 package's validated reference is **Steam build 26448710** on Windows,
+The 2.2.14 package's reference is **Steam build 26448710** on Windows,
 EXE file version `1.0.0.3549` and SHA-256
 `25F24E06A1F886E9310FD290F9462F66B480A5E7763D1FE156BFDDAA8D1992B9`.
 The file version and Steam build ID are not the public game patch number. Older
@@ -307,8 +309,9 @@ checks the complete acquisition contract, and displays its progress in the HUD.
 No development tools, downloaded offsets or manual INI editing are needed.
 Saved addresses are keyed by EXE and template hashes and revalidated on later
 starts. Compatibility is labelled `recovered`, never `tested`. This handles
-address relocation within the existing engine layout; changed layouts, register
-roles, physics semantics or shader-only asset changes can still need a mod update.
+address relocation plus the bounded renderer/player field shifts documented in
+the recovery guide. Other layout changes, register roles, physics semantics or
+shader-only asset changes can still need a mod update.
 The release ships with the one-time diagnostic test disabled. Success requires
 fresh requested light/ambient captures and physics measurements where applicable.
 See [runtime recovery](docs/RUNTIME_RECOVERY.md) and the [manual recovery reference](docs/UPDATE_RECOVERY.md).
@@ -345,7 +348,7 @@ under the normal packaged filename. See [INI validation](docs/INI_VALIDATION.md)
 
 GitHub CI covers managed/API tests and native capture, guard and UI tests. Current acceptance and outstanding checks are recorded in [the handover](docs/HANDOVER.md); historical test totals are not a result for a new package.
 
-See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.11.md), [2.0 release notes](docs/releases/v2.0.0.md), [Nexus publishing](docs/NEXUS_PUBLISHING.md) and [Nexus file copy](docs/NEXUS-2.2.11.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
+See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.14.md), [2.0 release notes](docs/releases/v2.0.0.md) and [Nexus publishing](docs/NEXUS_PUBLISHING.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
 
 ## Credits and scope
 

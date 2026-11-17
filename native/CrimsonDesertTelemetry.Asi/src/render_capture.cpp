@@ -627,14 +627,24 @@ bool InputAnchorsVerified(uint64_t moduleBase)
     const bool hotfix = contract::support::Available;
     if ((!hotfix && !recovered && !(contract::BuildId == "25477059" && contract::HookRva == 0x3DA97DA)) ||
         !CheckCapturePreflight(moduleBase)) return false;
-    constexpr std::array<uint8_t, 7> expected{0x49,0x8B,0xB5,0x28,0x06,0,0};
+    std::array<uint8_t, 7> expected{0x49,0x8B,0xB5,0x28,0x06,0,0};
+    uint32_t inputOffset=0x628;
+    if(hotfix)
+    {
+        if(contract::ContextSignatures.size()!=7||contract::ContextSignatures[5].bytes.size()<7) return false;
+        std::memcpy(&inputOffset,contract::ContextSignatures[5].bytes.data()+3,sizeof(inputOffset));
+        if(inputOffset+0x2B8!=contract::OwnerBankIndexOffset) return false;
+        std::memcpy(expected.data()+3,&inputOffset,sizeof(inputOffset));
+    }
     std::array<uint8_t, 7> bytes{};
     if (!ch::mem::SafeRead(reinterpret_cast<void*>(moduleBase + (hotfix ? contract::support::UpstreamInputRva : recovered ? 0x40A175F : 0x3DA9406)), bytes.data(), bytes.size()) || bytes != expected)
         return false;
     constexpr std::array<uint8_t, 12> bind{0x4C,0x8B,0xC6,0x48,0x8B,0xD0,0x48,0x8B,0xCB,0x41,0xFF,0xD2};
     std::array<uint8_t, 12> binding{};
-    return ch::mem::SafeRead(reinterpret_cast<void*>(moduleBase + (hotfix ? contract::support::UpstreamBinderRva : recovered ? 0x40A1815 : 0x3DA94BC)), binding.data(), binding.size()) &&
-        binding == bind;
+    if(!ch::mem::SafeRead(reinterpret_cast<void*>(moduleBase + (hotfix ? contract::support::UpstreamBinderRva : recovered ? 0x40A1815 : 0x3DA94BC)), binding.data(), binding.size())||
+        binding!=bind) return false;
+    PairInputOwnerOffset=inputOffset;
+    return true;
 }
 }
 

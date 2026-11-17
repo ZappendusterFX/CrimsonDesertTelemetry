@@ -262,14 +262,16 @@ internal sealed class CompatibilityImage
     // Natural ray/shape prologues occur in several functions. Their bounded
     // unwind function and the engine's own profiler label establish the role.
     // A first matching prologue must never select a physics entry point.
-    internal ulong FindNamedFunction(string pattern, string name, bool atEntry = true)
+    internal ulong FindNamedFunction(string pattern, string name, bool atEntry = true,
+        Func<ulong, bool>? additionalGuard = null)
     {
         var matches = new List<ulong>();
         foreach (var section in _sections.Where(s => s.Executable && s.RawSize != 0))
             foreach (var offset in SignaturePattern.Parse(pattern).FindAll(Bytes(section)))
             {
                 var rva = section.VirtualAddress + (ulong)offset;
-                if (MatchesNamedFunctionAt(rva, pattern, name, atEntry)) matches.Add(rva);
+                if (MatchesNamedFunctionAt(rva, pattern, name, atEntry) && (additionalGuard is null || additionalGuard(rva)))
+                    matches.Add(rva);
                 if (matches.Count > 1) throw new InvalidDataException("Ambiguous named physics function: " + name);
             }
         return matches.Count == 1 ? matches[0] : throw new InvalidDataException("Missing named physics function: " + name);

@@ -100,6 +100,18 @@ inline bool IsFunctionEntry(std::uint64_t moduleBase, std::uint32_t imageSize, s
     catch (...) { return false; }
 }
 
+inline bool SameFunction(std::uint64_t moduleBase, std::uint32_t imageSize, std::uint64_t first, std::uint64_t second)
+{
+    try
+    {
+        detail::Image image;
+        detail::Function a{}, b{};
+        return image.Open(moduleBase, imageSize) && image.Containing(first, a) && image.Containing(second, b) &&
+            a.begin == b.begin && a.end == b.end;
+    }
+    catch (...) { return false; }
+}
+
 // A bounded RIP-relative LEA to the exact engine profiler label adds role
 // evidence to an independently checked code signature. It is not a substitute
 // for that signature, the caller ABI or the live natural-query controls.

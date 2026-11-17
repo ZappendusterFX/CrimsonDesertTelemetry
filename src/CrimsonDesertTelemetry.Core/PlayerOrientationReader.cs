@@ -78,7 +78,40 @@ public sealed class PlayerOrientationReader
         }
     }
 
+    /// <summary>Search only the final field of the RTTI-verified player owner.</summary>
+    public int? FindPhysicsOffset(IReadOnlyProcessMemory reader, (float X, float Y, float Z) worldPosition,
+        int referenceOffset)
+    {
+        if (referenceOffset is < 0x88 or > 0x3F80 || referenceOffset % 8 != 0)
+            throw new InvalidDataException("Player physics recovery reference is outside bounds.");
+        var owner = ReadOwner(reader);
+        int? found = null;
+        for (var offset = referenceOffset - 0x80; offset <= referenceOffset + 0x80; offset += 8)
+        {
+            try
+            {
+                var physics = ReadPointer(reader, owner + (ulong)offset);
+                _ = ReadTransform(reader, physics, worldPosition);
+                if (found is not null)
+                    throw new InvalidOperationException("Ambiguous player physics fields.");
+                found = offset;
+            }
+            catch (Exception error) when (error is InvalidDataException or OverflowException or
+                System.ComponentModel.Win32Exception) { }
+        }
+        if (ReadOwner(reader) != owner)
+            throw new InvalidDataException("Player owner changed during physics field recovery.");
+        return found;
+    }
+
     private ChainResult ReadChain(IReadOnlyProcessMemory reader)
+    {
+        var owner = ReadOwner(reader);
+        var physics = ReadNext(reader, owner, _definition.OwnerToPhysicsOffset, "owner", "physics");
+        return new ChainResult(physics);
+    }
+
+    private ulong ReadOwner(IReadOnlyProcessMemory reader)
     {
         // Each hop names itself. The chain has six offsets and any one of them can be
         // invalidated by a game patch; "the chain failed" does not narrow that down,
@@ -96,9 +129,7 @@ public sealed class PlayerOrientationReader
             "intermediate", "control");
         CheckType(reader, control, 2, "control");
 
-        var owner = ReadNext(reader, control, _definition.ControlToOwnerOffset, "control", "owner");
-        var physics = ReadNext(reader, owner, _definition.OwnerToPhysicsOffset, "owner", "physics");
-        return new ChainResult(physics);
+        return ReadNext(reader, control, _definition.ControlToOwnerOffset, "control", "owner");
     }
 
     private TransformResult ReadTransform(IReadOnlyProcessMemory reader, ulong physics,

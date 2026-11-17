@@ -13,6 +13,16 @@ internal static class PlayerOrientationReaderTests
         fixture.Q(Fixture.Owner + (ulong)fixture.Root.OwnerToPhysicsOffset, 0);
         Check(fixture.Reader.Read(fixture, Fixture.Player) is null && fixture.Reader.LastFailureReason is not null,
             "Broken physics pointer retained an old orientation.");
+        var originalOffset = fixture.Root.OwnerToPhysicsOffset;
+        fixture.Q(Fixture.Owner + (ulong)originalOffset + 0x10, Fixture.Physics);
+        Check(fixture.Reader.FindPhysicsOffset(fixture, Fixture.Player, originalOffset) == originalOffset + 0x10,
+            "Unique shifted physics field was not recovered.");
+        fixture.Root.OwnerToPhysicsOffset += 0x10;
+        Check(fixture.Reader.Read(fixture, Fixture.Player) is not null, "Recovered field did not pass the full player reader.");
+        fixture.Q(Fixture.Owner + (ulong)originalOffset + 0x18, Fixture.Physics);
+        try { fixture.Reader.FindPhysicsOffset(fixture, Fixture.Player, originalOffset); }
+        catch (InvalidOperationException) { return; }
+        throw new InvalidOperationException("Ambiguous physics fields were accepted.");
     }
 
     public static void IdentityAndRaces()
@@ -25,10 +35,14 @@ internal static class PlayerOrientationReaderTests
         wrongPosition.F(Fixture.Physics + (ulong)wrongPosition.Root.PositionOffset, -500.5f);
         Check(wrongPosition.Reader.Read(wrongPosition, Fixture.Player) is null &&
               wrongPosition.Reader.LastFailureReason!.Contains("does not match"), "Plausible non-player pose accepted.");
+        Check(wrongPosition.Reader.FindPhysicsOffset(wrongPosition, Fixture.Player,
+            wrongPosition.Root.OwnerToPhysicsOffset) is null, "Physics recovery accepted a non-player transform.");
         var wrongBasis = new Fixture();
         wrongBasis.F(Fixture.Physics + (ulong)wrongBasis.Root.BasisXOffset + 4, 1);
         Check(wrongBasis.Reader.Read(wrongBasis, Fixture.Player) is null &&
               wrongBasis.Reader.LastFailureReason!.Contains("orthonormal"), "Invalid basis accepted.");
+        Check(wrongBasis.Reader.FindPhysicsOffset(wrongBasis, Fixture.Player,
+            wrongBasis.Root.OwnerToPhysicsOffset) is null, "Physics recovery accepted an invalid basis.");
         var racing = new Fixture { ReplaceLeafOnSecondRead = true };
         Check(racing.Reader.Read(racing, Fixture.Player) is null &&
               racing.Reader.LastFailureReason!.Contains("replaced"), "Replaced leaf published orientation.");

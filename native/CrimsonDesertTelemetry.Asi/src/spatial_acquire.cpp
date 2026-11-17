@@ -25,7 +25,7 @@ namespace
 // candidate without promoting the build to a supported release.
 constexpr bool HotfixGameBuild = native_contract::support::Available;
 constexpr bool RecoveryGameBuild = native_contract::BuildId == "26361232" || HotfixGameBuild;
-constexpr uint32_t RendererGiOffset = HotfixGameBuild ? native_contract::support::RendererGiOffset : RecoveryGameBuild ? 0x688 : 0x660;
+uint32_t RendererGiOffset() { return HotfixGameBuild ? runtime_contract::support::RendererGiOffset : RecoveryGameBuild ? 0x688 : 0x660; }
 constexpr bool UpdatedGameBuild = native_contract::BuildId == "25477059";
 uint32_t DispatchRva() { return HotfixGameBuild ? static_cast<uint32_t>(runtime_contract::support::SpatialDispatchRva) : RecoveryGameBuild ? 0x3B744D0 : UpdatedGameBuild ? 0x389C000 : 0x37B6520; }
 uint32_t ExposureReturnRva() { return HotfixGameBuild ? runtime_contract::support::ExposureReturnRva : RecoveryGameBuild ? 0x38F774A : UpdatedGameBuild ? 0x362595A : 0x3547264; }
@@ -81,7 +81,7 @@ bool Resolve(uint64_t owner, uint64_t command, ID3D12Resource*& resource, ID3D12
 {
     uint64_t renderer{}, back{}, outer{}, storage{}, holder{}, sceneOwner{}, sceneData{};
     uint32_t width{}, height{}, depth{};
-    if (!Read(owner + 0x10, renderer) || !Read(renderer + RendererGiOffset, back) || back != owner ||
+    if (!Read(owner + 0x10, renderer) || !Read(renderer + RendererGiOffset(), back) || back != owner ||
         !Read(owner + 0x4B8, outer) || !Read(outer + 0x30, storage) ||
         !Read(storage + 0x10, back) || back != outer || !Read(storage + 0x100, reinterpret_cast<uint64_t&>(resource)) || !resource ||
         !Read(storage + 0xD0, width) || !Read(storage + 0xD4, height) || !Read(storage + 0xD8, depth) ||

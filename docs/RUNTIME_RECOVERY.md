@@ -44,6 +44,11 @@ pointers, credentials or a promoted build definition. A hit repeats address,
 role and live checks. A malformed/stale/inconsistent entry falls back to one
 fresh search. Failure to write the cache does not block otherwise valid recovery.
 
+Cache version 2 also stores the validated owner-to-physics field offset.
+Earlier cache files remain preserved. The resolver rechecks recovered renderer
+operands from their instruction bytes, and the player field must still pass the
+live typed-chain and pose checks on every launch.
+
 Every new game process using these addresses repeats the guarded startup and
 live checks, including cache hits for the same EXE. The HUD calls this
 `INITIALIZING` and the completion notice says `Telemetry is ready`.
@@ -74,11 +79,28 @@ in slot 5, executable targets, the repeated slots and the RIP-relative store
 in slot 1 that installs the same table. Build 26480954 changed the neighboring
 table after slot 8. Its entries are outside the collector guard.
 
-Only relative address operands may change inside guarded instructions. The reviewed
-field offsets, register assignments, command/resource ABI, light packing and
-physics query profile remain fixed. Changed function relationships, missing or
-ambiguous roles, a changed layout, foreign natural-query profile or invalid live
-data are refused. Shader-only changes remain a limitation: there is still no
+Recovery permits a common shift of the renderer buffer block by at most 0x100
+bytes, aligned to eight bytes. Only the four displacement operands in the bank
+and input-load contexts may differ. Input, counter and output spacing and the
+bank-index relationship must agree. Native validation independently repeats these
+checks before publishing the offsets. GI, sky and exposure readers use the
+recovered fields and retain their object-backpointer and resource checks.
+
+If a progressing scene has a valid position/camera but the final player physics
+field fails, the host checks only the 33 aligned fields within 0x80 bytes of the
+reference field in the RTTI-verified player owner. A unique candidate must pass
+the existing orthonormal basis, handedness and chunk-position agreement checks.
+The full player chain and advancing scene must then pass the normal readiness
+window before activation. Multiple candidates stop initialization.
+
+The atmospheric ambient source is identified by its profiler role and the
+paired dispatch-hook context in the same unwind function. Its distance from the
+other ambient function can change.
+
+Register assignments, command/resource ABI, light packing, other field offsets
+and physics query profile retain their existing guards. Missing or ambiguous
+roles, inconsistent buffer shifts and invalid live data are refused.
+Shader-only changes remain a limitation: there is still no
 active PSO/shader-identity gate. This feature cannot guarantee compatibility with
 every future engine update or silently repair new data semantics.
 

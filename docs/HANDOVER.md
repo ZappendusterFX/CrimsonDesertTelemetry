@@ -1,4 +1,38 @@
-# Current checkpoint — 2026-11-07, normal startup wording for cached addresses
+# Current checkpoint — 2026-11-17, bounded layout recovery implemented
+
+Owner reported an updated game stuck at INITIALIZING while in the world.
+Steam build 26636972 / EXE 1.0.0.3663, SHA256
+`8BE67178D9B9A149C361A731051665E0BA4D441E250AE1DFE645BD6E524345C8`,
+is preserved at `artifacts/recovery/20261117-200310-build-26636972/`.
+Installed 2.2.13 had plausible player XYZ and progressing camera data, but the
+typed player chain ended at the obsolete owner+0x2C0 field. The unique nearby
+owner+0x2D0 field passes the full existing player transform checks. The renderer
+buffer block moved +0x20, with bank index at +0x900 and input at +0x648.
+The atmospheric ambient source also moved +0x70 relative to the old assumption.
+
+At the owner's request, extended automatic recovery for these bounded changes.
+Renderer instructions retain their opcode/register guards and fixed field
+relationships, with eight-byte aligned shifts capped at 0x100. Native validation
+independently checks and atomically applies the fields before capture. GI, sky,
+exposure and input readers now use those recovered values. Player recovery checks
+only 33 fields around the last physics-pointer field of the typed owner, requires
+a unique full pose match and repeats the progressing-world gate. Cache v2 retains
+the player field. Ambiguous candidates stop initialization.
+
+All 30 roles and cache reuse passed on the new EXE using the existing 26448710
+reference. A read-only live check independently recovered +0x2D0 and validated
+the pose. Evidence is `artifacts/adaptive-recovery-26636972-8cf161092a424fad99a832a98ecda275.json`.
+94 managed and 46 native tests passed, including rejection and shifted-layout
+controls. Logs are `artifacts/adaptive-recovery-*-20261117.log`.
+Cold replay, cache reuse and corrupted-cache fallback passed on preserved
+26636972, 26480954 and 26448710. The archived 26361232 native contract also
+builds and passes its no-recovery check.
+
+Owner requested a direct GitHub release and will test after installing.
+Version 2.2.14 uses production code and the existing 26448710 reference. Exact
+package/full capture acceptance remains pending owner installation.
+
+# Previous checkpoint — 2026-11-07, normal startup wording for cached addresses
 
 Owner reported "Update Recovery" again on startup and confirmed being in the
 main menu. Installed Core 2.2.12 read the existing 26480954 cache successfully

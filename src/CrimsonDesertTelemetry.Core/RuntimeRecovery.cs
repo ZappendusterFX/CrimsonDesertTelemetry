@@ -23,7 +23,7 @@ public sealed record RecoveryInstructionGuard(string Name, ulong Rva, string Byt
 
 internal sealed record RecoveryAddress(string Name, ulong Rva, ulong? Target, string Bytes);
 internal sealed record RecoveryCache(int Version, string ExecutableSha256, string TemplateFingerprint,
-    List<RecoveryAddress> Addresses);
+    List<RecoveryAddress> Addresses, int PlayerPhysicsOffset);
 internal sealed class RecoverySession
 {
     public required CompatibilityImage Image { get; init; }
@@ -32,15 +32,15 @@ internal sealed class RecoverySession
 }
 
 /// <summary>
-/// Conditional recovery of the existing, unchanged acquisition contract. This
+/// Conditional recovery of the reviewed acquisition contract and bounded field shifts. This
 /// resolver only reads the executable. The host must establish a progressing
 /// playable scene between ResolveReadiness and ResolveNative; native activation
 /// must independently validate the proposed contract against live image bytes.
-/// No layout guessing, collision-mask guessing, heap scan or game call occurs.
+/// Renderer field shifts must agree across their guarded instructions.
 /// </summary>
 public static class RuntimeRecovery
 {
-    private const int CacheVersion = 1;
+    private const int CacheVersion = 2;
     private const int Total = 30;
     private const string RayCallerPrefix = "48 8B 01 4D 8B C7 49 8B D4 FF 90 E8 01 00 00";
     private const string ShapeCallerPrefix = "48 8B 01 4C 8B 90 F0 01 00 00 48 8B 85 B0 00 00 00 48 89 44 24 20 4D 8B CF 4D 8B C4 49 8B D5 41 FF D2";
@@ -60,20 +60,26 @@ public static class RuntimeRecovery
         var hash = GameDiscovery.ComputeSha256(executable);
         var fingerprint = Fingerprint(reference);
         var image = CompatibilityImage.Load(executable);
-        var cached = ReadCache(cacheDirectory, hash, fingerprint);
-        try { return ResolveReadinessCore(executable, reference, image, hash, fingerprint, cached, progress, cancellation); }
+        var cached = ReadCache(cacheDirectory, hash, fingerprint, out var physicsOffset);
+        try { return ResolveReadinessCore(executable, reference, image, hash, fingerprint, cached, physicsOffset, progress, cancellation); }
         catch (InvalidDataException) when (cached is not null)
         {
             progress?.Invoke(new("cache-rejected", 0, Total, "Cached addresses failed validation; checking current game addresses."));
-            return ResolveReadinessCore(executable, reference, image, hash, fingerprint, null, progress, cancellation);
+            return ResolveReadinessCore(executable, reference, image, hash, fingerprint, null, null, progress, cancellation);
         }
     }
 
     private static RecoveryReadiness ResolveReadinessCore(string executable, BuildDefinition reference,
         CompatibilityImage image, string hash, string fingerprint, Dictionary<string, RecoveryAddress>? cached,
-        Action<RecoveryProgress>? progress, CancellationToken cancellation)
+        int? physicsOffset, Action<RecoveryProgress>? progress, CancellationToken cancellation)
     {
         var definition = Clone(reference);
+        if (physicsOffset is { } offset)
+        {
+            if (Math.Abs(offset - reference.PlayerRoot!.OwnerToPhysicsOffset) > 0x80 || offset % 8 != 0)
+                throw new InvalidDataException("Cached player physics field exceeds recovery bounds.");
+            definition.PlayerRoot!.OwnerToPhysicsOffset = offset;
+        }
         definition.ExecutableSha256 = hash;
         definition.ExecutableVersion = FileVersionInfo.GetVersionInfo(executable).FileVersion ?? reference.ExecutableVersion;
         definition.AllowAutomaticCompatibility = false;
@@ -150,6 +156,7 @@ public static class RuntimeRecovery
         var image = session.Image;
         var cached = session.Cached;
         var definition = Clone(reference);
+        definition.PlayerRoot!.OwnerToPhysicsOffset = readiness.Definition.PlayerRoot!.OwnerToPhysicsOffset;
         definition.ExecutableSha256 = readiness.ExecutableSha256;
         definition.ExecutableVersion = readiness.Definition.ExecutableVersion;
         definition.AllowAutomaticCompatibility = false;
@@ -190,13 +197,18 @@ public static class RuntimeRecovery
             var context = native.ContextSignatures[index];
             var expected = original.ContextSignatures[index];
             var name = "context-" + index;
-            context.Rva = index == 0 ? entry : Find(name, expected.Bytes,
+            context.Rva = index == 0 ? entry : Find(name, NativeRendererLayout.ContextPattern(index, expected.Bytes),
                 () => index == 4 ? image.FindFunction(expected.Bytes, expected.Purpose)
                     : Relative(entry, original.ContextSignatures[0].Rva, expected.Rva, 0x4000),
                 rva => index == 4 || (rva == Relative(entry, original.ContextSignatures[0].Rva, expected.Rva, 0x4000) &&
                     image.SameUnwindFunction(entry, rva, firstIsEntry: true)));
             context.Bytes = session.Addresses["native-" + name].Bytes;
         }
+        native.Wrapper.OwnerBankIndexOffset = NativeRendererLayout.Offset(native.ContextSignatures[3].Bytes, 3);
+        _ = NativeRendererLayout.Validate(native);
+        var rendererShift = native.Wrapper.OwnerBankIndexOffset - original.Wrapper.OwnerBankIndexOffset;
+        foreach (var field in new[] { "RendererGiOffset", "RendererSkyOffset", "RendererExposureOffset" })
+            support.Values[field] = checked((uint)(originalSupport.Values[field] + rendererShift));
         var hookPattern = HookPattern(original.HookSignature);
         native.HookRva = Find("hook", hookPattern,
             () => Relative(entry, original.ContextSignatures[0].Rva, original.HookRva, 0x4000),
@@ -216,9 +228,12 @@ public static class RuntimeRecovery
             rva => image.MatchesNamedFunctionAt(rva, Source("AmbientSourceA").RelocationPattern, "PrecomputeAmbient", atEntry: false));
         var hookA = Support("AmbientHookA", () => Relative(sourceA, Source("AmbientSourceA").Rva, Source("AmbientHookA").Rva),
             rva => rva == Relative(sourceA, Source("AmbientSourceA").Rva, Source("AmbientHookA").Rva) && image.SameUnwindFunction(sourceA, rva));
-        var sourceB = Support("AmbientSourceB", () => Relative(sourceA, Source("AmbientSourceA").Rva, Source("AmbientSourceB").Rva),
-            rva => rva == Relative(sourceA, Source("AmbientSourceA").Rva, Source("AmbientSourceB").Rva) &&
-                image.MatchesNamedFunctionAt(rva, Source("AmbientSourceB").RelocationPattern,
+        var sourceB = Support("AmbientSourceB", () => image.FindNamedFunction(Source("AmbientSourceB").RelocationPattern,
+                "GenerateAmbientFromEnvironmentAtmosphericScattering", atEntry: false,
+                additionalGuard: rva => image.MatchesFunctionAt(
+                    Relative(rva, Source("AmbientSourceB").Rva, Source("AmbientHookB").Rva),
+                    Source("AmbientHookB").RelocationPattern)),
+            rva => image.MatchesNamedFunctionAt(rva, Source("AmbientSourceB").RelocationPattern,
                     "GenerateAmbientFromEnvironmentAtmosphericScattering", atEntry: false));
         Support("AmbientHookB", () => Relative(sourceB, Source("AmbientSourceB").Rva, Source("AmbientHookB").Rva),
             rva => rva == Relative(sourceB, Source("AmbientSourceB").Rva, Source("AmbientHookB").Rva) && image.SameUnwindFunction(sourceB, rva));
@@ -269,7 +284,8 @@ public static class RuntimeRecovery
         if (session.Addresses.Count != Total) throw new InvalidDataException("Recovery did not cover the complete contract.");
         // Persist only bounded RVAs/instruction guards, never process pointers.
         // A cache hit reruns all role/byte checks above and still needs live gates.
-        WriteCache(cacheDirectory, readiness.ExecutableSha256, readiness.TemplateFingerprint, session.Addresses.Values.ToList());
+        WriteCache(cacheDirectory, readiness.ExecutableSha256, readiness.TemplateFingerprint, session.Addresses.Values.ToList(),
+            definition.PlayerRoot!.OwnerToPhysicsOffset);
         Tick("addresses-validated", session, progress, "Addresses verified; validating live acquisition before enabling telemetry.");
         return new(definition, readiness.ExecutableSha256, readiness.TemplateFingerprint, cached is not null, Report(session))
         {
@@ -309,8 +325,10 @@ public static class RuntimeRecovery
     }
     private static string CachePath(string directory, string hash, string fingerprint) =>
         Path.Combine(Path.GetFullPath(directory), hash + "-" + fingerprint + ".json");
-    private static Dictionary<string, RecoveryAddress>? ReadCache(string? directory, string hash, string fingerprint)
+    private static Dictionary<string, RecoveryAddress>? ReadCache(string? directory, string hash, string fingerprint,
+        out int? physicsOffset)
     {
+        physicsOffset = null;
         if (directory is null) return null;
         try
         {
@@ -321,10 +339,12 @@ public static class RuntimeRecovery
             RejectDuplicateProperties(document.RootElement);
             var cache = document.RootElement.Deserialize<RecoveryCache>(JsonOptions);
             if (cache is null || cache.Version != CacheVersion || cache.ExecutableSha256 != hash ||
-                cache.TemplateFingerprint != fingerprint || cache.Addresses is null || cache.Addresses.Count != Total ||
+                cache.TemplateFingerprint != fingerprint || cache.PlayerPhysicsOffset is < 8 or > 0x4000 ||
+                cache.PlayerPhysicsOffset % 8 != 0 || cache.Addresses is null || cache.Addresses.Count != Total ||
                 cache.Addresses.Any(a => a is null || string.IsNullOrEmpty(a.Name) || a.Name.Length > 80 ||
                     a.Rva is 0 or > int.MaxValue || a.Target > int.MaxValue || a.Bytes is null || a.Bytes.Length > 128 * 3) ||
                 cache.Addresses.Select(a => a.Name).Distinct(StringComparer.Ordinal).Count() != Total) return null;
+            physicsOffset = cache.PlayerPhysicsOffset;
             return cache.Addresses.ToDictionary(a => a.Name, StringComparer.Ordinal);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or ArgumentException) { return null; }
@@ -343,7 +363,8 @@ public static class RuntimeRecovery
         else if (value.ValueKind == JsonValueKind.Array)
             foreach (var child in value.EnumerateArray()) RejectDuplicateProperties(child);
     }
-    private static void WriteCache(string? directory, string hash, string fingerprint, List<RecoveryAddress> addresses)
+    private static void WriteCache(string? directory, string hash, string fingerprint, List<RecoveryAddress> addresses,
+        int physicsOffset)
     {
         if (directory is null) return;
         string? temporary = null;
@@ -353,7 +374,7 @@ public static class RuntimeRecovery
             var path = CachePath(directory, hash, fingerprint);
             temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
             using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-                JsonSerializer.Serialize(stream, new RecoveryCache(CacheVersion, hash, fingerprint, addresses), JsonOptions);
+                JsonSerializer.Serialize(stream, new RecoveryCache(CacheVersion, hash, fingerprint, addresses, physicsOffset), JsonOptions);
             File.Move(temporary, path, overwrite: true);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { /* Cache is optional, never activation authority. */ }

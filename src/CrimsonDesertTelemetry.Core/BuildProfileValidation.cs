@@ -136,7 +136,7 @@ public static class BuildProfileValidation
             native.Wrapper is not { InnerOffset: 48, StrideOffset: 192, CountOffset: 196, ResourceOffset: 360,
                 NativeListOffset: 8 } ||
             native.Wrapper.CommandHolderOffset != (currentSceneLayout ? 0x8C0 : 0x800) ||
-            native.Wrapper.OwnerBankIndexOffset != (currentSceneLayout ? 0x8E0 : 0x8F8) ||
+            (native.Support is null && native.Wrapper.OwnerBankIndexOffset != (currentSceneLayout ? 0x8E0 : 0x8F8)) ||
             native.Scene is not { ByteCount: 2816, FrameOffset: 32, ScreenOffset: 48,
                 PositionOffset: 128, DirectionOffset: 144, ViewRelativeOffset: 160, EarthRadiusOffset: 2752, EarthRadius: 6360000f } ||
             native.Scene.RootPointerOffset != definition.EngineCamera.SourcePointerOffset ||
@@ -177,9 +177,10 @@ public static class BuildProfileValidation
                 Fail("Recovery fingerprint does not describe the exact guarded instruction bytes.");
         }
         foreach (var key in keys.Where(k => k.EndsWith("Rva", StringComparison.Ordinal))) Rva(support.Values[key]);
+        var rendererShift = NativeRendererLayout.Validate(native);
         if ((support.Values["PhysicsCollectorVtableRva"] & 7) != 0 || support.Values["PhysicsQueryProfile"] != 0x40000017 ||
-            support.Values["AmbientSourceOffset"] != 0xA8 || support.Values["RendererGiOffset"] != 0x688 ||
-            support.Values["RendererSkyOffset"] != 0x690 || support.Values["RendererExposureOffset"] != 0x6B8 ||
+            support.Values["AmbientSourceOffset"] != 0xA8 || support.Values["RendererGiOffset"] != 0x688 + rendererShift ||
+            support.Values["RendererSkyOffset"] != 0x690 + rendererShift || support.Values["RendererExposureOffset"] != 0x6B8 + rendererShift ||
             support.Anchors.Single(a => a.Name == "AmbientHookA").Rva != native.SkyProducerRva ||
             support.Values["UpstreamInputRva"] != native.ContextSignatures[^2].Rva ||
             support.Values["UpstreamBinderRva"] != native.ContextSignatures[^1].Rva ||

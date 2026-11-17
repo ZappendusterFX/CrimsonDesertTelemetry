@@ -85,9 +85,11 @@ internal static class RecoveryHost
             var world = checked(module + readiness.PlayerWorldRva);
             using var reader = new ReadOnlyProcess(process);
             var camera = new EngineCameraReader(reader, module, readiness.Definition.EngineCamera!);
-            var orientation = PlayerOrientationReader.FromResolvedAddress(world, reference.PlayerRoot!,
+            var playerRoot = readiness.Definition.PlayerRoot!;
+            var orientation = PlayerOrientationReader.FromResolvedAddress(world, playerRoot,
                 allowResearchCandidate: reference.Status == "research");
-            await WaitForWorld(process, reader, positions, orientation, camera, state, cancellation, diagnostic);
+            await WaitForWorld(process, reader, positions, orientation, playerRoot,
+                reference.PlayerRoot!.OwnerToPhysicsOffset, camera, state, cancellation, diagnostic);
             if (diagnostic && !alreadySubmitted)
             {
                 cancellation.ThrowIfCancellationRequested();
@@ -102,7 +104,10 @@ internal static class RecoveryHost
             if (diagnostic && !alreadySubmitted && (readiness.CacheHit || result.CacheHit))
                 throw new InvalidDataException("Recovery test unexpectedly reused saved addresses; activation refused.");
             // A load/menu transition during the scan must not authorize a delayed activation.
-            await WaitForWorld(process, reader, positions, orientation, camera, state, cancellation, diagnostic);
+            await WaitForWorld(process, reader, positions, orientation, playerRoot,
+                reference.PlayerRoot!.OwnerToPhysicsOffset, camera, state, cancellation, diagnostic);
+            if (result.Definition.PlayerRoot!.OwnerToPhysicsOffset != playerRoot.OwnerToPhysicsOffset)
+                throw new InvalidDataException("The player physics field changed during final startup validation.");
             if (!alreadySubmitted)
             {
                 state.SetRecovery(new("activating", diagnostic ? "Recovery test: checking live addresses" : "Checking telemetry addresses",
@@ -131,7 +136,7 @@ internal static class RecoveryHost
             return new(build, positions, world, request.RequestedFeatures, result.CacheHit, diagnostic);
         }
         catch (Exception error) when (error is InvalidDataException or Win32Exception or IOException or
-            UnauthorizedAccessException or OverflowException or ArgumentException)
+            UnauthorizedAccessException or OverflowException or ArgumentException or InvalidOperationException)
         {
             var detail = error.Message[..Math.Min(error.Message.Length, 440)];
             Console.Error.WriteLine("Automatic recovery stopped: " + detail);
@@ -152,11 +157,14 @@ internal static class RecoveryHost
     }
 
     private static async Task WaitForWorld(Process process, ReadOnlyProcess reader, StaticPositionAddresses position,
-        PlayerOrientationReader orientation, EngineCameraReader camera, TelemetryServerState state,
+        PlayerOrientationReader orientation, PlayerRootDefinition playerRoot, int referencePhysicsOffset,
+        EngineCameraReader camera, TelemetryServerState state,
         CancellationToken cancellation, bool diagnostic)
     {
         var watch = Stopwatch.StartNew();
         var gate = new RecoveryReadinessGate();
+        var sceneGate = new RecoveryReadinessGate();
+        var nextPhysicsCheck = TimeSpan.Zero;
         var lastReason = "Player and camera are not available yet.";
         state.SetRecovery(new("waiting-for-world", diagnostic ? "Recovery test: waiting for the game world" : "Waiting for the game world",
             "Load a save and enter the game. Waiting for live player and camera data."));
@@ -168,12 +176,26 @@ internal static class RecoveryHost
                 var player = StaticPositionProbe.Read(reader, position);
                 var pose = orientation.Read(reader, player);
                 _ = camera.Capture(player);
+                if (pose is null && sceneGate.Observe(camera.LastFrameNumber, true, watch.Elapsed) &&
+                    watch.Elapsed >= nextPhysicsCheck)
+                {
+                    nextPhysicsCheck = watch.Elapsed + TimeSpan.FromSeconds(1);
+                    var offset = orientation.FindPhysicsOffset(reader, player, referencePhysicsOffset);
+                    if (offset is { } physicsOffset)
+                    {
+                        playerRoot.OwnerToPhysicsOffset = physicsOffset;
+                        pose = orientation.Read(reader, player);
+                    }
+                }
                 if (gate.Observe(camera.LastFrameNumber, pose is not null, watch.Elapsed)) return;
                 lastReason = pose is null ? orientation.LastFailureReason ?? "Player orientation is unavailable." :
                     "Camera frames have not advanced long enough.";
+                if (pose is null)
+                    state.SetRecovery(new("waiting-for-world", "Waiting for valid player data",
+                        "The scene is available. " + lastReason[..Math.Min(350, lastReason.Length)]));
             }
             catch (Exception e) when (e is InvalidDataException or Win32Exception or OverflowException)
-            { gate.Reset(); lastReason = e.Message; }
+            { gate.Reset(); sceneGate.Reset(); lastReason = e.Message; }
             if (diagnostic && watch.Elapsed > TimeSpan.FromSeconds(60))
                 state.SetRecovery(new("waiting-for-world", "Recovery test: waiting for valid data",
                     lastReason[..Math.Min(350, lastReason.Length)]));

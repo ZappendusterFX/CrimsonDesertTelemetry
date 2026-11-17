@@ -71,6 +71,30 @@ internal static class RuntimeRecoveryTests
 
     public static void SyntheticRecovery()
     {
+        using (var shifted = new Fixture())
+        {
+            // Keep all instruction and register bytes. Move the related buffer fields.
+            shifted.ShiftRendererFields(0x20);
+            var ready = RuntimeRecovery.ResolveReadiness(shifted.Path, shifted.Reference);
+            ready.Definition.PlayerRoot!.OwnerToPhysicsOffset += 0x10;
+            var recovered = RuntimeRecovery.ResolveNative(ready, shifted.Reference, shifted.Cache);
+            Check(recovered.Definition.NativeCapture!.Wrapper.OwnerBankIndexOffset == 0x900 &&
+                recovered.Definition.NativeCapture.Support!.Values["RendererSkyOffset"] == 0x6B0,
+                "Renderer block shift was not recovered coherently.");
+            var cached = RuntimeRecovery.ResolveReadiness(shifted.Path, shifted.Reference, shifted.Cache);
+            Check(cached.CacheHit && cached.Definition.PlayerRoot!.OwnerToPhysicsOffset ==
+                ready.Definition.PlayerRoot.OwnerToPhysicsOffset &&
+                RuntimeRecovery.ResolveNative(cached, shifted.Reference, shifted.Cache).CacheHit,
+                "Cached shifted renderer/player fields were not revalidated.");
+        }
+        foreach (var shift in new[] { 1, 0x108 })
+        {
+            using var invalidShift = new Fixture();
+            invalidShift.ShiftRendererFields(shift);
+            var ready = RuntimeRecovery.ResolveReadiness(invalidShift.Path, invalidShift.Reference);
+            Reject(() => RuntimeRecovery.ResolveNative(ready, invalidShift.Reference),
+                "Unaligned or excessive renderer field shift accepted.");
+        }
         using (var fixture = new Fixture())
         {
             var readiness = RuntimeRecovery.ResolveReadiness(fixture.Path, fixture.Reference, fixture.Cache);
@@ -249,6 +273,19 @@ internal static class RuntimeRecoveryTests
         }
         public void Put(ulong rva, string pattern) => Put(rva, pattern.Split(' ').Select(t => t is "?" or "??" ? (byte)0x11 : Convert.ToByte(t, 16)).ToArray());
         public void Put(ulong rva, byte[] value) => value.CopyTo(bytes, At(rva));
+        public void ShiftRendererFields(int shift)
+        {
+            foreach (var index in new[] { 3, 5 })
+            {
+                var context = Reference.NativeCapture!.ContextSignatures[index];
+                var rva = 0x10000 + context.Rva - Reference.NativeCapture.ContextSignatures[0].Rva;
+                var code = Convert.FromHexString(context.Bytes.Replace(" ", ""));
+                foreach (var at in index == 3 ? new[] { 3, 11, 24 } : new[] { 3 })
+                    BitConverter.GetBytes(BitConverter.ToInt32(code, at) + shift).CopyTo(code, at);
+                Put(rva, code);
+            }
+            Save();
+        }
         public void Call(ulong rva, ulong target)
         {
             Put(rva, [0xE8]);
