@@ -32,6 +32,13 @@ Owner requested a direct GitHub release and will test after installing.
 Version 2.2.14 uses production code and the existing 26448710 reference. Exact
 package/full capture acceptance remains pending owner installation.
 
+Built ZIP `artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.14-ModManagers.zip`
+from `3495111`, Research OFF, 1,195,600 bytes, SHA256
+`0321B4ACD7990B5F8D5055C6933D88F61B32C6A0BF457BA3F2EC268BC5026410`.
+Production INI, profile and expanded/ZIP validation passed. The packaged native
+build passed all 46 tests. Details are in
+`docs/releases/v2.2.14-validation.md` and `artifacts/release-2.2.14-*`.
+
 # Previous checkpoint — 2026-11-07, normal startup wording for cached addresses
 
 Owner reported "Update Recovery" again on startup and confirmed being in the
