@@ -1,4 +1,14 @@
-# Current checkpoint — 2026-11-17, CDT 2.2.14 published; owner game test next
+# Current checkpoint — 2026-11-17, owner confirms CDT 2.2.14 works
+
+Owner reported success after installation. The game had already exited when
+checked. All five deployed ASI/DLL/CFG hashes match the exact public 2.2.14 ZIP.
+The 20:43:35 native session log confirms the guarded contract was accepted,
+INPUT/sky/continuous physics enabled, menu registry resolved, playable-world
+signal received and recurring paired capture ready at 20 Hz. The host records
+a full search. Its actual per-EXE cache v2 has all 30 addresses and physics
+offset 720 (0x2D0), saved at 20:45:09 CET. No fresh API progression or physical
+lamp comparison was independently measured after the owner's report.
+The recovery result is owner-accepted. Resume on new owner feedback.
 
 Stable Latest v2.2.14 is public on GitHub, tag `928caad`. The exact local
 production ZIP and SHA256SUMS were uploaded and independently downloaded through
@@ -6,11 +16,6 @@ their public URLs. Both hashes match. Release 44160233428, main CI 44160233322
 and tag CI 44160233337 passed, including API and native checks. Nexus automatic
 publication remains disabled; run 44161372711 skipped. Publication receipt is
 `artifacts/release-2.2.14-github-publication.json`.
-
-Next OWNER ONLY: close the game, install the complete 2.2.14 ZIP through DMM,
-restart and load a save, then report for full recovery/capture acceptance.
-Only read-only data/code checks and automated tests have run on 26636972.
-No assistant installation or waiting/polling for the owner's action.
 
 Owner reported an updated game stuck at INITIALIZING while in the world.
 Steam build 26636972 / EXE 1.0.0.3663, SHA256
@@ -40,9 +45,7 @@ Cold replay, cache reuse and corrupted-cache fallback passed on preserved
 26636972, 26480954 and 26448710. The archived 26361232 native contract also
 builds and passes its no-recovery check.
 
-Owner requested a direct GitHub release and will test after installing.
-Version 2.2.14 uses production code and the existing 26448710 reference. Exact
-package/full capture acceptance remains pending owner installation.
+Version 2.2.14 uses production code and the existing 26448710 reference.
 
 Built ZIP `artifacts/mod-manager/CrimsonDesertTelemetry-v2.2.14-ModManagers.zip`
 from `3495111`, Research OFF, 1,195,600 bytes, SHA256
