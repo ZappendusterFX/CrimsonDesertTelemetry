@@ -100,9 +100,8 @@ int CheckUpdate(string[] commandArgs)
 int Discover()
 {
     using var runtime = OpenRuntime();
-    var player = StaticPositionProbe.Read(runtime.Reader, runtime.PositionAddresses);
     var watch = Stopwatch.StartNew();
-    _ = runtime.ReadOrientation(player);
+    var (player, _) = runtime.ReadPose();
     var frame = runtime.Camera.Capture(player);
     watch.Stop();
     var consensus = new RenderCameraConsensus(frame.Camera, frame.ConsensusCopies, frame.ValidCopies, frame.DistinctStates);
@@ -151,10 +150,9 @@ int Track(string[] commandArgs)
         return UsageError("track expects [samples; 0 means unlimited] [rate-hz; 1-240].");
 
     using var runtime = OpenRuntime(lightOptions);
-    var player = StaticPositionProbe.Read(runtime.Reader, runtime.PositionAddresses);
     var watch = Stopwatch.StartNew();
     var tracker = runtime.Camera;
-    _ = runtime.ReadOrientation(player);
+    var (player, _) = runtime.ReadPose();
     _ = tracker.Capture(player);
     watch.Stop();
     Console.Error.WriteLine($"Ready: {EngineCameraReader.SourceName}, {tracker.AddressCount} source validated in {watch.Elapsed.TotalMilliseconds:0.###} ms.");
@@ -595,7 +593,7 @@ async Task<RuntimeContext?> OpenRuntimeWithRecovery(TelemetryServerState state, 
         var preparation = await RecoveryHost.PrepareAsync(process, LoadDefinitions(), state, cancellation, nativeRecovery);
         if (process.HasExited) { process.Dispose(); return null; }
         var runtime = OpenRuntime(options, privateExact, preparation?.Build, process,
-            preparation?.Position, preparation?.WorldAddress);
+            preparation?.Position, preparation?.Orientation);
         if (preparation is not null)
             runtime.RecoveryMonitor = new(preparation.RequestedFeatures, preparation.CacheHit, preparation.DiagnosticTest);
         return runtime;
@@ -605,7 +603,7 @@ async Task<RuntimeContext?> OpenRuntimeWithRecovery(TelemetryServerState state, 
 
 RuntimeContext OpenRuntime(LightOptions lightOptions = default, bool privateExact = false,
     ResolvedBuild? preparedBuild = null, Process? preparedProcess = null,
-    StaticPositionAddresses? preparedPosition = null, ulong? preparedWorld = null)
+    StaticPositionAddresses? preparedPosition = null, PlayerOrientationReader? preparedOrientation = null)
 {
     var process = preparedProcess ?? GameDiscovery.FindRunningProcess()
         ?? throw new InvalidOperationException("Crimson Desert is not running.");
@@ -625,9 +623,8 @@ RuntimeContext OpenRuntime(LightOptions lightOptions = default, bool privateExac
         // file, live-world and independent native checks; no general bypass.
         var allowResearchCandidate = resolved.Compatibility.Mode is "research-exact" or "recovered";
         var addresses = preparedPosition ?? StaticPositionProbe.Resolve(process, executable, definition, allowResearchCandidate);
-        var orientation = preparedWorld is { } world
-            ? PlayerOrientationReader.FromResolvedAddress(world, definition.PlayerRoot!, allowResearchCandidate)
-            : PlayerOrientationReader.Resolve(process, executable, definition, allowResearchCandidate);
+        var orientation = preparedOrientation ??
+            PlayerOrientationReader.Resolve(process, executable, definition, allowResearchCandidate);
         var reader = new ReadOnlyProcess(process);
         try
         {
@@ -929,7 +926,7 @@ sealed class RuntimeContext(
     public string? OrientationFailureReason =>
         Orientation is null ? "This build has no player-root definition." : Orientation.LastFailureReason;
 
-    public PlayerOrientationSnapshot? ReadOrientation((float X, float Y, float Z) player)
+    private PlayerOrientationSnapshot? ReadOrientation((float X, float Y, float Z) player)
     {
         var value = Orientation?.Read(Reader, player);
         if (Compatibility.Mode is "automatic" or "recovered" && value is null)
@@ -953,6 +950,9 @@ sealed class RuntimeContext(
     public ((float X, float Y, float Z) Player, PlayerOrientationSnapshot? Orientation) ReadPose()
     {
         RequireAcquisition();
+        if (Orientation is { UsesControlledActor: true })
+            return Orientation.ReadPose(Reader, PositionAddresses) ??
+                throw new InvalidDataException($"Controlled player pose is unavailable: {OrientationFailureReason}");
         var player = StaticPositionProbe.Read(Reader, PositionAddresses);
         return (player, ReadOrientation(player));
     }

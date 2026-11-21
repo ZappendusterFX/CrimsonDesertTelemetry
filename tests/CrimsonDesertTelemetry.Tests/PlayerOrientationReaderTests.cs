@@ -48,6 +48,45 @@ internal static class PlayerOrientationReaderTests
               racing.Reader.LastFailureReason!.Contains("replaced"), "Replaced leaf published orientation.");
     }
 
+    public static void ControlledActorSwitch()
+    {
+        const ulong kliff = 0x150000, oongka = 0x200000, damiane = 0x210000;
+        const ulong oongkaPhysics = 0x210800, damianePhysics = 0x220800;
+        var fixture = new Fixture();
+        var controlled = fixture.ReaderForControlledActor();
+        fixture.AttachActor(oongka, oongkaPhysics, (-862.837f, 657.852f, 208.964f), opposite: true);
+        fixture.AttachActor(damiane, damianePhysics, (-244, 657, 197));
+
+        fixture.SetPosition(Fixture.Player);
+        Check(controlled.ReadPose(fixture, Fixture.Positions)?.Orientation.HeadingDegrees == 180,
+            "The selected Kliff actor did not produce a pose.");
+        var position = (-9862.837f, 657.515f, 208.964f);
+        fixture.SetPosition(position);
+        fixture.Q(Fixture.ControlledActorField, oongka);
+        Check(fixture.Reader.Read(fixture, position) is null, "The old Kliff chain unexpectedly matched the new position.");
+        var switched = controlled.ReadPose(fixture, Fixture.Positions);
+        Check(switched is { } oongkaPose && oongkaPose.Position == position &&
+              oongkaPose.Orientation.HeadingDegrees == 0, "The selected Oongka actor did not replace Kliff's pose.");
+        fixture.SetPosition((-10244, 657, 197));
+        fixture.Q(Fixture.ControlledActorField, damiane);
+        Check(controlled.ReadPose(fixture, Fixture.Positions)?.Orientation.HeadingDegrees == 180,
+            "The selected Damiane actor did not replace Oongka's pose.");
+
+        fixture.Q(Fixture.ControlledActorField, 0);
+        fixture.SetPosition(Fixture.Player);
+        Check(controlled.ReadPose(fixture, Fixture.Positions) is null,
+            "The controlled reader fell back to the original actor during a switch.");
+        fixture.Q(Fixture.ControlledActorField, kliff);
+        Check(controlled.ReadPose(fixture, Fixture.Positions) is not null, "The reader did not reacquire Kliff.");
+
+        // An actor can change before a stable pose is published, even if the
+        // observed physics leaf has not changed yet.
+        fixture.AttachActor(oongka, Fixture.Physics, (-507, 610, -369));
+        fixture.ActorOnNextPositionRead = oongka;
+        Check(controlled.ReadPose(fixture, Fixture.Positions) is null &&
+              controlled.LastFailureReason!.Contains("replaced"), "A switch during the position read published a mixed pose.");
+    }
+
     public static void PrivateCandidateGate()
     {
         var research = BuildDefinition.LoadAll("not-a-profile-directory")
@@ -84,11 +123,14 @@ internal static class PlayerOrientationReaderTests
     private sealed class Fixture : IReadOnlyProcessMemory
     {
         public const ulong Owner = 0x170000, Physics = 0x180000;
+        public const ulong ControlledActorField = 0x1900D8;
+        public static readonly StaticPositionAddresses Positions = new(0x1A0000, 0x1A0008);
         public static readonly (float X, float Y, float Z) Player = (-10507, 610, -4369);
         private readonly Dictionary<ulong, byte> _bytes = [];
         public PlayerRootDefinition Root { get; } = UpdateCheckTests.Current().PlayerRoot!;
         public PlayerOrientationReader Reader { get; }
         public bool ReplaceLeafOnSecondRead { get; set; }
+        public ulong? ActorOnNextPositionRead { get; set; }
         private int _leafReads;
         public Fixture()
         {
@@ -101,25 +143,64 @@ internal static class PlayerOrientationReaderTests
             Q(Owner + (ulong)Root.OwnerToPhysicsOffset, Physics);
             var typedObjects = new[] { 0x130000UL, 0x150000UL, 0x160000UL };
             for (var index = 0; index < 3; index++)
-            {
-                var vtable = (ulong)(0x141000 + index * 0x100);
-                var locator = (ulong)(0x142000 + index * 0x100);
-                var type = (ulong)(0x143000 + index * 0x100);
-                Q(typedObjects[index], vtable); Q(vtable - 8, locator);
-                Put(locator, new byte[24]); U(locator, 1); U(locator + 12, (uint)(type - 0x140000));
-                U(locator + 20, (uint)(locator - 0x140000));
-                Put(type + 16, new byte[160]); Put(type + 16, Encoding.ASCII.GetBytes(Root.ExpectedTypeNames[index] + '\0'));
-            }
-            Put(Physics, new byte[0xA0]);
-            F(Physics + (ulong)Root.BasisXOffset, 1); F(Physics + (ulong)Root.BasisYOffset + 4, 1);
-            F(Physics + (ulong)Root.BasisZOffset + 8, 1);
-            F(Physics + (ulong)Root.PositionOffset, -507); F(Physics + (ulong)Root.PositionOffset + 4, 610);
-            F(Physics + (ulong)Root.PositionOffset + 8, -369);
+                SetType(typedObjects[index], index, Root.ExpectedTypeNames[index]);
+            SetPhysics(Physics, (-507, 610, -369), opposite: false);
             Reader = PlayerOrientationReader.FromResolvedAddress(0x110000, Root);
+        }
+        public PlayerOrientationReader ReaderForControlledActor()
+        {
+            Q(0x130058, 0x190000);
+            SetType(0x190000, 3, ".?AVClientUserActor@pa@@");
+            Q(ControlledActorField, 0x150000);
+            return PlayerOrientationReader.FromResolvedAddress(0x110000, Root, useControlledActor: true);
+        }
+        public void AttachActor(ulong actor, ulong physics, (float X, float Y, float Z) position, bool opposite = false)
+        {
+            var intermediate = actor + 0x200;
+            var control = actor + 0x400;
+            var owner = actor + 0x800;
+            SetType(actor, 1, Root.ExpectedTypeNames[1]);
+            Q(actor + (ulong)Root.PlayerActorToIntermediateOffset, intermediate);
+            Q(intermediate + (ulong)Root.IntermediateToControlOffset, control);
+            SetType(control, 2, Root.ExpectedTypeNames[2]);
+            Q(control + (ulong)Root.ControlToOwnerOffset, owner);
+            Q(owner + (ulong)Root.OwnerToPhysicsOffset, physics);
+            SetPhysics(physics, position, opposite);
+        }
+        public void SetPosition((float X, float Y, float Z) position)
+        {
+            F(Positions.XyAddress, position.X);
+            F(Positions.XyAddress + 4, position.Y);
+            F(Positions.ZAddress, position.Z);
+        }
+        private void SetType(ulong address, int index, string name)
+        {
+            var vtable = (ulong)(0x141000 + index * 0x100);
+            var locator = (ulong)(0x142000 + index * 0x100);
+            var type = (ulong)(0x143000 + index * 0x100);
+            Q(address, vtable); Q(vtable - 8, locator);
+            Put(locator, new byte[24]); U(locator, 1); U(locator + 12, (uint)(type - 0x140000));
+            U(locator + 20, (uint)(locator - 0x140000));
+            Put(type + 16, new byte[160]); Put(type + 16, Encoding.ASCII.GetBytes(name + '\0'));
+        }
+        private void SetPhysics(ulong address, (float X, float Y, float Z) position, bool opposite)
+        {
+            Put(address, new byte[0xA0]);
+            F(address + (ulong)Root.BasisXOffset, opposite ? -1 : 1);
+            F(address + (ulong)Root.BasisYOffset + 4, 1);
+            F(address + (ulong)Root.BasisZOffset + 8, opposite ? -1 : 1);
+            F(address + (ulong)Root.PositionOffset, position.X);
+            F(address + (ulong)Root.PositionOffset + 4, position.Y);
+            F(address + (ulong)Root.PositionOffset + 8, position.Z);
         }
         public byte[] Read(IntPtr address, int length)
         {
             var start = checked((ulong)address.ToInt64());
+            if (start == Positions.XyAddress && ActorOnNextPositionRead is { } next)
+            {
+                Q(ControlledActorField, next);
+                ActorOnNextPositionRead = null;
+            }
             if (start == Owner + (ulong)Root.OwnerToPhysicsOffset && ++_leafReads == 2 && ReplaceLeafOnSecondRead)
                 return BitConverter.GetBytes(Physics + 0x1000);
             var result = new byte[length];

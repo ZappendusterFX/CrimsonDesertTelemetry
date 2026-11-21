@@ -13,6 +13,7 @@ public sealed record RecoveryReadiness(BuildDefinition Definition, string Execut
     IReadOnlyList<UpdateAnchor> Anchors)
 {
     internal RecoverySession Session { get; init; } = null!;
+    public ulong? ControlledActorGuardRva { get; init; }
 }
 public sealed record RecoveryResult(BuildDefinition Definition, string ExecutableSha256,
     string TemplateFingerprint, bool CacheHit, IReadOnlyList<UpdateAnchor> Anchors)
@@ -123,7 +124,11 @@ public static class RuntimeRecovery
         Add(session, "camera-vtable", camera.CameraVtableRva, null, "");
         BuildProfileValidation.Validate(definition);
         Tick("waiting-for-world", session, progress, "Waiting for a loaded game and progressing player/camera data.");
-        return new(definition, hash, fingerprint, executable, cached is not null, xy, z, world, Report(session)) { Session = session };
+        return new(definition, hash, fingerprint, executable, cached is not null, xy, z, world, Report(session))
+        {
+            Session = session,
+            ControlledActorGuardRva = PlayerOrientationReader.FindControlledActorGuard(image)
+        };
     }
 
     public static RecoveryResult ResolveNative(RecoveryReadiness readiness, BuildDefinition reference,

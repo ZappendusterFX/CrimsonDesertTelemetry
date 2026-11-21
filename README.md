@@ -4,7 +4,9 @@
 
 Inspect positions, colors and brightness of current light contributions from fires, candles, lanterns and glass/crystal lamps, alongside the player and render camera. Use the data in your own overlays, tools and lighting integrations.
 
-**New in 2.2.14** — automatic recovery can handle bounded shifts of the renderer buffer fields and the player's physics-pointer field. This addresses the layout changes found in Steam build **26636972**. Cached starts use normal initialization messages. [2.2.14 release notes](docs/releases/v2.2.14.md).
+**New in 2.2.15:** player telemetry follows the character you control, fixing **Stale Data** when switching between Kliff, Oongka and Damiane. [2.2.15 release notes](docs/releases/v2.2.15.md).
+
+**Since 2.2.14:** automatic recovery handles bounded shifts in the renderer buffer layout and the player physics pointer. [2.2.14 release notes](docs/releases/v2.2.14.md).
 
 **New in 2.2.10:** the shared mixer works with **CrimsonHue 2.0.0** to select Hue, OpenRGB and compatible Tuya Wi-Fi 3.5 RGB lighting independently. OpenRGB and Tuya can each run without a Hue bridge. CrimsonHue handles hardware and credentials; CDT provides telemetry and the shared renderer. [2.2.10 release notes](docs/releases/v2.2.10.md).
 
@@ -289,7 +291,7 @@ The external host alone can read player/camera and supported authored lights. **
 
 ## Compatibility and limits
 
-The 2.2.14 package's reference is **Steam build 26448710** on Windows,
+The 2.2.15 package's reference is **Steam build 26448710** on Windows,
 EXE file version `1.0.0.3549` and SHA-256
 `25F24E06A1F886E9310FD290F9462F66B480A5E7763D1FE156BFDDAA8D1992B9`.
 The file version and Steam build ID are not the public game patch number. Older
@@ -348,7 +350,7 @@ under the normal packaged filename. See [INI validation](docs/INI_VALIDATION.md)
 
 GitHub CI covers managed/API tests and native capture, guard and UI tests. Current acceptance and outstanding checks are recorded in [the handover](docs/HANDOVER.md); historical test totals are not a result for a new package.
 
-See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.14.md), [2.0 release notes](docs/releases/v2.0.0.md) and [Nexus publishing](docs/NEXUS_PUBLISHING.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
+See [contributing](CONTRIBUTING.md), [research provenance](docs/PROVENANCE.md), [current release notes](docs/releases/v2.2.15.md), [2.0 release notes](docs/releases/v2.0.0.md) and [Nexus publishing](docs/NEXUS_PUBLISHING.md). Game binaries, memory dumps, private captures and third-party checkout directories do not belong in the public repository.
 
 ## Credits and scope
 

@@ -5,7 +5,7 @@ using CrimsonDesertTelemetry.Core;
 namespace CrimsonDesertTelemetry.Cli;
 
 internal sealed record RecoveryPreparation(ResolvedBuild Build, StaticPositionAddresses Position,
-    ulong WorldAddress, uint RequestedFeatures, bool CacheHit, bool DiagnosticTest);
+    PlayerOrientationReader Orientation, uint RequestedFeatures, bool CacheHit, bool DiagnosticTest);
 
 /// <summary>Only the native plugin can request this path. Standalone readers never enable hooks.</summary>
 internal static class RecoveryHost
@@ -86,8 +86,8 @@ internal static class RecoveryHost
             using var reader = new ReadOnlyProcess(process);
             var camera = new EngineCameraReader(reader, module, readiness.Definition.EngineCamera!);
             var playerRoot = readiness.Definition.PlayerRoot!;
-            var orientation = PlayerOrientationReader.FromResolvedAddress(world, playerRoot,
-                allowResearchCandidate: reference.Status == "research");
+            var orientation = PlayerOrientationReader.FromLiveAddress(world, playerRoot, reader, module,
+                readiness.ControlledActorGuardRva, allowResearchCandidate: reference.Status == "research");
             await WaitForWorld(process, reader, positions, orientation, playerRoot,
                 reference.PlayerRoot!.OwnerToPhysicsOffset, camera, state, cancellation, diagnostic);
             if (diagnostic && !alreadySubmitted)
@@ -133,7 +133,7 @@ internal static class RecoveryHost
             state.SetRecovery(new("validating", diagnostic ? "Recovery test: checking live telemetry" : "Checking live telemetry",
                 "Addresses accepted. Waiting for fresh light and ambient captures.", 90));
             transferred = true;
-            return new(build, positions, world, request.RequestedFeatures, result.CacheHit, diagnostic);
+            return new(build, positions, orientation, request.RequestedFeatures, result.CacheHit, diagnostic);
         }
         catch (Exception error) when (error is InvalidDataException or Win32Exception or IOException or
             UnauthorizedAccessException or OverflowException or ArgumentException or InvalidOperationException)

@@ -96,6 +96,7 @@ var tests = new (string Name, Action Run)[]
     ("player orientation serializes validated basis", PlayerOrientationSerializesValidatedBasis),
     ("player orientation walks the actual guarded pointer chain", PlayerOrientationReaderTests.RealChain),
     ("player orientation rejects wrong identity and replaced physics", PlayerOrientationReaderTests.IdentityAndRaces),
+    ("player pose follows the controlled actor and rejects an in-flight switch", PlayerOrientationReaderTests.ControlledActorSwitch),
     ("private exact-build candidate anchors stay gated", PlayerOrientationReaderTests.PrivateCandidateGate),
     ("build profiles reject malformed and mismatched native contracts", UpdateCheckTests.Profiles),
     ("runtime recovery requires a full contract and observes cancellation", RuntimeRecoveryTests.ContractGuards),

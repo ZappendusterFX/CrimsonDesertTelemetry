@@ -12,23 +12,52 @@ public readonly record struct PlayerOrientationAddresses(ulong WorldSystemGlobal
 /// </summary>
 public sealed class PlayerOrientationReader
 {
+    // The camera update's controlled-child getter reads ClientActorManager+0x58
+    // (ClientUserActor), then ClientUserActor+0xD8. Match that exact code before
+    // using those fields. The older manager+0x50 getter serves a separate actor.
+    private const int ManagerToUserOffset = 0x58, UserToControlledActorOffset = 0xD8;
+    private const string UserActorType = ".?AVClientUserActor@pa@@";
+    private const string ControlledActorGuard =
+        "48 89 6C 24 28 E9 83 00 00 00 49 8B 46 58 4C 8B B0 D8 00 00 00 4D 85 F6 74 1F " +
+        "BA 04 00 00 00 41 B8 10 00 00 00 49 8B 06 49 8B CE FF 90 C0 00 00 00 84 C0 74 04";
     private readonly PlayerOrientationAddresses _addresses;
     private readonly PlayerRootDefinition _definition;
+    public bool UsesControlledActor { get; }
 
-    private PlayerOrientationReader(PlayerOrientationAddresses addresses, PlayerRootDefinition definition)
+    private PlayerOrientationReader(PlayerOrientationAddresses addresses, PlayerRootDefinition definition, bool useControlledActor)
     {
         _addresses = addresses;
         _definition = definition;
+        UsesControlledActor = useControlledActor;
     }
 
     /// <summary>Construct the same guarded reader from an already resolved address (also for offline memory fixtures).</summary>
     public static PlayerOrientationReader FromResolvedAddress(ulong worldSystemGlobalAddress, PlayerRootDefinition definition,
-        bool allowResearchCandidate = false)
+        bool allowResearchCandidate = false, bool useControlledActor = false)
     {
         BuildProfileValidation.ValidatePlayerRoot(definition, trusted: !allowResearchCandidate);
         if (worldSystemGlobalAddress is < 0x10000 or > 0x00007FFFFFFFFFFF || (worldSystemGlobalAddress & 7) != 0)
             throw new InvalidDataException("Invalid resolved world-system global address.");
-        return new PlayerOrientationReader(new(worldSystemGlobalAddress), definition);
+        return new PlayerOrientationReader(new(worldSystemGlobalAddress), definition, useControlledActor);
+    }
+
+    internal static ulong? FindControlledActorGuard(CompatibilityImage image)
+    {
+        try { return image.FindFunction(ControlledActorGuard, "controlled player actor"); }
+        catch (InvalidDataException) { return null; }
+    }
+
+    public static PlayerOrientationReader FromLiveAddress(ulong worldSystemGlobalAddress, PlayerRootDefinition definition,
+        IReadOnlyProcessMemory reader, ulong moduleBase, ulong? controlledActorGuardRva, bool allowResearchCandidate = false)
+    {
+        if (controlledActorGuardRva is { } guard)
+        {
+            var pattern = SignaturePattern.Parse(ControlledActorGuard);
+            if (pattern.FindAll(reader.Read(ToIntPtr(checked(moduleBase + guard)), pattern.Length)).Count != 1)
+                throw new InvalidDataException("Live controlled player actor code differs from the executable on disk.");
+        }
+        return FromResolvedAddress(worldSystemGlobalAddress, definition, allowResearchCandidate,
+            useControlledActor: controlledActorGuardRva.HasValue);
     }
 
     public static PlayerOrientationReader? Resolve(Process process, string executable, BuildDefinition definition,
@@ -40,8 +69,9 @@ public sealed class PlayerOrientationReader
             allowResearchCandidate, "Player orientation is not validated for this build.");
         var moduleBase = checked((ulong)process.MainModule!.BaseAddress.ToInt64());
         var relative = StaticPositionProbe.ResolveUniqueRipTarget(executable, root.WorldSystemPattern);
-        return FromResolvedAddress(checked(moduleBase + relative), root,
-            allowResearchCandidate && definition.Status == "research");
+        using var reader = new ReadOnlyProcess(process);
+        return FromLiveAddress(checked(moduleBase + relative), root, reader, moduleBase,
+            FindControlledActorGuard(CompatibilityImage.Load(executable)), allowResearchCandidate && definition.Status == "research");
     }
 
     /// <summary>
@@ -53,22 +83,28 @@ public sealed class PlayerOrientationReader
     /// </summary>
     public string? LastFailureReason { get; private set; }
 
-    public PlayerOrientationSnapshot? Read(IReadOnlyProcessMemory reader, (float X, float Y, float Z) worldPosition)
+    public PlayerOrientationSnapshot? Read(IReadOnlyProcessMemory reader, (float X, float Y, float Z) worldPosition) =>
+        ReadSample(reader, worldPosition, null)?.Orientation;
+
+    public ((float X, float Y, float Z) Position, PlayerOrientationSnapshot Orientation)? ReadPose(
+        IReadOnlyProcessMemory reader, StaticPositionAddresses positions) => ReadSample(reader, default, positions);
+
+    private ((float X, float Y, float Z) Position, PlayerOrientationSnapshot Orientation)? ReadSample(
+        IReadOnlyProcessMemory reader, (float X, float Y, float Z) worldPosition, StaticPositionAddresses? positions)
     {
         try
         {
             var first = ReadChain(reader);
+            if (positions is { } addresses) worldPosition = StaticPositionProbe.Read(reader, addresses);
             var transform = ReadTransform(reader, first.PhysicsAddress, worldPosition);
-            // The game can replace the actor/physics object while a sample is in flight.
-            // Confirm the same leaf before publishing the basis.
             var second = ReadChain(reader);
-            if (second.PhysicsAddress != first.PhysicsAddress)
+            if (second != first)
             {
-                LastFailureReason = "The physics object was replaced while the sample was in flight.";
+                LastFailureReason = "The player actor or physics object was replaced while the sample was in flight.";
                 return null;
             }
             LastFailureReason = null;
-            return ToSnapshot(transform);
+            return (worldPosition, ToSnapshot(transform));
         }
         catch (Exception exception) when (exception is InvalidDataException or OverflowException or
             System.ComponentModel.Win32Exception)
@@ -90,7 +126,7 @@ public sealed class PlayerOrientationReader
         {
             try
             {
-                var physics = ReadPointer(reader, owner + (ulong)offset);
+                var physics = ReadPointer(reader, owner.Address + (ulong)offset);
                 _ = ReadTransform(reader, physics, worldPosition);
                 if (found is not null)
                     throw new InvalidOperationException("Ambiguous player physics fields.");
@@ -107,21 +143,28 @@ public sealed class PlayerOrientationReader
     private ChainResult ReadChain(IReadOnlyProcessMemory reader)
     {
         var owner = ReadOwner(reader);
-        var physics = ReadNext(reader, owner, _definition.OwnerToPhysicsOffset, "owner", "physics");
-        return new ChainResult(physics);
+        var physics = ReadNext(reader, owner.Address, _definition.OwnerToPhysicsOffset, "owner", "physics");
+        return new ChainResult(owner, physics);
     }
 
-    private ulong ReadOwner(IReadOnlyProcessMemory reader)
+    private ActorOwner ReadOwner(IReadOnlyProcessMemory reader)
     {
-        // Each hop names itself. The chain has six offsets and any one of them can be
-        // invalidated by a game patch; "the chain failed" does not narrow that down,
-        // "control -> owner (+0x140)" does.
         var current = ReadPointer(reader, _addresses.WorldSystemGlobalAddress);
         var manager = ReadNext(reader, current, _definition.WorldSystemToActorManagerOffset,
             "worldSystem", "actorManager");
         CheckType(reader, manager, 0, "actorManager");
-        var actor = ReadNext(reader, manager, _definition.ActorManagerToPlayerActorOffset,
-            "actorManager", "playerActor");
+        ulong actor;
+        if (UsesControlledActor)
+        {
+            var user = ReadNext(reader, manager, ManagerToUserOffset, "actorManager", "userActor");
+            CheckType(reader, user, UserActorType, "userActor");
+            actor = ReadNext(reader, user, UserToControlledActorOffset, "userActor", "controlledActor");
+        }
+        else
+        {
+            actor = ReadNext(reader, manager, _definition.ActorManagerToPlayerActorOffset,
+                "actorManager", "playerActor");
+        }
         CheckType(reader, actor, 1, "playerActor");
         var intermediate = ReadNext(reader, actor, _definition.PlayerActorToIntermediateOffset,
             "playerActor", "intermediate");
@@ -129,7 +172,7 @@ public sealed class PlayerOrientationReader
             "intermediate", "control");
         CheckType(reader, control, 2, "control");
 
-        return ReadNext(reader, control, _definition.ControlToOwnerOffset, "control", "owner");
+        return new(actor, ReadNext(reader, control, _definition.ControlToOwnerOffset, "control", "owner"));
     }
 
     private TransformResult ReadTransform(IReadOnlyProcessMemory reader, ulong physics,
@@ -227,10 +270,11 @@ public sealed class PlayerOrientationReader
             ToVector(transform.Up), heading);
     }
 
-    private void CheckType(IReadOnlyProcessMemory reader, ulong address, int expectedIndex, string step)
+    private void CheckType(IReadOnlyProcessMemory reader, ulong address, int expectedIndex, string step) =>
+        CheckType(reader, address, _definition.ExpectedTypeNames[expectedIndex], step);
+
+    private static void CheckType(IReadOnlyProcessMemory reader, ulong address, string expected, string step)
     {
-        if (_definition.ExpectedTypeNames.Count <= expectedIndex) return;
-        var expected = _definition.ExpectedTypeNames[expectedIndex];
         var actual = TypeName(reader, address);
         if (!string.Equals(actual, expected, StringComparison.Ordinal))
             throw new InvalidDataException(
@@ -279,6 +323,7 @@ public sealed class PlayerOrientationReader
         return new IntPtr(unchecked((long)address));
     }
 
-    private readonly record struct ChainResult(ulong PhysicsAddress);
+    private readonly record struct ActorOwner(ulong Actor, ulong Address);
+    private readonly record struct ChainResult(ActorOwner Owner, ulong PhysicsAddress);
     private readonly record struct TransformResult(Vector3 Forward, Vector3 Up);
 }
