@@ -251,7 +251,7 @@ current placements to the front; it keeps the SDK port and Hue settings.
 Remove disconnected devices keeps connected positions and output settings.
 Reset view only resets the viewing angle.
 
-Ctrl+Shift+H opens/hides Hue; change its binding in Setup. Title-bar X and Hide
+Hue starts hidden. Ctrl+Shift+H opens/hides it; change the binding in Setup. Title-bar X and Hide
 settings also hide without stopping sync. Use Stop to end it, and wait for stopped
 status before game exit; process termination cannot guarantee bridge restoration.
 No physical stream starts just by loading either module. Demo preview sends none.

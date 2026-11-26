@@ -165,12 +165,13 @@ int wmain(int argc, wchar_t** argv)
     Check(!CheckAmbientPreflight(image.Base()),"missing ambient hook context accepted");
     image.sections[0].VirtualAddress=0x3800000;
     image.sections[0].Misc.VirtualSize=static_cast<DWORD>(contract::HookRva+0x1000-0x3800000);
+    const auto dispatch = AmbientDispatchSignature(false);
     for(unsigned n=0;n<2;++n)
     {
         image.Commit(AmbientHookRvas()[n]-6,21);
         const auto& sig=n ? AmbientSignatureB() : AmbientSignatureA();
         memcpy(image.data+AmbientHookRvas()[n],sig.data(),sig.size());
-        memcpy(image.data+AmbientHookRvas()[n]-6,AmbientDispatchSignature.data(),AmbientDispatchSignature.size());
+        memcpy(image.data+AmbientHookRvas()[n]-6,dispatch.data(),dispatch.size());
     }
     image.Commit(AmbientSourceRvas()[0],7); image.Commit(AmbientSourceRvas()[1],7);
     const std::array<uint8_t,7> sourceA{0x48,0x8B,0xAF,static_cast<uint8_t>(AmbientSourceOffset),0,0,0},

@@ -6,6 +6,7 @@ namespace cdt::runtime_contract
 {
 using namespace native_contract;
 inline bool Recovered = false;
+inline bool ShiftedRendererCommandSlots = false;
 inline auto ExecutableSha256 = native_contract::ExecutableSha256;
 inline auto SceneGlobalRva = native_contract::SceneGlobalRva;
 inline auto SkyProducerRva = native_contract::SkyProducerRva;

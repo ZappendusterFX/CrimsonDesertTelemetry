@@ -11,7 +11,7 @@ namespace {
 std::mutex bridgeMutex;
 Json latest = Json::object();
 std::deque<std::string> commands;
-std::atomic<bool> available{false}, visible{true};
+std::atomic<bool> available{false}, visible{false};
 read_fn readState{};
 send_fn sendCommand{};
 using Status = int(__stdcall*)();

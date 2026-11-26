@@ -287,6 +287,10 @@ int wmain(int argc, wchar_t** argv) {
         telemetry.sample.build = "synthetic"; telemetry.sample.sequence = 1;
         cdt::overlay::Publish(telemetry);
         Require(cdt::overlay::InstallGraphics(config), "CDT graphics hook install failed");
+        Require(crimson::overlay::PanelAvailable() && !crimson::overlay::PanelVisible() &&
+            !crimson::overlay::HasInputFocus(), "The Hue panel took input before the first toggle");
+        toggle();
+        Require(crimson::overlay::PanelVisible(), "The first toggle did not open the Hue panel");
         // The hidden window never owns foreground input. Force its software
         // cursor anyway so cursor-atlas lifetime failures cannot escape this test.
         cdt::overlay::SetSoftwareCursorForTest(true);

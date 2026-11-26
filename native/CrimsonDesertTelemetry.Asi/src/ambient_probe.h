@@ -56,9 +56,10 @@ inline std::array<uint8_t, 15> AmbientSignatureB() { return HotfixGameBuild ? ru
     : UpdatedGameBuild
     ? std::array<uint8_t, 15>{0x48,0x8B,0xCF,0xE8,0x85,0xA3,0xF8,0xFF,0x48,0x8B,0x07,0x48,0x8B,0xCF,0xFF}
     : std::array<uint8_t, 15>{0x48,0x8B,0xCF,0xE8,0x95,0xA0,0xF8,0xFF,0x48,0x8B,0x07,0x48,0x8B,0xCF,0xFF}; }
-constexpr std::array<uint8_t, 6> AmbientDispatchSignature = (RecoveryGameBuild || UpdatedGameBuild)
-    ? std::array<uint8_t, 6>{0xFF,0x90,0x38,0x03,0x00,0x00}
-    : std::array<uint8_t, 6>{0xFF,0x90,0x28,0x03,0x00,0x00};
+constexpr std::array<uint8_t, 6> AmbientDispatchSignature(bool shiftedCommands) {
+    const uint8_t slot = shiftedCommands ? 0x40 : (RecoveryGameBuild || UpdatedGameBuild) ? 0x38 : 0x28;
+    return {0xFF,0x90,slot,0x03,0x00,0x00};
+}
 bool CheckAmbientPreflight(uint64_t moduleBase);
 // Mutually exclusive with regular ManyLights. Reuses the tested copy/fence
 // machinery; never publishes ambient bytes as lights. Opt-in, bounded, no API.

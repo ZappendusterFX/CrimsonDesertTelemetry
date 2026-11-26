@@ -13,8 +13,8 @@ no ImGui, C++ objects or memory ownership cross module boundaries. Snapshots are
 bounded to 256 KiB, commands to 16 KiB and 64 queued commands. Only the worker
 calls the controller; the render pass reads the last snapshot and queues actions.
 Discovery pins compatible modules for process lifetime. Old independent-renderer
-ASI versions are deliberately rejected. Ctrl+Shift+H is the default shortcut;
-binding changes remain in CrimsonHue's protected user settings.
+ASI versions are deliberately rejected. The panel starts hidden. Ctrl+Shift+H
+opens it by default. The binding is stored in CrimsonHue's protected user settings.
 
 The title-bar X hides the panel and queues `close` to save controller settings;
 it keeps lighting sync running, like the shortcut and Hide settings button.

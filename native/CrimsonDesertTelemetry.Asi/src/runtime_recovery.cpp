@@ -2,6 +2,7 @@
 #include "runtime_contract.generated.h"
 #include "recovery_roles.h"
 #include "render_bridge.h"
+#include "ambient_probe.h"
 #include "overlay.h"
 #include "console/common.h"
 #include "console/mem.h"
@@ -198,8 +199,11 @@ bool ValidateAndApply(std::string_view payload,std::uint64_t moduleBase,std::uin
         c.scene=Number(json,"sceneGlobalRva");c.sceneVtable=Number(json,"sceneVtableRva");
         c.hook=Number(json,"hookRva");c.sky=Number(json,"skyProducerRva");
         c.hookBytes=Bytes(json.at("hookSignature").get<std::string>());
+        const bool shiftedCommands=PatternMatches(c.hookBytes,
+            "48 8B 5C 24 50 48 8B CB E8 ?? ?? ?? ?? 48 8B 03 48 8B CB FF 90 20 02 00 00");
         if(c.hookBytes.size()!=native_contract::HookSignature.size()||
-            !PatternMatches(c.hookBytes,"48 8B 5C 24 50 48 8B CB E8 ?? ?? ?? ?? 48 8B 03 48 8B CB FF 90 18 02 00 00")||
+            (!shiftedCommands&&!PatternMatches(c.hookBytes,
+                "48 8B 5C 24 50 48 8B CB E8 ?? ?? ?? ?? 48 8B 03 48 8B CB FF 90 18 02 00 00"))||
             !image.Exact(c.hook,c.hookBytes)) throw std::runtime_error("ManyLights hook context differs");
         std::int32_t relative{};std::memcpy(&relative,c.hookBytes.data()+9,4);
         const auto called=static_cast<std::int64_t>(c.hook)+13+relative;
@@ -218,7 +222,12 @@ bool ValidateAndApply(std::string_view payload,std::uint64_t moduleBase,std::uin
             {
                 const bool layoutOperand=(i==3&&((at>=3&&at<7)||(at>=11&&at<15)||(at>=24&&at<28)))||
                     (i==5&&at>=3&&at<7);
-                if(!layoutOperand&&item.bytes[at]!=original.bytes[at])
+                auto expected=original.bytes[at];
+                if(shiftedCommands) {
+                    if((i==1&&at==18)||(i==2&&at==17)) expected=0xF8; // UAV binder +0x10
+                    if(i==2&&at==70) expected=0x40; // command Dispatch +8
+                }
+                if(!layoutOperand&&item.bytes[at]!=expected)
                     throw std::runtime_error("ManyLights instruction or register changed");
             }
             // The reviewed function's register lifetimes and control-flow distances
@@ -249,7 +258,10 @@ bool ValidateAndApply(std::string_view payload,std::uint64_t moduleBase,std::uin
             if(original==native_contract::support::RecoveryAnchors.end()||c.support.contains(name))
                 throw std::runtime_error("Unknown or duplicate acquisition anchor");
             Candidate::Context item{Number(anchor,"rva"),Bytes(anchor.at("bytes").get<std::string>())};
-            if(item.bytes.size()!=original->bytes.size()||!PatternMatches(item.bytes,original->pattern)||!image.Exact(item.rva,item.bytes))
+            const auto pattern=shiftedCommands&&name=="ExposureDispatch"
+                ? std::string_view{"41 B9 01 00 00 00 45 8B C1 48 8B CB FF 90 40 03 00 00 48 8B CB E8 ?? ?? ?? ?? 48 8B 03 48 8B CB"}
+                : original->pattern;
+            if(item.bytes.size()!=original->bytes.size()||!PatternMatches(item.bytes,pattern)||!image.Exact(item.rva,item.bytes))
                 throw std::runtime_error("Acquisition guard differs: "+name);
             c.support.emplace(name,std::move(item));
         }
@@ -281,9 +293,14 @@ bool ValidateAndApply(std::string_view payload,std::uint64_t moduleBase,std::uin
                 static_cast<std::int64_t>(originalA)-static_cast<std::int64_t>(originalB);
         };
         if(!relativeMatches("AmbientHookA","AmbientSourceA",original::AmbientHookARva,original::AmbientSourceARva)||
-            !relativeMatches("AmbientHookB","AmbientSourceB",original::AmbientHookBRva,original::AmbientSourceBRva)||
-            !relativeMatches("PhysicsShapeCaller","PhysicsRayCaller",original::PhysicsShapeCallerRva,original::PhysicsRayCallerRva))
+            !relativeMatches("AmbientHookB","AmbientSourceB",original::AmbientHookBRva,original::AmbientSourceBRva))
             throw std::runtime_error("Acquisition family relationships changed");
+        const auto rayCallerDrift=
+            (static_cast<std::int64_t>(c.support.at("PhysicsRayCaller").rva)-
+                static_cast<std::int64_t>(c.support.at("PhysicsShapeCaller").rva))-
+            (static_cast<std::int64_t>(original::PhysicsRayCallerRva)-static_cast<std::int64_t>(original::PhysicsShapeCallerRva));
+        if(rayCallerDrift < -0x40 || rayCallerDrift > 0x40)
+            throw std::runtime_error("Natural ray caller moved outside its paired shape-caller window");
         const auto callTarget=[&](const Candidate::Context& context,size_t offset) {
             if(offset+5>context.bytes.size()||context.bytes[offset]!=0xE8) throw std::runtime_error("Expected direct call is missing");
             std::int32_t displacement{};std::memcpy(&displacement,context.bytes.data()+offset+1,4);
@@ -301,7 +318,7 @@ bool ValidateAndApply(std::string_view payload,std::uint64_t moduleBase,std::uin
             !roles::VerifyRole(moduleBase,image.size,c.support.at("PhysicsShape").rva,"TtWorldCastShape",true)||
             !roles::VerifyRole(moduleBase,image.size,c.support.at("ExposureDispatch").rva,"AdaptExposure",false))
             throw std::runtime_error("Named physics or exposure function role differs");
-        const std::array<std::uint8_t,6> ambientDispatch{0xFF,0x90,0x38,0x03,0,0};
+        const auto ambientDispatch=render::AmbientDispatchSignature(shiftedCommands);
         if(!image.Exact(c.support.at("AmbientHookA").rva-6,ambientDispatch)||
             !image.Exact(c.support.at("AmbientHookB").rva-6,ambientDispatch))
             throw std::runtime_error("Ambient dispatch ABI changed");
@@ -337,6 +354,7 @@ bool ValidateAndApply(std::string_view payload,std::uint64_t moduleBase,std::uin
         // All checks above are non-mutating. Publish the complete contract only now;
         // no hooks/consumers exist until the owning worker returns from this method.
         runtime_contract::SceneGlobalRva=c.scene;runtime_contract::HookRva=c.hook;
+        runtime_contract::ShiftedRendererCommandSlots=shiftedCommands;
         runtime_contract::SkyProducerRva=static_cast<std::uint32_t>(c.sky);
         CopyBytes(runtime_contract::HookSignature,c.hookBytes);
         runtime_contract::OwnerBankIndexOffset=bank;

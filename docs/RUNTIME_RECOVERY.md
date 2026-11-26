@@ -86,6 +86,15 @@ bank-index relationship must agree. Native validation independently repeats thes
 checks before publishing the offsets. GI, sky and exposure readers use the
 recovered fields and retain their object-backpointer and resource checks.
 
+The command vtable has two reviewed layouts. Build 26949954 moved the
+ManyLights UAV binders by 0x10, the ManyLights, Ambient and Exposure dispatch
+slots by eight bytes, and the ManyLights post-dispatch virtual call by eight
+bytes. The host and ASI require all of these operands to agree on one layout
+and keep the shared direct-call target and the surrounding instructions guarded.
+The natural ray caller can move up to 0x40 bytes from its previous position
+relative to the shape caller. The host requires a unique match for the full
+call and its trailing context, and the ASI checks the live bytes and range.
+
 If a progressing scene has a valid position/camera but the final player physics
 field fails, the host checks only the 33 aligned fields within 0x80 bytes of the
 reference field in the RTTI-verified player owner. A unique candidate must pass

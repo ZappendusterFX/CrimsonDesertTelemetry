@@ -759,7 +759,8 @@ bool CheckAmbientPreflight(uint64_t moduleBase)
     // Verify dispatch immediately before both hooks and the source-field loads.
     const std::array<uint8_t, 7> sourceA{0x48,0x8B,0xAF,static_cast<uint8_t>(AmbientSourceOffset),0x00,0x00,0x00};
     const std::array<uint8_t, 7> sourceB{0x48,0x8B,0x9D,static_cast<uint8_t>(AmbientSourceOffset),0x00,0x00,0x00};
-    return match(AmbientHookRvas()[0] - 6, AmbientDispatchSignature) && match(AmbientHookRvas()[1] - 6, AmbientDispatchSignature) &&
+    const auto dispatch = AmbientDispatchSignature(runtime_contract::ShiftedRendererCommandSlots);
+    return match(AmbientHookRvas()[0] - 6, dispatch) && match(AmbientHookRvas()[1] - 6, dispatch) &&
         match(AmbientSourceRvas()[0], sourceA) && match(AmbientSourceRvas()[1], sourceB);
 }
 

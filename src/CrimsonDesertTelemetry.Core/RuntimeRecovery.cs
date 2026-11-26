@@ -192,17 +192,27 @@ public static class RuntimeRecovery
             if (Math.Abs(delta) > bound) throw new InvalidDataException("Recovery relation exceeds its bound.");
             return checked((ulong)((long)source + delta));
         }
-        // ProcessManyLights is the unique root. All its intra-function contexts
-        // retain their offsets, register lifetimes and exact non-address bytes.
+        // ProcessManyLights is the unique root. Its contexts retain their
+        // offsets and register lifetimes in both reviewed command-vtable layouts.
         var entry = Find("context-0", original.ContextSignatures[0].Bytes,
             () => image.FindFunction(original.ContextSignatures[0].Bytes, "ProcessManyLights"),
             rva => image.MatchesNamedFunctionAt(rva, original.ContextSignatures[0].Bytes, "ProcessManyLights", atEntry: false));
+        var counter = original.ContextSignatures[1];
+        var counterRva = Relative(entry, original.ContextSignatures[0].Rva, counter.Rva, 0x4000);
+        // Build 26949954 moved both UAV binder calls, both 1x1 dispatches, the
+        // 512x1 dispatch and the post-dispatch command call by known slot deltas.
+        // A match at the counter site selects the complete variant.
+        var shiftedCommands = !image.MatchesFunctionAt(counterRva, counter.Bytes);
         for (var index = 0; index < native.ContextSignatures.Count; index++)
         {
             var context = native.ContextSignatures[index];
             var expected = original.ContextSignatures[index];
             var name = "context-" + index;
-            context.Rva = index == 0 ? entry : Find(name, NativeRendererLayout.ContextPattern(index, expected.Bytes),
+            var pattern = NativeRendererLayout.ContextPattern(index, expected.Bytes);
+            if (shiftedCommands && index is 1 or 2)
+                pattern = pattern.Replace("4C 8B 92 E8 04 00 00", "4C 8B 92 F8 04 00 00", StringComparison.Ordinal)
+                    .Replace("FF 90 38 03 00 00", "FF 90 40 03 00 00", StringComparison.Ordinal);
+            context.Rva = index == 0 ? entry : Find(name, pattern,
                 () => index == 4 ? image.FindFunction(expected.Bytes, expected.Purpose)
                     : Relative(entry, original.ContextSignatures[0].Rva, expected.Rva, 0x4000),
                 rva => index == 4 || (rva == Relative(entry, original.ContextSignatures[0].Rva, expected.Rva, 0x4000) &&
@@ -215,6 +225,8 @@ public static class RuntimeRecovery
         foreach (var field in new[] { "RendererGiOffset", "RendererSkyOffset", "RendererExposureOffset" })
             support.Values[field] = checked((uint)(originalSupport.Values[field] + rendererShift));
         var hookPattern = HookPattern(original.HookSignature);
+        if (shiftedCommands)
+            hookPattern = hookPattern.Replace("FF 90 18 02 00 00", "FF 90 20 02 00 00", StringComparison.Ordinal);
         native.HookRva = Find("hook", hookPattern,
             () => Relative(entry, original.ContextSignatures[0].Rva, original.HookRva, 0x4000),
             rva => rva == Relative(entry, original.ContextSignatures[0].Rva, original.HookRva, 0x4000) &&
@@ -225,7 +237,7 @@ public static class RuntimeRecovery
         ulong Support(string name, Func<ulong> resolve, Func<ulong, bool>? role = null)
         {
             var anchor = Anchor(name);
-            anchor.Rva = Find(name, Source(name).RelocationPattern, resolve, role);
+            anchor.Rva = Find(name, anchor.RelocationPattern, resolve, role);
             anchor.Bytes = session.Addresses["native-" + name].Bytes;
             return anchor.Rva;
         }
@@ -250,8 +262,15 @@ public static class RuntimeRecovery
         Support("PhysicsRay", () => image.FindNamedFunction(Source("PhysicsRay").RelocationPattern, "TtWorldCastRay"),
             rva => image.MatchesNamedFunctionAt(rva, Source("PhysicsRay").RelocationPattern, "TtWorldCastRay"));
         var collector = Support("PhysicsCollectorMethod", () => image.FindFunction(Source("PhysicsCollectorMethod").RelocationPattern, "collector method"));
-        Support("ExposureDispatch", () => image.FindNamedFunction(Source("ExposureDispatch").RelocationPattern, "AdaptExposure", atEntry: false),
-            rva => image.MatchesNamedFunctionAt(rva, Source("ExposureDispatch").RelocationPattern, "AdaptExposure", atEntry: false));
+        var exposure = Anchor("ExposureDispatch");
+        if (shiftedCommands)
+            exposure.RelocationPattern = exposure.RelocationPattern.Replace("FF 90 38 03 00 00", "FF 90 40 03 00 00", StringComparison.Ordinal);
+        Support("ExposureDispatch", () => image.FindNamedFunction(exposure.RelocationPattern, "AdaptExposure", atEntry: false),
+            rva => image.MatchesNamedFunctionAt(rva, exposure.RelocationPattern, "AdaptExposure", atEntry: false));
+        var ambientDispatch = Convert.FromHexString(shiftedCommands ? "FF9040030000" : "FF9038030000");
+        if (!image.ReadCode(hookA - 6, ambientDispatch.Length).SequenceEqual(ambientDispatch) ||
+            !image.ReadCode(Anchor("AmbientHookB").Rva - 6, ambientDispatch.Length).SequenceEqual(ambientDispatch))
+            throw new InvalidDataException("Ambient dispatch slots disagree with the ManyLights command layout.");
         ulong CallTarget(ulong rva, int instructionOffset)
         {
             var call = image.ReadCode(rva + (ulong)instructionOffset, 5);
@@ -269,12 +288,20 @@ public static class RuntimeRecovery
             CallTarget(Anchor("ExposureDispatch").Rva, 21) != helper)
             throw new InvalidDataException("Post-dispatch helper targets disagree across the four acquisition paths.");
         var shapeCaller = Support("PhysicsShapeCaller", () => image.FindFunction(Source("PhysicsShapeCaller").RelocationPattern, "natural shape caller"));
-        var rayCaller = Support("PhysicsRayCaller", () => Relative(shapeCaller, Source("PhysicsShapeCaller").Rva, Source("PhysicsRayCaller").Rva, 0x4000),
-            rva => rva == Relative(shapeCaller, Source("PhysicsShapeCaller").Rva, Source("PhysicsRayCaller").Rva, 0x4000));
+        const int rayCallerDrift = 0x40;
+        const int rayCallLength = 15;
+        var expectedRay = Relative(shapeCaller, Source("PhysicsShapeCaller").Rva, Source("PhysicsRayCaller").Rva, 0x4000);
+        var raySearchStart = checked(expectedRay - rayCallerDrift - rayCallLength);
+        var rayPattern = SignaturePattern.Parse(RayCallerPrefix + " " + Source("PhysicsRayCaller").RelocationPattern);
+        var rayMatches = rayPattern.FindAll(image.ReadCode(raySearchStart, 2 * rayCallerDrift + rayPattern.Length));
+        if (rayMatches.Count != 1)
+            throw new InvalidDataException("Natural ray caller is missing or ambiguous near its paired shape caller.");
+        var rayRva = raySearchStart + (ulong)rayMatches[0] + rayCallLength;
+        var rayCaller = Support("PhysicsRayCaller", () => rayRva, rva => rva == rayRva);
         Find("PhysicsShapeCall", ShapeCallerPrefix, () => shapeCaller - 34,
             rva => rva == shapeCaller - 34 && image.SameUnwindFunction(rva, shapeCaller));
-        Find("PhysicsRayCall", RayCallerPrefix, () => rayCaller - 15,
-            rva => rva == rayCaller - 15 && image.SameUnwindFunction(rva, rayCaller));
+        Find("PhysicsRayCall", RayCallerPrefix, () => rayCaller - rayCallLength,
+            rva => rva == rayCaller - rayCallLength && image.SameUnwindFunction(rva, rayCaller));
         cancellation.ThrowIfCancellationRequested();
         var table = cached is null ? image.ResolveCollectorVtable(Source("PhysicsCollectorMethod").RelocationPattern)
             : Cached(cached, "native-PhysicsCollectorVtable").Rva;

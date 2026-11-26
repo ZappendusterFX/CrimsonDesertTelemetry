@@ -276,9 +276,41 @@ int wmain(int argc,wchar_t** argv)
         f.json["support"]["values"][field]=f.json["support"]["values"][field].get<std::uint32_t>()+0x20;
     f.Reject([](Json& j){j["support"]["values"]["RendererSkyOffset"]=0x690u;},
         "inconsistent renderer sky field accepted");
+    hook[21]=0x20;
+    f.Write(contract::HookRva+Delta,hook);
+    f.json["hookSignature"]=Hex(hook);
+    f.Reject([](Json&){}, "partially shifted command slots were accepted");
+    for(const auto index:{1u,2u}) {
+        const auto& context=contract::ContextSignatures[index];
+        auto bytes=std::vector<unsigned char>(context.bytes.begin(),context.bytes.end());
+        bytes[index==1 ? 18 : 17]=0xF8;
+        if(index==2) bytes[70]=0x40;
+        f.Write(context.rva+Delta,bytes);
+        f.json["contexts"][index]["bytes"]=Hex(bytes);
+    }
+    exposureBytes[14]=0x40;
+    f.Write(contract::support::ExposureDispatchRva+Delta,exposureBytes);
+    f.json["support"]["anchors"][8]["bytes"]=Hex(exposureBytes);
+    const auto shiftedDispatch=cdt::render::AmbientDispatchSignature(true);
+    f.Write(contract::support::AmbientHookARva+Delta-6,shiftedDispatch);
+    f.Reject([](Json&){}, "mixed ambient dispatch slots were accepted");
+    f.Write(contract::support::AmbientHookBRva+Delta-6,shiftedDispatch);
+    constexpr auto oldRayCaller=contract::support::PhysicsRayCallerRva+Delta;
+    const auto moveRayCaller=[&](std::uint64_t rva) {
+        constexpr size_t prefixLength=15;
+        std::array<unsigned char,prefixLength> prefix{};
+        std::memcpy(prefix.data(),f.image+oldRayCaller-prefixLength,prefix.size());
+        f.Write(rva-prefix.size(),prefix);
+        f.Write(rva,contract::support::PhysicsRayCallerBytes);
+        f.json["support"]["anchors"][10]["rva"]=rva;
+    };
+    moveRayCaller(oldRayCaller-0x70);
+    f.Reject([](Json&){}, "ray caller moved outside its bounded window");
+    moveRayCaller(oldRayCaller-0x10);
     const bool applied=f.Apply(f.json,error);
     Check(applied,error.c_str());
     Check(cdt::runtime_contract::Recovered&&cdt::runtime_contract::HookRva==contract::HookRva+Delta&&
+        cdt::runtime_contract::ShiftedRendererCommandSlots&&
         cdt::runtime_contract::SceneGlobalRva==contract::SceneGlobalRva+Delta&&
         cdt::render::AmbientHookRvas()[0]==contract::SkyProducerRva+Delta&&
         cdt::render::AmbientSignatureA()==ambient&&cdt::runtime_contract::HookSignature==hook&&

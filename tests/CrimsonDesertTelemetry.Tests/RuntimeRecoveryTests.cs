@@ -71,6 +71,29 @@ internal static class RuntimeRecoveryTests
 
     public static void SyntheticRecovery()
     {
+        using (var commands = new Fixture())
+        {
+            commands.SetShiftedCommandSlots(mixedAmbient: true);
+            var mixed = RuntimeRecovery.ResolveReadiness(commands.Path, commands.Reference);
+            Reject(() => RuntimeRecovery.ResolveNative(mixed, commands.Reference),
+                "Inconsistent renderer command slots were accepted.");
+            commands.SetShiftedCommandSlots(mixedAmbient: false);
+            var ready = RuntimeRecovery.ResolveReadiness(commands.Path, commands.Reference);
+            var recovered = RuntimeRecovery.ResolveNative(ready, commands.Reference, commands.Cache);
+            Check(recovered.Definition.NativeCapture!.HookSignature.EndsWith("FF 90 20 02 00 00", StringComparison.Ordinal),
+                "The matched command layout did not reach the recovered contract.");
+            var cached = RuntimeRecovery.ResolveReadiness(commands.Path, commands.Reference, commands.Cache);
+            Check(RuntimeRecovery.ResolveNative(cached, commands.Reference, commands.Cache).CacheHit,
+                "The shifted command layout did not survive cache verification.");
+        }
+        using (var callers = new Fixture())
+        {
+            callers.MoveRayCaller(-0x10);
+            var ready = RuntimeRecovery.ResolveReadiness(callers.Path, callers.Reference);
+            var recovered = RuntimeRecovery.ResolveNative(ready, callers.Reference);
+            Check(recovered.Definition.NativeCapture!.Support!.Anchors.Single(a => a.Name == "PhysicsRayCaller").Rva ==
+                0x6000 - 843 - 0x10, "The guarded natural ray caller did not relocate inside its search window.");
+        }
         using (var shifted = new Fixture())
         {
             // Keep all instruction and register bytes. Move the related buffer fields.
@@ -172,6 +195,7 @@ internal static class RuntimeRecoveryTests
     // AMD64 exception directory. No copied game executable/assets are required.
     private sealed class Fixture : IDisposable
     {
+        private const ulong AmbientSourceA = 0x16F7F;
         public string DirectoryPath { get; } = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "cdt-recovery-" + Guid.NewGuid().ToString("N"));
         public string Path => System.IO.Path.Combine(DirectoryPath, "fixture.exe");
         public string Cache => System.IO.Path.Combine(DirectoryPath, "cache");
@@ -215,7 +239,7 @@ internal static class RuntimeRecoveryTests
             Function(0x14000, 0x14300);
             var anchors = native.Support!.Anchors.ToDictionary(a => a.Name);
             void Anchor(string name, ulong rva) => Put(rva, anchors[name].Bytes);
-            const ulong sourceA = 0x16F7F;
+            const ulong sourceA = AmbientSourceA;
             var sourceB = sourceA + anchors["AmbientSourceB"].Rva - anchors["AmbientSourceA"].Rva;
             Anchor("AmbientSourceA", sourceA);
             Anchor("AmbientHookA", sourceA + anchors["AmbientHookA"].Rva - anchors["AmbientSourceA"].Rva);
@@ -233,6 +257,7 @@ internal static class RuntimeRecoveryTests
             Call(sourceA + anchors["AmbientHookA"].Rva - anchors["AmbientSourceA"].Rva + 3, 0x7000);
             Call(sourceB + anchors["AmbientHookB"].Rva - anchors["AmbientSourceB"].Rva + 3, 0x7000);
             Call(0x3200 + 21, 0x7000);
+            WriteAmbientDispatch(0x38, 0x38);
             Anchor("PhysicsShapeCaller", 0x6000); Function(0x5F00, 0x6200);
             Anchor("PhysicsRayCaller", 0x6000 - 843); Function(0x5B00, 0x5E00);
             Put(0x6000 - 34, "48 8B 01 4C 8B 90 F0 01 00 00 48 8B 85 B0 00 00 00 48 89 44 24 20 4D 8B CF 4D 8B C4 49 8B D5 41 FF D2");
@@ -273,6 +298,38 @@ internal static class RuntimeRecoveryTests
         }
         public void Put(ulong rva, string pattern) => Put(rva, pattern.Split(' ').Select(t => t is "?" or "??" ? (byte)0x11 : Convert.ToByte(t, 16)).ToArray());
         public void Put(ulong rva, byte[] value) => value.CopyTo(bytes, At(rva));
+        private void WriteAmbientDispatch(byte slotA, byte slotB)
+        {
+            var anchors = Reference.NativeCapture!.Support!.Anchors.ToDictionary(anchor => anchor.Name);
+            ulong Dispatch(string name) => AmbientSourceA + anchors[name].Rva - anchors["AmbientSourceA"].Rva - 6;
+            Put(Dispatch("AmbientHookA"), [0xFF, 0x90, slotA, 0x03, 0, 0]);
+            Put(Dispatch("AmbientHookB"), [0xFF, 0x90, slotB, 0x03, 0, 0]);
+        }
+
+        public void SetShiftedCommandSlots(bool mixedAmbient)
+        {
+            var native = Reference.NativeCapture!;
+            const ulong entry = 0x10000;
+            ulong Relocate(ulong rva) => entry + rva - native.ContextSignatures[0].Rva;
+            Put(Relocate(native.ContextSignatures[1].Rva) + 18, [0xF8]);
+            Put(Relocate(native.ContextSignatures[2].Rva) + 17, [0xF8]);
+            Put(Relocate(native.ContextSignatures[2].Rva) + 70, [0x40]);
+            Put(Relocate(native.HookRva) + 21, [0x20]);
+            Put(0x3200 + 14, [0x40]);
+            WriteAmbientDispatch(0x40, mixedAmbient ? (byte)0x38 : (byte)0x40);
+            Save();
+        }
+
+        public void MoveRayCaller(int shift)
+        {
+            var original = At(0x6000 - 843 - 15);
+            var length = 15 + SignaturePattern.Parse(Reference.NativeCapture!.Support!.Anchors
+                .Single(a => a.Name == "PhysicsRayCaller").RelocationPattern).Length;
+            var code = bytes.AsSpan(original, length).ToArray();
+            bytes.AsSpan(original, length).Clear();
+            code.CopyTo(bytes, original + shift);
+            Save();
+        }
         public void ShiftRendererFields(int shift)
         {
             foreach (var index in new[] { 3, 5 })
